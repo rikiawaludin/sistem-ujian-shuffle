@@ -10,8 +10,8 @@ export const navMenuItems = [
     // icon: <DocumentTextIcon className={iconStyle} />, // Opsional
   },
   {
-    name: "Daftar Ujian",
-    path: "/ujian/daftar", // Sesuaikan dengan path Anda
+    name: "Mata Kuliah",
+    path: "#mata-kuliah-section", // Sesuaikan dengan path Anda
     // icon: <UserCircleIcon className={iconStyle} />, // Opsional
   },
   {

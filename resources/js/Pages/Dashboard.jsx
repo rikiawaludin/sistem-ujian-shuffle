@@ -1,79 +1,51 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Typography, Card, Button } from "@material-tailwind/react";
+import { Typography, Card } from "@material-tailwind/react"; // Button mungkin tidak lagi dibutuhkan di sini jika sudah di dalam panel
 import { usePage } from '@inertiajs/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 
-// ... (Definisi PanelRiwayatUjian, PanelUjianAktif, PanelUjianMendatang tetap sama) ...
-function PanelRiwayatUjian() {
-  const ujianTerakhir = { mataKuliah: "Kalkulus Dasar", dosen: "Dr. Retno Wulandari, M.Si.", status: "Selesai pada 20 Mei 2025", nilai: 85 };
-  return (
-    <Card className="p-6 shadow-lg h-full w-full">
-      <Typography variant="h5" color="blue-gray" className="mb-3 border-b border-blue-gray-200 pb-2">
-        Ujian Terakhir
-      </Typography>
-      {ujianTerakhir ? (
-        <div className="space-y-1">
-          <Typography variant="h6" color="blue-gray">{ujianTerakhir.mataKuliah}</Typography>
-          <Typography variant="small" color="gray">Dosen: {ujianTerakhir.dosen}</Typography>
-          <Typography variant="small" color="gray">Status: {ujianTerakhir.status}</Typography>
-          {ujianTerakhir.nilai && <Typography variant="small" color="blue" className="font-semibold">Nilai: {ujianTerakhir.nilai}</Typography>}
-          <Button size="sm" variant="outlined" className="mt-3 w-full">Lihat Detail Riwayat</Button>
-        </div>
-      ) : (<Typography color="gray">Belum ada riwayat ujian.</Typography>)}
-    </Card>
-  );
-}
-
-function PanelUjianAktif() {
-  const ujianAktif = { mataKuliah: "Fisika Mekanika", dosen: "Prof. Dr. Ir. Agus Hartono", sisaWaktu: "00:45:12" };
-  return (
-    <Card className="p-6 shadow-lg h-full w-full border-2 border-blue-500">
-      <Typography variant="h5" color="blue-gray" className="mb-3 border-b border-blue-gray-200 pb-2">
-        Ujian Berlangsung
-      </Typography>
-      {ujianAktif ? (
-        <div className="space-y-1">
-          <Typography variant="h6" color="blue-gray">{ujianAktif.mataKuliah}</Typography>
-          <Typography variant="small" color="gray">Dosen: {ujianAktif.dosen}</Typography>
-          <Typography variant="h4" color="red" className="my-2">{ujianAktif.sisaWaktu}</Typography>
-          <Button size="sm" color="red" className="mt-3 w-full">Lanjutkan Ujian</Button>
-        </div>
-      ) : (<Typography color="gray">Tidak ada ujian yang sedang berlangsung.</Typography>)}
-    </Card>
-  );
-}
-
-function PanelUjianMendatang() {
-  const ujianMendatang = { mataKuliah: "Algoritma & Pemrograman", dosen: "Dr. Indah Kurniawati, S.Kom., M.Kom.", jadwal: "27 Mei 2025, 09:00 WIB", durasi: "90 Menit" };
-  return (
-    <Card className="p-6 shadow-lg h-full w-full">
-      <Typography variant="h5" color="blue-gray" className="mb-3 border-b border-blue-gray-200 pb-2">
-        Ujian Mendatang
-      </Typography>
-      {ujianMendatang ? (
-        <div className="space-y-1">
-          <Typography variant="h6" color="blue-gray">{ujianMendatang.mataKuliah}</Typography>
-          <Typography variant="small" color="gray">Dosen: {ujianMendatang.dosen}</Typography>
-          <Typography variant="small" color="gray">Jadwal: {ujianMendatang.jadwal}</Typography>
-          <Typography variant="small" color="gray">Durasi: {ujianMendatang.durasi}</Typography>
-          <Button size="sm" variant="text" className="mt-3 w-full">Lihat Detail Jadwal</Button>
-        </div>
-      ) : (<Typography color="gray">Belum ada ujian yang dijadwalkan.</Typography>)}
-    </Card>
-  );
-}
-
+// Impor komponen panel yang sudah dipisah
+import PanelRiwayatUjian from '@/Components/DashboardPanels/PanelRiwayatUjian';
+import PanelUjianAktif from '@/Components/DashboardPanels/PanelUjianAktif';
+import PanelUjianMendatang from '@/Components/DashboardPanels/PanelUjianMendatang';
+import RingkasanMataKuliahCard from '@/Components/RingkasanMataKuliahCard';
 
 export default function Dashboard() {
-  const { auth } = usePage().props;
+  const { auth, daftarMataKuliah } = usePage().props;
+
+  const mataKuliahUntukDitampilkan = daftarMataKuliah || [
+    {
+        id: 1,
+        nama: 'Pemrograman Web Lanjut',
+        dosen: { nama: 'Dr. Indah K., M.Kom.' },
+        deskripsi_singkat: 'Mempelajari konsep lanjutan pengembangan web dengan framework modern dan best practices terkini.',
+        jumlah_ujian_tersedia: 5,
+        img: '/images/web-lanjut.jfif', // Ganti dengan path gambar Anda
+    },
+    {
+        id: 2,
+        nama: 'Kalkulus Dasar',
+        dosen: { nama: 'Dr. Retno W., M.Si.' },
+        deskripsi_singkat: 'Pengenalan konsep fundamental limit, turunan, dan integral untuk aplikasi rekayasa.',
+        jumlah_ujian_tersedia: 3,
+        img: '/images/kalkulus-dasar.jfif', // Ganti dengan path gambar Anda
+    },
+    {
+        id: 3,
+        nama: 'Fisika Mekanika Klasik',
+        dosen: { nama: 'Prof. Dr. Agus H.' },
+        deskripsi_singkat: 'Studi tentang gerak benda dan gaya yang mempengaruhinya berdasarkan hukum Newton.',
+        jumlah_ujian_tersedia: 4,
+        img: '/images/fisika.jpg', // Ganti dengan path gambar Anda
+    },
+  ];
+
+  const mataKuliahList = Array.isArray(mataKuliahUntukDitampilkan) ? mataKuliahUntukDitampilkan : [];
 
   return (
     <AuthenticatedLayout title="Dashboard Ujian">
-      {/* Salam Sambutan */}
-      {/* Padding horizontal (px-4 md:px-0) di sini mungkin tidak lagi diperlukan jika AuthenticatedLayout sudah mengatur padding global */}
-      <div className="mb-8"> {/* Dihapus: px-4 md:px-0 */}
+      <div id="dashboard-top-content" className="mb-8">
         <Typography variant="h3" color="blue-gray" className="font-semibold">
           Selamat datang, {auth.user ? auth.user.name : "Pengguna"}!
         </Typography>
@@ -82,32 +54,45 @@ export default function Dashboard() {
         </Typography>
       </div>
 
-      {/* Tampilan Grid untuk Desktop dan Tablet (md ke atas) */}
-      {/* Grid ini sekarang akan berada di dalam kontainer dengan max-width dari AuthenticatedLayout */}
-      <div className="hidden md:grid md:grid-cols-3 md:gap-6">
+      <div className="hidden md:grid md:grid-cols-3 md:gap-6 mb-12">
         <div className="md:col-span-1"><PanelRiwayatUjian /></div>
         <div className="md:col-span-1"><PanelUjianAktif /></div>
         <div className="md:col-span-1"><PanelUjianMendatang /></div>
       </div>
 
-      {/* Tampilan Carousel untuk Mobile (di bawah md) */}
-      {/* Kontainer Swiper ini juga akan berada di dalam kontainer dengan max-width dari AuthenticatedLayout */}
-      {/* Padding spesifik pada Swiper (style atau wrapper div) mungkin masih berguna untuk jarak antar slide jika diperlukan */}
-      <div className="block md:hidden"> {/* Dihapus: px-4 sm:px-6 dari sini, karena sudah diatur oleh AuthenticatedLayout */}
+      <div className="block md:hidden mb-12">
         <Swiper
           spaceBetween={16}
           slidesPerView={1}
           initialSlide={1}
           centeredSlides={true}
           className="mySwiper"
-          // Jika Anda ingin slide tidak menyentuh tepi kontainer Swiper yang sudah dipadding oleh AuthenticatedLayout:
-          // Anda bisa menambahkan padding pada Swiper itu sendiri atau pada setiap SwiperSlide
-          // Contoh: style={{ paddingLeft: '8px', paddingRight: '8px' }} jika padding AuthenticatedLayout dirasa terlalu lebar untuk konten slide
+          style={{ paddingLeft: '16px', paddingRight: '16px' }}
         >
           <SwiperSlide><PanelRiwayatUjian /></SwiperSlide>
           <SwiperSlide><PanelUjianAktif /></SwiperSlide>
           <SwiperSlide><PanelUjianMendatang /></SwiperSlide>
         </Swiper>
+      </div>
+      <hr />
+      <br />
+      <div id="mata-kuliah-section" className="mb-12">
+        <Typography variant="h4" color="blue-gray" className="mb-6 font-semibold">
+          Daftar Ujian Mata Kuliah
+        </Typography>
+        {mataKuliahList.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {mataKuliahList.map((mk) => (
+              <RingkasanMataKuliahCard key={mk.id} mataKuliah={mk} />
+            ))}
+          </div>
+        ) : (
+          <Card className="p-8 text-center shadow-lg border border-blue-gray-50">
+            <Typography color="blue-gray" className="opacity-80">
+              Belum ada mata kuliah yang terdaftar untuk Anda.
+            </Typography>
+          </Card>
+        )}
       </div>
     </AuthenticatedLayout>
   );
