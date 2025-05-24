@@ -1,47 +1,42 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Typography, Card } from "@material-tailwind/react"; // Button mungkin tidak lagi dibutuhkan di sini jika sudah di dalam panel
+import { Typography, Card } from "@material-tailwind/react";
 import { usePage } from '@inertiajs/react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 
-// Impor komponen panel yang sudah dipisah
 import PanelRiwayatUjian from '@/Components/DashboardPanels/PanelRiwayatUjian';
 import PanelUjianAktif from '@/Components/DashboardPanels/PanelUjianAktif';
 import PanelUjianMendatang from '@/Components/DashboardPanels/PanelUjianMendatang';
 import RingkasanMataKuliahCard from '@/Components/RingkasanMataKuliahCard';
 
-export default function Dashboard() {
-  const { auth, daftarMataKuliah } = usePage().props;
+// Data statis ujian yang akan digunakan oleh RingkasanMataKuliahCard
+// untuk menghitung jumlah ujian per mata kuliah (jika tidak disediakan dari backend)
+// Nantinya, jumlah ujian sebaiknya dihitung di backend dan dioper sebagai bagian dari objek mata kuliah.
+const semuaUjianStatis = [
+    { id: 101, mata_kuliah_id: 1, nama: "UTS Web Lanjut", status: "Belum Dikerjakan" },
+    { id: 102, mata_kuliah_id: 1, nama: "Kuis Framework Web", status: "Sedang Dikerjakan" },
+    { id: 103, mata_kuliah_id: 1, nama: "UAS Web Lanjut", status: "Selesai" },
+    { id: 201, mata_kuliah_id: 2, nama: "Kuis Kalkulus Bab 1", status: "Belum Dikerjakan" },
+    { id: 202, mata_kuliah_id: 2, nama: "UTS Kalkulus", status: "Selesai" },
+    { id: 301, mata_kuliah_id: 123, nama: "UTS Fisika Mekanika", status: "Belum Dikerjakan" },
+    { id: 302, mata_kuliah_id: 123, nama: "Kuis Dinamika", status: "Belum Dikerjakan" },
+];
 
-  const mataKuliahUntukDitampilkan = daftarMataKuliah || [
-    {
-        id: 1,
-        nama: 'Pemrograman Web Lanjut',
-        dosen: { nama: 'Dr. Indah K., M.Kom.' },
-        deskripsi_singkat: 'Mempelajari konsep lanjutan pengembangan web dengan framework modern dan best practices terkini.',
-        jumlah_ujian_tersedia: 5,
-        img: '/images/web-lanjut.jfif', // Ganti dengan path gambar Anda
-    },
-    {
-        id: 2,
-        nama: 'Kalkulus Dasar',
-        dosen: { nama: 'Dr. Retno W., M.Si.' },
-        deskripsi_singkat: 'Pengenalan konsep fundamental limit, turunan, dan integral untuk aplikasi rekayasa.',
-        jumlah_ujian_tersedia: 3,
-        img: '/images/kalkulus-dasar.jfif', // Ganti dengan path gambar Anda
-    },
-    {
-        id: 3,
-        nama: 'Fisika Mekanika Klasik',
-        dosen: { nama: 'Prof. Dr. Agus H.' },
-        deskripsi_singkat: 'Studi tentang gerak benda dan gaya yang mempengaruhinya berdasarkan hukum Newton.',
-        jumlah_ujian_tersedia: 4,
-        img: '/images/fisika.jpg', // Ganti dengan path gambar Anda
-    },
+export default function Dashboard() {
+  const { auth, daftarMataKuliah: propsDaftarMataKuliah } = usePage().props;
+
+  const mataKuliahUntukDitampilkan = propsDaftarMataKuliah || [
+    { id: 1, nama: 'Pemrograman Web Lanjut', dosen: { nama: 'Dr. Indah K., M.Kom.' }, deskripsi_singkat: 'Mempelajari konsep lanjutan...', img: '/images/web-lanjut.jfif' },
+    { id: 2, nama: 'Kalkulus Dasar', dosen: { nama: 'Dr. Retno W., M.Si.' }, deskripsi_singkat: 'Pengenalan konsep limit...', img: '/images/kalkulus-dasar.jfif' },
+    { id: 123, nama: 'Fisika Mekanika', dosen: { nama: 'Prof. Dr. Agus H.' }, deskripsi_singkat: 'Studi tentang gerak benda.', img: '/images/fisika.jpg' },
   ];
 
-  const mataKuliahList = Array.isArray(mataKuliahUntukDitampilkan) ? mataKuliahUntukDitampilkan : [];
+  // Tambahkan jumlah ujian ke setiap mata kuliah
+  const mataKuliahList = mataKuliahUntukDitampilkan.map(mk => {
+    const jumlahUjian = semuaUjianStatis.filter(ujian => ujian.mata_kuliah_id === mk.id).length;
+    return { ...mk, jumlah_ujian_tersedia: jumlahUjian };
+  });
 
   return (
     <AuthenticatedLayout title="Dashboard Ujian">
@@ -61,24 +56,17 @@ export default function Dashboard() {
       </div>
 
       <div className="block md:hidden mb-12">
-        <Swiper
-          spaceBetween={16}
-          slidesPerView={1}
-          initialSlide={1}
-          centeredSlides={true}
-          className="mySwiper"
-          style={{ paddingLeft: '16px', paddingRight: '16px' }}
-        >
+        <Swiper spaceBetween={16} slidesPerView={1} initialSlide={1} centeredSlides={true} className="mySwiper" style={{ paddingLeft: '16px', paddingRight: '16px' }}>
           <SwiperSlide><PanelRiwayatUjian /></SwiperSlide>
           <SwiperSlide><PanelUjianAktif /></SwiperSlide>
           <SwiperSlide><PanelUjianMendatang /></SwiperSlide>
         </Swiper>
       </div>
-      <hr />
-      <br />
-      <div id="mata-kuliah-section" className="mb-12">
+      <hr className="my-6 border-blue-gray-100" /> {/* Garis pemisah lebih baik dari <br/> */}
+      
+      <div id="mata-kuliah-section" className="mb-12"> {/* Nama ID sudah benar */}
         <Typography variant="h4" color="blue-gray" className="mb-6 font-semibold">
-          Daftar Ujian Mata Kuliah
+          Mata Kuliah Tersedia
         </Typography>
         {mataKuliahList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

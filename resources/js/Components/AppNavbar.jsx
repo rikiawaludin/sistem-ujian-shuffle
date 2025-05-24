@@ -12,7 +12,7 @@ import {
   MenuItem,
   Avatar,
 } from "@material-tailwind/react";
-import { Bars3Icon, XMarkIcon, UserCircleIcon, ArrowLeftOnRectangleIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, XMarkIcon, UserCircleIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 
 import navMenuItems from "@/Layouts/NavbarRoutes"; // Saya asumsikan path ini benar berdasarkan unggahan Anda sebelumnya
@@ -152,7 +152,7 @@ export function AppNavbar() {
                     </MenuItem>
                     <hr className="my-2 border-blue-gray-50" />
                     <MenuItem className="flex items-center gap-2 text-red-500 hover:!bg-red-50 hover:!text-red-600 focus:!bg-red-50 focus:!text-red-600" onClick={handleLogout}>
-                      <ArrowLeftOnRectangleIcon strokeWidth={2} className="h-4 w-4" />
+                      <ArrowLeftIcon strokeWidth={2} className="h-4 w-4" />
                       <Typography variant="small" className="font-normal">
                         Log Out
                       </Typography>
@@ -203,7 +203,7 @@ export function AppNavbar() {
                   Profil Saya
                 </Button>
                 <Button fullWidth variant="gradient" size="sm" onClick={() => { handleLogout(); setOpenNav(false); }} className="flex items-center justify-center gap-2 !bg-red-500">
-                  <ArrowLeftOnRectangleIcon strokeWidth={2} className="h-4 w-4" />
+                  <ArrowLeftIcon strokeWidth={2} className="h-4 w-4" />
                   Log Out
                 </Button>
               </>

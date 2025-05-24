@@ -26,42 +26,89 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    // Data statis untuk daftar mata kuliah (nantinya ambil dari database)
+    $daftarMataKuliah = [
+        [
+            'id' => 1, // ID Mata Kuliah ini PENTING untuk link ke DaftarUjianPage
+            'nama' => 'Pemrograman Web Lanjut',
+            'dosen' => ['nama' => 'Dr. Indah K., M.Kom.'],
+            'deskripsi_singkat' => 'Mempelajari konsep lanjutan pengembangan web.',
+            'img' => '/images/web-lanjut.jfif', // Sediakan gambar ini di public/images
+            // Kita akan hitung jumlah ujian di frontend dari data ujian statis untuk sementara
+            // atau Anda bisa tambahkan 'jumlah_ujian_tersedia' langsung dari backend
+        ],
+        [
+            'id' => 2,
+            'nama' => 'Kalkulus Dasar',
+            'dosen' => ['nama' => 'Dr. Retno W., M.Si.'],
+            'deskripsi_singkat' => 'Pengenalan konsep limit, turunan, dan integral.',
+            'img' => '/images/kalkulus-dasar.jfif',
+        ],
+         [
+            'id' => 123, // ID ini akan kita gunakan untuk contoh link
+            'nama' => 'Fisika Mekanika',
+            'dosen' => ['nama' => 'Prof. Dr. Agus H.'],
+            'deskripsi_singkat' => 'Studi tentang gerak benda.',
+            'img' => '/images/fisika.jpg',
+        ],
+    ];
+
+    return Inertia::render('Dashboard', [
+        'daftarMataKuliah' => $daftarMataKuliah,
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Rute untuk halaman profil pengguna (jika berbeda dari edit)
+    Route::get('/user/profile', function() {
+        // Logika untuk menampilkan halaman profil
+        // Anda mungkin ingin membuat ProfileController@show atau sejenisnya
+        // Untuk saat ini, kita bisa render komponen Profile yang Anda kirim
+        // Asumsikan komponen Profile.jsx ada di resources/js/Pages/Profile/ProfilePage.jsx
+        // Jika file Profile.jsx yang Anda kirim adalah halaman, pindahkan ke Pages/Profile/
+        // dan beri nama misalnya ProfilePage.jsx
+        // return Inertia::render('Profile/ProfilePage');
+
+        // Jika Profile.jsx yang Anda kirim (denganTabs, dll.) adalah halaman profil:
+        // 1. Pindahkan Profile.jsx ke resources/js/Pages/Profile.jsx
+        // 2. Gunakan:
+        return Inertia::render('Profile'); // Inertia akan mencari Profile.jsx di Pages
+    })->name('profile.show'); // Nama rute ini digunakan di AppNavbar
 });
 
 // Rute untuk menampilkan daftar ujian per mata kuliah
 Route::get('/mata-kuliah/{id_mata_kuliah}/ujian', function ($id_mata_kuliah) {
-    // Untuk saat ini, kita gunakan data statis
-    // Nanti, Anda akan mengambil data ini dari database berdasarkan $id_mata_kuliah
-
-    $mataKuliah = (object) [ // Menggunakan (object) agar mirip dengan data dari Eloquent model
+    $mataKuliah = (object) [
         'id' => $id_mata_kuliah,
-        'nama' => 'Pemrograman Web Lanjut - ID: ' . $id_mata_kuliah, // Contoh nama dinamis
-        // 'linkKembali' => route('halaman.daftar.mata.kuliah'), // Opsional jika ada halaman daftar mata kuliah
+        'nama' => 'Mata Kuliah ID: ' . $id_mata_kuliah, // Ganti dengan pengambilan nama dari DB
     ];
 
+    // Data statis ujian, nantinya ini akan diambil berdasarkan $id_mata_kuliah
     $daftarUjian = [
-        [ 'id' => 101, 'nama' => "Ujian Tengah Semester", 'deskripsi' => "Materi dari pertemuan 1 hingga 7.", 'durasi' => "90 Menit", 'jumlahSoal' => 30, 'batasWaktuPengerjaan' => "25 Mei 2025, 23:59", 'status' => "Belum Dikerjakan", 'kkm' => 75, 'skor' => null ],
-        [ 'id' => 102, 'nama' => "Kuis Mingguan - Bab Framework", 'deskripsi' => "Konsep dasar dan penggunaan framework.", 'durasi' => "45 Menit", 'jumlahSoal' => 15, 'batasWaktuPengerjaan' => "Setiap Jumat", 'status' => "Sedang Dikerjakan", 'kkm' => 70, 'skor' => null ],
-        [ 'id' => 103, 'nama' => "Ujian Praktikum Akhir", 'deskripsi' => "Implementasi proyek akhir.", 'durasi' => "120 Menit", 'jumlahSoal' => 1, 'batasWaktuPengerjaan' => "1 Juni 2025", 'status' => "Selesai", 'skor' => 88, 'kkm' => 65 ],
-        [ 'id' => 104, 'nama' => "Kuis Dadakan - API", 'deskripsi' => "Pemahaman tentang REST API.", 'durasi' => "20 Menit", 'jumlahSoal' => 10, 'batasWaktuPengerjaan' => "20 Mei 2025 (Terlewat)", 'status' => "Waktu Habis", 'kkm' => 70, 'skor' => null ],
+        [ 'id' => 101, 'mata_kuliah_id' => $id_mata_kuliah, 'nama' => "Ujian Tengah Semester", 'deskripsi' => "Materi bab 1-7.", 'durasi' => "90 Menit", 'jumlahSoal' => 30, 'batasWaktuPengerjaan' => "25 Des 2025", 'status' => "Belum Dikerjakan", 'kkm' => 75, 'skor' => null ],
+        [ 'id' => 102, 'mata_kuliah_id' => $id_mata_kuliah, 'nama' => "Kuis Framework", 'durasi' => "45 Menit", 'jumlahSoal' => 15, 'batasWaktuPengerjaan' => "Tiap Jumat", 'status' => "Sedang Dikerjakan", 'kkm' => 70, 'skor' => null ],
+        [ 'id' => 103, 'mata_kuliah_id' => $id_mata_kuliah, 'nama' => "Praktikum Akhir", 'durasi' => "120 Menit", 'jumlahSoal' => 1, 'batasWaktuPengerjaan' => "30 Des 2025", 'status' => "Selesai", 'skor' => 88, 'kkm' => 65 ],
     ];
 
-    // Render komponen Inertia dan kirim data sebagai props
-    // Pastikan nama komponen ('Ujian/DaftarUjianPage') sesuai dengan lokasi file JSX Anda
-    // relatif terhadap resources/js/Pages/
     return Inertia::render('Ujian/DaftarUjianPage', [
         'mataKuliah' => $mataKuliah,
         'daftarUjian' => $daftarUjian,
-        // Anda juga bisa mengirim props lain jika diperlukan, misalnya 'auth' user
-        // 'auth' => ['user' => auth()->user()] // Inertia biasanya sudah handle ini via middleware
     ]);
-})->middleware(['auth'])->name('ujian.daftarPerMataKuliah'); // Beri nama rute & pastikan ada middleware auth
+})->middleware(['auth'])->name('ujian.daftarPerMataKuliah');
+
+// Rute untuk halaman pengerjaan ujian
+Route::get('/ujian/{id_ujian}/kerjakan', function ($id_ujian) {
+    // Nanti, Anda akan mengambil detail ujian dari DB berdasarkan $id_ujian
+    // Untuk sekarang, PengerjaanUjianPage.jsx menggunakan data statis internalnya
+    return Inertia::render('Ujian/PengerjaanUjianPage', [
+        'idUjianAktif' => $id_ujian, // Kirim ID ujian agar halaman tahu ujian mana yang dikerjakan
+        // Anda juga bisa mengirim semua detail soal dari sini jika tidak ingin data statis di frontend
+    ]);
+})->middleware(['auth'])->name('ujian.kerjakan');
+
 
 require __DIR__.'/auth.php';
