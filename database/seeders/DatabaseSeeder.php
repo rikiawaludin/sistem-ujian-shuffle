@@ -16,7 +16,13 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             UserSeeder::class,
-            // Panggil seeder lain jika ada
+            MataKuliahSeeder::class,
+            UjianSeeder::class,
+            SoalSeeder::class,
+            UjianSoalSeeder::class,       // Setelah UjianSeeder dan SoalSeeder
+            MataKuliahUserSeeder::class,  // Setelah UserSeeder dan MataKuliahSeeder
+            PengerjaanUjianSeeder::class, // Setelah UserSeeder dan UjianSeeder
+            JawabanPesertaDetailSeeder::class, // Setelah PengerjaanUjianSeeder dan SoalSeeder
         ]);
     }
 }

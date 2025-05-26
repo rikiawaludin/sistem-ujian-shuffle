@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Models\User; // Pastikan model User diimpor
+use Illuminate\Support\Facades\Hash; // Untuk hashing password
 
 class UserSeeder extends Seeder
 {
@@ -14,23 +13,54 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        // Dosen
         User::create([
-            'name' => 'Test User',
-            'email' => 'user@example.com',
-            'password' => Hash::make('password'), // Ganti 'password' dengan password dummy Anda
-            // Tambahkan field lain jika ada, misal 'email_verified_at'
-            'email_verified_at' => now(),
+            'name' => 'Dr. Budi Santoso',
+            'email' => 'budi.dosen@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'dosen',
+            'avatar_url' => '/images/avatars/dosen1.png', // Sediakan gambar ini jika perlu
         ]);
 
         User::create([
-            'name' => 'Admin User',
+            'name' => 'Prof. Siti Aminah',
+            'email' => 'siti.dosen@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'dosen',
+            'avatar_url' => '/images/avatars/dosen2.png',
+        ]);
+
+        // Siswa
+        User::create([
+            'name' => 'Andi Pratama',
+            'email' => 'andi.siswa@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'siswa',
+            'avatar_url' => '/images/avatars/siswa1.png',
+        ]);
+
+        User::create([
+            'name' => 'Citra Lestari',
+            'email' => 'citra.siswa@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'siswa',
+            'avatar_url' => '/images/avatars/siswa2.png',
+        ]);
+
+        User::create([
+            'name' => 'Eka Wijaya',
+            'email' => 'eka.siswa@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'siswa',
+            'avatar_url' => '/images/avatars/siswa3.png',
+        ]);
+        
+        // Admin (Opsional)
+        User::create([
+            'name' => 'Admin Sistem',
             'email' => 'admin@example.com',
-            'password' => Hash::make('adminpass'), // Password dummy lain
-            'email_verified_at' => now(),
+            'password' => Hash::make('password'),
+            'role' => 'admin',
         ]);
-
-        // Anda bisa menambahkan lebih banyak user dummy di sini
-        // Atau menggunakan User Factory jika ingin data yang lebih banyak dan acak
-        // \App\Models\User::factory(10)->create();
     }
 }
