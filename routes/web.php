@@ -1,92 +1,24 @@
 <?php
 
-/*
-|--------------------------------------------------------------------------
-| Master Data Statis (Simulasi Database)
-|--------------------------------------------------------------------------
-*/
-
-// DATA MASTER MATA KULIAH
-$masterMataKuliah = [
-    1 => ['id' => 1, 'nama' => 'Pemrograman Web Lanjut', 'dosen' => ['nama' => 'Dr. Indah K., M.Kom.'], 'deskripsi_singkat' => 'Mempelajari konsep lanjutan pengembangan web dengan framework modern dan praktik terbaik.', 'img' => '/images/web-lanjut.jfif'],
-    2 => ['id' => 2, 'nama' => 'Kalkulus Dasar', 'dosen' => ['nama' => 'Dr. Retno W., M.Si.'], 'deskripsi_singkat' => 'Pengenalan konsep fundamental limit, turunan, dan integral untuk aplikasi rekayasa.', 'img' => '/images/kalkulus-dasar.jfif'],
-    123 => ['id' => 123, 'nama' => 'Fisika Mekanika Lanjutan', 'dosen' => ['nama' => 'Prof. Dr. Agus H.'], 'deskripsi_singkat' => 'Studi mendalam tentang gerak benda, energi, dan hukum Newton.', 'img' => '/images/fisika.jpg'],
-];
-
-// DATA MASTER SEMUA UJIAN BESERTA SOALNYA
-$masterSemuaUjian = [
-    // Ujian untuk Mata Kuliah ID 1 (Pemrograman Web Lanjut)
-    101 => ['id' => 101, 'mata_kuliah_id' => 1, 'nama' => "UTS Pemrograman Web Lanjut", 'deskripsi' => "Materi HTML, CSS, JavaScript Dasar, dan PHP.", 'durasi' => "90 Menit", 'jumlahSoal' => 2, 'batasWaktuPengerjaan' => "10 Juni 2025", 'status' => "Belum Dikerjakan", 'kkm' => 75, 'id_pengerjaan_terakhir' => null, 'skor' => null,
-        'durasiTotalDetik' => 50 * 60, // 50 menit
-        'soalList' => [
-            [ 'id' => 1, 'nomor' => 1, 'tipe' => "pilihan_ganda", 'pertanyaan' => "Tag HTML apa yang digunakan untuk membuat hyperlink?", 'opsi' => ["<link>", "<a>", "<href>", "<hyperlink>"], 'jawabanUser' => null, 'raguRagu' => false, 'kunciJawaban' => '<a>', 'penjelasan' => 'Tag <a> (anchor) digunakan untuk membuat hyperlink.'],
-            [ 'id' => 2, 'nomor' => 2, 'tipe' => "esai", 'pertanyaan' => "Jelaskan perbedaan antara GET dan POST request dalam HTTP!", 'jawabanUser' => "", 'raguRagu' => false, 'kunciJawaban' => 'GET digunakan untuk meminta data, parameter dikirim via URL. POST digunakan untuk mengirim data, parameter dikirim dalam body request.', 'penjelasan' => 'GET bersifat idempoten, POST tidak.'],
-        ]
-    ],
-    103 => ['id' => 103, 'mata_kuliah_id' => 1, 'nama' => "UAS Pemrograman Web Lanjut", 'deskripsi' => "Materi Framework dan Database.", 'durasi' => "120 Menit", 'jumlahSoal' => 1, 'batasWaktuPengerjaan' => "20 Juni 2025", 'status' => "Selesai", 'kkm' => 70, 'id_pengerjaan_terakhir' => 701, 'skor' => 85, // Ada id_pengerjaan_terakhir
-        'durasiTotalDetik' => 60 * 60,
-        'soalList' => [
-            [ 'id' => 1, 'nomor' => 1, 'tipe' => "esai", 'pertanyaan' => "Apa keuntungan menggunakan ORM?", 'jawabanUser' => "Memudahkan interaksi dengan database.", 'raguRagu' => false, 'kunciJawaban' => 'Abstraksi database, keamanan, produktivitas.', 'penjelasan' => 'ORM membantu developer bekerja dengan database menggunakan paradigma OOP.'],
-        ]
-    ],
-    // Ujian untuk Mata Kuliah ID 2 (Kalkulus Dasar)
-    202 => ['id' => 202, 'mata_kuliah_id' => 2, 'nama' => "UTS Kalkulus", 'deskripsi' => "Materi limit dan turunan.", 'durasi' => "100 Menit", 'jumlahSoal' => 2, 'batasWaktuPengerjaan' => "12 Juni 2025", 'status' => "Selesai", 'kkm' => 65, 'id_pengerjaan_terakhir' => 702, 'skor' => 70,
-        'durasiTotalDetik' => 30 * 60,
-        'soalList' => [
-            [ 'id' => 1, 'nomor' => 1, 'tipe' => "pilihan_ganda", 'pertanyaan' => "Turunan dari f(x) = 3x^2 + 2x - 5 adalah...", 'opsi' => ["6x + 2", "3x + 2", "6x", "2"], 'jawabanUser' => null, 'raguRagu' => false, 'kunciJawaban' => '6x + 2', 'penjelasan' => 'Gunakan aturan turunan dasar.' ],
-            [ 'id' => 2, 'nomor' => 2, 'tipe' => "esai", 'pertanyaan' => "Apa itu limit fungsi?", 'jawabanUser' => "", 'raguRagu' => false, 'kunciJawaban' => 'Nilai yang didekati fungsi saat variabel mendekati suatu titik.', 'penjelasan' => 'Konsep dasar kalkulus.' ],
-        ]
-    ],
-    // Ujian untuk Mata Kuliah ID 123 (Fisika Mekanika Lanjutan)
-    201 => ['id' => 201, 'mata_kuliah_id' => 123, 'nama' => "Simulasi Ujian Akhir Semester Fisika", 'deskripsi' => "Mencakup semua bab.", 'durasi' => "30 Menit", 'jumlahSoal' => 3, 'batasWaktuPengerjaan' => "Kapan saja", 'status' => "Belum Dikerjakan", 'kkm' => 70, 'id_pengerjaan_terakhir' => null, 'skor' => null,
-        'durasiTotalDetik' => 30 * 60,
-        'soalList' => [
-            [ 'id' => 1, 'nomor' => 1, 'tipe' => "pilihan_ganda", 'pertanyaan' => "Sebuah partikel bergerak melingkar dengan kecepatan sudut konstan. Manakah pernyataan berikut yang BENAR mengenai percepatan sentripetalnya?", 'opsi' => ["Besarnya konstan dan arahnya menuju pusat lingkaran", "Besarnya konstan dan arahnya menjauhi pusat lingkaran", "Besarnya berubah dan arahnya menuju pusat lingkaran", "Besarnya berubah dan arahnya menjauhi pusat lingkaran"], 'jawabanUser' => null, 'raguRagu' => false, 'kunciJawaban' => 'Besarnya konstan dan arahnya menuju pusat lingkaran', 'penjelasan' => 'Penjelasan soal 1.' ],
-            [ 'id' => 2, 'nomor' => 2, 'tipe' => "pilihan_ganda", 'pertanyaan' => "Sebuah benda jatuh bebas dari ketinggian H. Jika percepatan gravitasi adalah g, waktu yang dibutuhkan benda untuk mencapai tanah adalah...", 'opsi' => ["√(2H/g)", "√(H/g)", "2H/g", "H/g"], 'jawabanUser' => null, 'raguRagu' => false, 'kunciJawaban' => '√(2H/g)', 'penjelasan' => 'Penjelasan soal 2.' ],
-            [ 'id' => 3, 'nomor' => 3, 'tipe' => "esai", 'pertanyaan' => "Jelaskan prinsip dasar dari Teorema Usaha-Energi dan berikan satu contoh aplikasinya dalam kehidupan sehari-hari!", 'jawabanUser' => "", 'raguRagu' => false, 'kunciJawaban' => 'Kunci jawaban esai...', 'penjelasan' => 'Penjelasan soal 3.' ],
-        ]
-    ],
-];
-
-// DATA MASTER HISTORI PENGERJAAN UJIAN (SIMULASI)
-$masterHistoriPengerjaan = [
-    701 => ['id_pengerjaan' => 701, 'id_ujian' => 103, 'skor' => 85, 'tanggalPengerjaan' => '20 Juni 2025', 'waktuDihabiskan' => '110 Menit',
-        'jawabanUserPerSoal' => [
-            1 => ['jawabanPengguna' => "Memudahkan interaksi dengan database dan meningkatkan produktivitas.", 'isBenar' => true],
-        ]
-    ],
-    702 => ['id_pengerjaan' => 702, 'id_ujian' => 202, 'skor' => 70, 'tanggalPengerjaan' => '12 Juni 2025', 'waktuDihabiskan' => '80 Menit',
-        'jawabanUserPerSoal' => [
-            1 => ['jawabanPengguna' => "6x + 2", 'isBenar' => true],
-            2 => ['jawabanPengguna' => "Limit adalah pendekatan nilai.", 'isBenar' => null], // Esai perlu dinilai
-        ]
-    ],
-    // ID Pengerjaan untuk Ujian yang baru selesai (ID Ujian 201 dari PengerjaanUjianPage)
-    // Ini akan disimulasikan dibuat setelah ujian ID 201 selesai
-    703 => ['id_pengerjaan' => 703, 'id_ujian' => 201, 'skor' => 67, 'tanggalPengerjaan' => '26 Mei 2025', 'waktuDihabiskan' => '25 Menit 32 Detik',
-        'jawabanUserPerSoal' => [ // Contoh jawaban untuk ujian ID 201
-            1 => ['jawabanPengguna' => "Besarnya konstan dan arahnya menuju pusat lingkaran", 'isBenar' => true],
-            2 => ['jawabanPengguna' => "√(H/g)", 'isBenar' => false],
-            3 => ['jawabanPengguna' => "Teorema usaha energi adalah usaha sama dengan perubahan energi kinetik.", 'isBenar' => null],
-        ]
-    ],
-];
-
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Models\Ujian;
-use App\Models\MataKuliah;
+use App\Models\MataKuliah; // [ DIBERIKAN ]
+use App\Models\Ujian; // [ DIBERIKAN ]
+use App\Models\PengerjaanUjian; // Asumsi Anda memiliki model ini
+use App\Models\User; // Asumsi Anda memiliki model ini untuk dosen_pembuat_id, user_id dll.
+// Tambahkan JawabanPesertaDetail jika Anda perlu melakukan query langsung, meskipun sering diakses melalui PengerjaanUjian
+use App\Models\JawabanPesertaDetail; // Asumsi Anda memiliki model ini
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
+| Di sini Anda dapat mendaftarkan rute web untuk aplikasi Anda. Rute-rute
+| ini dimuat oleh RouteServiceProvider dalam grup yang
+| berisi middleware "web". Sekarang buat sesuatu yang hebat!
 |
 */
 
@@ -99,195 +31,247 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () use ($masterMataKuliah, $masterSemuaUjian, $masterHistoriPengerjaan) {
-    $daftarMataKuliahProcessed = array_map(function ($mk) use ($masterSemuaUjian) {
-        $jumlahUjian = 0;
-        foreach ($masterSemuaUjian as $ujian) {
-            if ($ujian['mata_kuliah_id'] == $mk['id']) {
-                $jumlahUjian++;
-            }
-        }
-        return array_merge($mk, ['jumlah_ujian_tersedia' => $jumlahUjian]);
-    }, $masterMataKuliah);
-
-    // Memproses data histori ujian untuk dikirim ke Dashboard
-    $historiUjianUntukDashboard = [];
-    // Ambil satu item histori untuk ditampilkan di dashboard, misalnya yang paling baru berdasarkan ID pengerjaan
-    // Untuk contoh, kita ambil saja yang pertama ada di $masterHistoriPengerjaan
-    if (!empty($masterHistoriPengerjaan)) {
-        // Anda bisa memilih satu atau beberapa histori di sini
-        // Misalnya, kita ambil satu item dengan id_pengerjaan 701
-        $attempt = $masterHistoriPengerjaan[701] ?? null; // Ambil histori dengan ID 701
-
-        if ($attempt) {
-            $ujianDetail = $masterSemuaUjian[$attempt['id_ujian']] ?? null;
-            $mataKuliahDetail = $ujianDetail ? ($masterMataKuliah[$ujianDetail['mata_kuliah_id']] ?? null) : null;
-            
-            $historiUjianUntukDashboard[] = [
-                'id_pengerjaan' => $attempt['id_pengerjaan'],
-                'namaUjian' => $ujianDetail['nama'] ?? 'Ujian Tidak Ditemukan',
-                'namaMataKuliah' => $mataKuliahDetail['nama'] ?? 'Mata Kuliah Tidak Ditemukan',
-                'tanggalPengerjaan' => $attempt['tanggalPengerjaan'],
-                'skor' => $attempt['skor'],
-                'kkm' => $ujianDetail['kkm'] ?? 70, // Ambil KKM dari detail ujian atau default
-                // Anda bisa menambahkan statusKelulusan di sini jika dihitung di backend
-                'statusKelulusan' => ($attempt['skor'] >= ($ujianDetail['kkm'] ?? 70) ? "Lulus" : "Tidak Lulus"),
+Route::get('/dashboard', function () {
+    // Ambil Mata Kuliah beserta jumlah Ujian
+    $daftarMataKuliahProcessed = MataKuliah::withCount('ujian AS jumlah_ujian_tersedia')
+        ->get()
+        ->map(function ($mk) {
+            // Simulasikan dosen dan img untuk saat ini, ganti dengan relasi/field aktual jika ada
+            return [
+                'id' => $mk->id,
+                'nama' => $mk->nama_mata_kuliah, // [ DIBERIKAN ]
+                'dosen' => ['nama' => $mk->dosen->name ?? 'Dosen Pengampu'], // Asumsi MataKuliah memiliki relasi 'dosen' ke model User
+                'deskripsi_singkat' => $mk->deskripsi, // [ DIBERIKAN ]
+                'img' => $mk->icon_url ?? '/images/default-course.png', // Gunakan icon_url dari db
+                'jumlah_ujian_tersedia' => $mk->jumlah_ujian_tersedia,
             ];
-        }
-        // Jika ingin menampilkan lebih dari satu histori di dashboard, loop $masterHistoriPengerjaan
-        // dan format datanya seperti di atas.
+        });
+
+    // Ambil Histori Ujian (misalnya, 5 terakhir untuk pengguna yang terautentikasi)
+    $historiUjianUntukDashboard = [];
+    if (auth()->check()) {
+        $pengerjaanUjianTerakhir = PengerjaanUjian::where('user_id', auth()->id())
+            ->with(['ujian.mataKuliah']) // Eager load Ujian dan MataKuliah-nya
+            ->orderBy('created_at', 'desc') // Ambil yang terbaru
+            ->take(5) // Batasi hingga 5, misalnya
+            ->get();
+
+        $historiUjianUntukDashboard = $pengerjaanUjianTerakhir->map(function ($attempt) {
+            $ujian = $attempt->ujian;
+            $mataKuliah = $ujian ? $ujian->mataKuliah : null;
+            $kkm = $ujian->kkm ?? 0; // [ DIBERIKAN ]
+            $statusKelulusan = "Belum Dinilai";
+            if (isset($attempt->skor_total)) {
+                 $statusKelulusan = ($attempt->skor_total >= $kkm ? "Lulus" : "Tidak Lulus");
+            }
+
+            return [
+                'id_pengerjaan' => $attempt->id,
+                'namaUjian' => $ujian->judul_ujian ?? 'Ujian Tidak Ditemukan', // [ DIBERIKAN ]
+                'namaMataKuliah' => $mataKuliah->nama_mata_kuliah ?? 'Mata Kuliah Tidak Ditemukan', // [ DIBERIKAN ]
+                'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y') : $attempt->created_at->format('d M Y'),
+                'skor' => $attempt->skor_total,
+                'kkm' => $kkm,
+                'statusKelulusan' => $statusKelulusan,
+            ];
+        });
     }
 
-
     return Inertia::render('Dashboard', [
-        'daftarMataKuliah' => array_values($daftarMataKuliahProcessed),
-        'historiUjian' => $historiUjianUntukDashboard, // Mengirim data histori yang sudah diproses
+        'daftarMataKuliah' => $daftarMataKuliahProcessed,
+        'historiUjian' => $historiUjianUntukDashboard,
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () use ($masterMataKuliah, $masterSemuaUjian, $masterHistoriPengerjaan) {
-    // ... (rute profile, mata-kuliah/ujian, ujian/kerjakan, ujian/selesai-konfirmasi, ujian/hasil TETAP SAMA seperti kode Anda sebelumnya)
+Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::get('/user/profile', function() { return Inertia::render('Profile'); })->name('profile.show');
+    // Route::get('/user/profile', function() { return Inertia::render('Profile'); })->name('profile.show'); // Ini sepertinya halaman statis, atau mungkin juga memerlukan data
 
-    Route::get('/mata-kuliah/{id_mata_kuliah}/ujian', function ($id_mata_kuliah) use ($masterMataKuliah, $masterSemuaUjian) {
-        if (!isset($masterMataKuliah[$id_mata_kuliah])) { abort(404, 'Mata Kuliah tidak ditemukan.'); }
-        $mataKuliah = (object) $masterMataKuliah[$id_mata_kuliah];
-        $daftarUjianFiltered = [];
-        foreach ($masterSemuaUjian as $ujian) {
-            if ($ujian['mata_kuliah_id'] == $id_mata_kuliah) {
-                $ujianData = $ujian;
-                unset($ujianData['soalList'], $ujianData['durasiTotalDetik']);
-                $daftarUjianFiltered[] = $ujianData;
-            }
+    Route::get('/mata-kuliah/{id_mata_kuliah}/ujian', function ($id_mata_kuliah) {
+        $mataKuliah = MataKuliah::with(['dosen'])->find($id_mata_kuliah); // Asumsi ada relasi dosen pada MataKuliah
+        if (!$mataKuliah) {
+            abort(404, 'Mata Kuliah tidak ditemukan.');
         }
-        return Inertia::render('Ujian/DaftarUjianPage', ['mataKuliah' => $mataKuliah, 'daftarUjian' => $daftarUjianFiltered]);
+
+        // Ambil Ujian untuk Mata Kuliah ini
+        // Pilih hanya field yang diperlukan untuk menghindari pengiriman data yang terlalu banyak
+        $daftarUjianFiltered = Ujian::where('mata_kuliah_id', $id_mata_kuliah) // [ DIBERIKAN ]
+            ->select(['id', 'mata_kuliah_id', 'judul_ujian as nama', 'deskripsi', 'durasi', 'kkm', 'tanggal_selesai as batasWaktuPengerjaan', 'status_publikasi as status']) // [ DIBERIKAN ]
+            // Tambahkan field lain sesuai kebutuhan DaftarUjianPage, pastikan namanya cocok
+            ->get()
+            ->map(function($ujian) {
+                // Anda mungkin perlu menentukan 'jumlahSoal' dan 'id_pengerjaan_terakhir', 'skor' jika diperlukan
+                // 'jumlahSoal' bisa berupa hitungan soal terkait: $ujian->soal()->count() (memerlukan relasi 'soal')
+                // 'status' mungkin memerlukan pemetaan dari 'status_publikasi'
+                // 'id_pengerjaan_terakhir' dan 'skor' akan memerlukan pemeriksaan PengerjaanUjian untuk pengguna saat ini
+                $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujian->id)
+                                        ->where('user_id', auth()->id())
+                                        ->orderBy('created_at', 'desc')
+                                        ->first();
+                return [
+                    'id' => $ujian->id,
+                    'mata_kuliah_id' => $ujian->mata_kuliah_id,
+                    'nama' => $ujian->nama,
+                    'deskripsi' => $ujian->deskripsi,
+                    'durasi' => $ujian->durasi . " Menit", // Format sesuai kebutuhan
+                    'jumlahSoal' => $ujian->soal()->count(), // Memerlukan relasi 'soal' dan pengaturan tabel pivot
+                    'batasWaktuPengerjaan' => $ujian->batasWaktuPengerjaan ? \Carbon\Carbon::parse($ujian->batasWaktuPengerjaan)->format('d F Y') : 'Kapan saja',
+                    'status' => $pengerjaanTerakhir ? ($pengerjaanTerakhir->status_pengerjaan == 'selesai' ? 'Selesai' : 'Belum Selesai') : 'Belum Dikerjakan', // Logika yang lebih kompleks mungkin diperlukan
+                    'kkm' => $ujian->kkm, // [ DIBERIKAN ]
+                    'id_pengerjaan_terakhir' => $pengerjaanTerakhir->id ?? null,
+                    'skor' => $pengerjaanTerakhir->skor_total ?? null,
+                ];
+            });
+
+
+        return Inertia::render('Ujian/DaftarUjianPage', [
+            'mataKuliah' => (object)[ // Casting ke object agar sesuai struktur asli jika dibutuhkan frontend
+                'id' => $mataKuliah->id,
+                'nama' => $mataKuliah->nama_mata_kuliah, // [ DIBERIKAN ]
+                'dosen' => ['nama' => $mataKuliah->dosen->name ?? 'Dosen Pengampu'], // [ DIBERIKAN ]
+                'deskripsi_singkat' => $mataKuliah->deskripsi, // [ DIBERIKAN ]
+                'img' => $mataKuliah->icon_url ?? '/images/default-course.png', // [ DIBERIKAN ]
+            ],
+            'daftarUjian' => $daftarUjianFiltered
+        ]);
     })->name('ujian.daftarPerMataKuliah');
 
-    // **PERBAIKAN UTAMA UNTUK ROUTE PENGERJAAN UJIAN**
     Route::get('/ujian/{id_ujian}/kerjakan', function ($id_ujian) {
-        // Hapus semua penggunaan $masterSemuaUjian di sini
-        // Cukup pastikan ID ujian ada di database sebelum merender Inertia
-        $ujian = Ujian::find($id_ujian); // Ambil dari database
+        $ujian = Ujian::find((int)$id_ujian); // [ DIBERIKAN ]
         if (!$ujian) {
             abort(404, 'Ujian tidak ditemukan di database.');
         }
-        // Sekarang hanya kirim ID ujian ke frontend
-        return Inertia::render('Ujian/PengerjaanUjianPage', ['idUjianAktif' => (int)$id_ujian]);
+        // PengerjaanUjianPage.jsx sekarang mengambil datanya sendiri melalui API
+        // Jadi, kita hanya perlu meneruskan ID.
+        return Inertia::render('Ujian/PengerjaanUjianPage', ['idUjianAktif' => (int)$id_ujian]); // [ DIBERIKAN ]
     })->name('ujian.kerjakan');
 
-    Route::get('/ujian/{id_ujian}/selesai-konfirmasi', function ($id_ujian) use ($masterSemuaUjian, $masterMataKuliah) {
-        if (!isset($masterSemuaUjian[$id_ujian])) { abort(404, 'Informasi ujian tidak ditemukan.'); }
-        $ujianInfo = $masterSemuaUjian[$id_ujian];
-        $mataKuliahInfo = $masterMataKuliah[$ujianInfo['mata_kuliah_id']] ?? null;
-        $dataKonfirmasi = ['namaUjian' => $ujianInfo['nama'] ?? 'Ujian Telah Selesai', 'namaMataKuliah' => $mataKuliahInfo['nama'] ?? 'Mata Kuliah Terkait'];
+    Route::get('/ujian/{id_ujian}/selesai-konfirmasi', function ($id_ujian) {
+        $ujian = Ujian::with('mataKuliah')->find((int)$id_ujian); // [ DIBERIKAN ]
+        if (!$ujian) {
+            abort(404, 'Informasi ujian tidak ditemukan.');
+        }
+        $dataKonfirmasi = [
+            'namaUjian' => $ujian->judul_ujian ?? 'Ujian Telah Selesai', // [ DIBERIKAN ]
+            'namaMataKuliah' => $ujian->mataKuliah->nama_mata_kuliah ?? 'Mata Kuliah Terkait' // [ DIBERIKAN ]
+        ];
         return Inertia::render('Ujian/KonfirmasiSelesaiUjianPage', $dataKonfirmasi);
     })->name('ujian.selesai.konfirmasi');
 
-    // Rute untuk halaman detail hasil ujian/review jawaban
-    Route::get('/ujian/hasil/{id_attempt}', function ($id_attempt) use ($masterHistoriPengerjaan, $masterSemuaUjian, $masterMataKuliah) {
-        if (!isset($masterHistoriPengerjaan[$id_attempt])) {
-            abort(404, 'Hasil pengerjaan ujian tidak ditemukan.');
-        }
-        
-        $attempt = $masterHistoriPengerjaan[$id_attempt];
-        $ujianDetail = $masterSemuaUjian[$attempt['id_ujian']] ?? null;
+    Route::get('/ujian/hasil/{id_attempt}', function ($id_attempt) {
+        $attempt = PengerjaanUjian::with([
+            'ujian.mataKuliah', // [ DIBERIKAN ]
+            'ujian.soal', // Eager load soal untuk ujian
+            'jawabanPesertaDetail.soal' // Eager load soal terkait setiap detail jawaban
+        ])->find((int)$id_attempt);
 
+        if (!$attempt || $attempt->user_id !== auth()->id()) { // Pastikan pengguna hanya bisa melihat hasil ujiannya sendiri
+            abort(404, 'Hasil pengerjaan ujian tidak ditemukan atau tidak diizinkan.');
+        }
+
+        $ujianDetail = $attempt->ujian;
         if (!$ujianDetail) {
             abort(404, 'Detail ujian untuk hasil ini tidak ditemukan.');
         }
 
-        $mataKuliahDetail = $masterMataKuliah[$ujianDetail['mata_kuliah_id']] ?? null;
-
-        // Menghitung status kelulusan berdasarkan skor dan KKM dari ujianDetail
-        $kkmUjian = $ujianDetail['kkm'] ?? 0; // Default KKM jika tidak ada
-        $statusKelulusan = ($attempt['skor'] >= $kkmUjian ? "Lulus" : "Tidak Lulus");
-        if ($attempt['skor'] === null) {
-            $statusKelulusan = "Belum Dinilai";
+        $mataKuliahDetail = $ujianDetail->mataKuliah;
+        $kkmUjian = $ujianDetail->kkm ?? 0; // [ DIBERIKAN ]
+        $statusKelulusan = "Belum Dinilai";
+         if (isset($attempt->skor_total)) {
+            $statusKelulusan = ($attempt->skor_total >= $kkmUjian ? "Lulus" : "Tidak Lulus");
         }
 
 
-        // Hitung jumlah benar/salah/tidak dijawab (lebih akurat jika ada data isBenar di jawabanUserPerSoal)
-        $jumlahSoal = count($ujianDetail['soalList']);
+        // Petakan jawaban peserta ke soal ujian
+        $jawabanUserPerSoalMap = $attempt->jawabanPesertaDetail->keyBy('soal_id');
+
+        $detailSoalJawaban = $ujianDetail->soal->map(function($soalMaster, $index) use ($jawabanUserPerSoalMap) { // [ DIBERIKAN ]
+            $jawabanDataAttempt = $jawabanUserPerSoalMap->get($soalMaster->id);
+
+            return [
+                'idSoal' => $soalMaster->id, // [ DIBERIKAN ]
+                'nomorSoal' => $index + 1, // Asumsi soal terurut atau gunakan pivot 'nomor_urut_di_ujian' jika tersedia
+                'pertanyaan' => $soalMaster->pertanyaan, // [ DIBERIKAN ]
+                'tipeSoal' => $soalMaster->tipe_soal, // [ DIBERIKAN ]
+                'opsiJawaban' => $soalMaster->opsi_jawaban, // Asumsi 'opsi_jawaban' di-cast ke array/json di model Soal
+                'jawabanPengguna' => $jawabanDataAttempt->jawaban_user ?? ($soalMaster->tipe_soal === 'esai' ? '' : null), // [ DIBERIKAN ]
+                'kunciJawaban' => $soalMaster->kunci_jawaban, // Asumsi 'kunci_jawaban' di-cast ke array/json di model Soal
+                'isBenar' => $jawabanDataAttempt->is_benar ?? null,
+                'penjelasan' => $soalMaster->penjelasan, // [ DIBERIKAN ]
+            ];
+        });
+
+        // Hitung ringkasan: jumlahBenar, jumlahSalah, jumlahTidakDijawab
+        $jumlahSoal = $ujianDetail->soal->count(); // [ DIBERIKAN ]
         $jumlahBenar = 0;
         $jumlahSalah = 0;
-        if (isset($attempt['jawabanUserPerSoal'])) {
-            foreach($attempt['jawabanUserPerSoal'] as $jawaban) {
-                if ($jawaban['isBenar'] === true) $jumlahBenar++;
-                else if ($jawaban['isBenar'] === false) $jumlahSalah++;
+        $jumlahDijawab = 0;
+
+        foreach($attempt->jawabanPesertaDetail as $jawaban) {
+            if ($jawaban->jawaban_user !== null && $jawaban->jawaban_user !== '') {
+                $jumlahDijawab++;
             }
+            if ($jawaban->is_benar === true) $jumlahBenar++;
+            else if ($jawaban->is_benar === false) $jumlahSalah++;
         }
-        $jumlahTidakDijawab = $jumlahSoal - ($jumlahBenar + $jumlahSalah);
+        // Untuk soal esai, is_benar mungkin null sampai dinilai.
+        // 'jumlahTidakDijawab' yang lebih presisi mungkin perlu memeriksa apakah jawaban_user null atau kosong.
+        $jumlahTidakDijawab = $jumlahSoal - $jumlahDijawab;
 
 
         $hasilUjianData = [
-            'idAttempt' => (int)$id_attempt,
-            'namaMataKuliah' => $mataKuliahDetail['nama'] ?? 'Mata Kuliah Tidak Diketahui',
-            'judulUjian' => $ujianDetail['nama'] ?? 'Judul Ujian Tidak Diketahui',
-            'tanggalPengerjaan' => $attempt['tanggalPengerjaan'],
-            'skorTotal' => $attempt['skor'],
-            'kkm' => $kkmUjian,
+            'idAttempt' => $attempt->id,
+            'namaMataKuliah' => $mataKuliahDetail->nama_mata_kuliah ?? 'Mata Kuliah Tidak Diketahui', // [ DIBERIKAN ]
+            'judulUjian' => $ujianDetail->judul_ujian ?? 'Judul Ujian Tidak Diketahui', // [ DIBERIKAN ]
+            'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y, H:i') : 'N/A',
+            'skorTotal' => $attempt->skor_total,
+            'kkm' => $kkmUjian, // [ DIBERIKAN ]
             'statusKelulusan' => $statusKelulusan,
-            'waktuDihabiskan' => $attempt['waktuDihabiskan'] ?? "N/A",
+            'waktuDihabiskan' => $attempt->waktu_dihabiskan_detik ? gmdate("H\j i\m d\d", $attempt->waktu_dihabiskan_detik) : "N/A", // Format ke Jam, Menit, Detik
             'jumlahSoalBenar' => $jumlahBenar,
             'jumlahSoalSalah' => $jumlahSalah,
             'jumlahSoalTidakDijawab' => $jumlahTidakDijawab,
-            'detailSoalJawaban' => array_map(function($soalMaster) use ($attempt) {
-                $jawabanDataAttempt = null;
-                // Cari jawaban user untuk soal master ini berdasarkan ID soal master
-                if (isset($attempt['jawabanUserPerSoal'])) {
-                    foreach ($attempt['jawabanUserPerSoal'] as $idSoalMasterDiAttempt => $dataAttempt) {
-                        // Kunci di jawabanUserPerSoal seharusnya adalah ID soal master
-                        if ($idSoalMasterDiAttempt == $soalMaster['id']) {
-                            $jawabanDataAttempt = $dataAttempt;
-                            break;
-                        }
-                    }
-                }
-
-                return [
-                    'idSoal' => $soalMaster['id'],
-                    'nomorSoal' => $soalMaster['nomor'],
-                    'pertanyaan' => $soalMaster['pertanyaan'],
-                    'tipeSoal' => $soalMaster['tipe'],
-                    'opsiJawaban' => $soalMaster['opsi'] ?? null,
-                    'jawabanPengguna' => $jawabanDataAttempt['jawabanPengguna'] ?? ($soalMaster['tipe'] === 'esai' ? '' : null),
-                    'kunciJawaban' => $soalMaster['kunciJawaban'] ?? null,
-                    'isBenar' => $jawabanDataAttempt['isBenar'] ?? null, // Status kebenaran dari data attempt
-                    'penjelasan' => $soalMaster['penjelasan'] ?? null,
-                ];
-            }, $ujianDetail['soalList'])
+            'detailSoalJawaban' => $detailSoalJawaban,
         ];
+
         return Inertia::render('Ujian/DetailHasilUjianPage', ['hasilUjian' => $hasilUjianData]);
     })->name('ujian.hasil.detail');
 
-    Route::get('/ujian/riwayat', function () use ($masterHistoriPengerjaan, $masterSemuaUjian, $masterMataKuliah) {
+    Route::get('/ujian/riwayat', function () {
         $semuaHistoriUjian = [];
-        foreach ($masterHistoriPengerjaan as $attempt) {
-            $ujianDetail = $masterSemuaUjian[$attempt['id_ujian']] ?? null;
-            $mataKuliahDetail = $ujianDetail ? ($masterMataKuliah[$ujianDetail['mata_kuliah_id']] ?? null) : null;
-            $kkmUjian = $ujianDetail['kkm'] ?? 0;
-            $statusKelulusan = ($attempt['skor'] >= $kkmUjian ? "Lulus" : "Tidak Lulus");
-            if ($attempt['skor'] === null) $statusKelulusan = "Belum Dinilai";
+        if (auth()->check()) {
+            $pengerjaanUjian = PengerjaanUjian::where('user_id', auth()->id())
+                ->with(['ujian.mataKuliah']) // [ DIBERIKAN ]
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-            $semuaHistoriUjian[] = [
-                'id_pengerjaan' => $attempt['id_pengerjaan'],
-                'namaUjian' => $ujianDetail['nama'] ?? 'Ujian Tidak Ditemukan',
-                'namaMataKuliah' => $mataKuliahDetail['nama'] ?? 'Mata Kuliah Tidak Ditemukan',
-                'tanggalPengerjaan' => $attempt['tanggalPengerjaan'],
-                'skor' => $attempt['skor'],
-                'kkm' => $kkmUjian,
-                'statusKelulusan' => $statusKelulusan,
-            ];
+            $semuaHistoriUjian = $pengerjaanUjian->map(function ($attempt) {
+                $ujian = $attempt->ujian;
+                $mataKuliah = $ujian ? $ujian->mataKuliah : null;
+                $kkmUjian = $ujian->kkm ?? 0; // [ DIBERIKAN ]
+                $statusKelulusan = "Belum Dinilai";
+                if (isset($attempt->skor_total)) {
+                    $statusKelulusan = ($attempt->skor_total >= $kkmUjian ? "Lulus" : "Tidak Lulus");
+                }
+
+                return [
+                    'id_pengerjaan' => $attempt->id,
+                    'namaUjian' => $ujian->judul_ujian ?? 'Ujian Tidak Ditemukan', // [ DIBERIKAN ]
+                    'namaMataKuliah' => $mataKuliah->nama_mata_kuliah ?? 'Mata Kuliah Tidak Ditemukan', // [ DIBERIKAN ]
+                    'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y') : $attempt->created_at->format('d M Y'),
+                    'skor' => $attempt->skor_total,
+                    'kkm' => $kkmUjian,
+                    'statusKelulusan' => $statusKelulusan,
+                ];
+            });
         }
-        // Jika Anda membuat halaman Ujian/HistoriUjianListPage.jsx, gunakan ini:
-        // return Inertia::render('Ujian/HistoriUjianListPage', ['semuaHistoriUjian' => $semuaHistoriUjian]);
-        // Untuk saat ini, link Histori Ujian di konfirmasi akan ke # atau dashboard
-        return redirect()->route('dashboard')->with('info', 'Halaman histori ujian terpisah belum diimplementasikan.');
+        // Asumsi Anda akan membuat 'Ujian/HistoriUjianListPage.jsx' atau sejenisnya
+        return Inertia::render('Ujian/HistoriUjianListPage', ['semuaHistoriUjian' => $semuaHistoriUjian]);
+        // Jika halaman belum siap, Anda bisa mengarahkan seperti sebelumnya:
+        // return redirect()->route('dashboard')->with('info', 'Halaman histori ujian terpisah belum diimplementasikan.');
     })->name('ujian.riwayat');
 });
-
 
 require __DIR__.'/auth.php';

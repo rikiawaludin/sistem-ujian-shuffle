@@ -20,6 +20,13 @@ class UjianSoalController extends Controller
         // Format soal agar sesuai dengan yang mungkin dibutuhkan frontend
         // Ini adalah soal SEBELUM diacak oleh layanan Express.js
         $soalListFormatted = $ujian->soal->map(function ($itemSoal, $index) {
+                // Untuk debugging:
+                    \Log::info('Soal ID: ' . $itemSoal->id . ' - Tipe Opsi Jawaban dari Model: ' . gettype($itemSoal->opsi_jawaban));
+                    if (is_string($itemSoal->opsi_jawaban)) {
+                        \Log::info('Soal ID: ' . $itemSoal->id . ' - Isi Opsi Jawaban (string): ' . $itemSoal->opsi_jawaban);
+                    } else {
+                        \Log::info('Soal ID: ' . $itemSoal->id . ' - Isi Opsi Jawaban (sudah di-cast): ', (array) $itemSoal->opsi_jawaban);
+                    }
             return [
                 'id' => $itemSoal->id, // ID soal dari database
                 'nomor' => $index + 1, // Nomor urut berdasarkan pengambilan dari DB

@@ -8,22 +8,19 @@ import {
 import { router, usePage, Head, Link } from '@inertiajs/react';
 import axios from 'axios';
 
-// --- Komponen NavigasiSoalSidebar ---
+// --- Komponen NavigasiSoalSidebar --- (Tetap sama)
 function NavigasiSoalSidebar({ soalList, soalSekarangIndex, setSoalSekarangIndex, jawabanUser, statusRaguRagu, isOpen, toggleSidebar }) {
+  // ... (kode sidebar tidak berubah) ...
   return (
     <>
-      {/* Overlay (hanya muncul di mobile saat sidebar terbuka untuk efek menimpa) */}
       {isOpen && (<div className="fixed inset-0 z-50 bg-black/30 md:hidden" onClick={toggleSidebar} aria-label="close sidebar"></div>)}
-
-      {/* Sidebar itu sendiri */}
       <div className={`
         fixed top-0 h-full w-72 sm:w-80 bg-white shadow-xl transition-transform duration-300 ease-in-out z-[60] border-l border-blue-gray-100
-        ${isOpen ? "translate-x-0 right-0" : "translate-x-full -right-72 sm:-right-80"} /* Menggunakan right-0 dan -right-width untuk posisi */
+        ${isOpen ? "translate-x-0 right-0" : "translate-x-full -right-72 sm:-right-80"}
         flex flex-col
       `}>
         <div className="flex justify-between items-center p-4 border-b border-blue-gray-100">
           <Typography variant="h6" color="blue-gray">Navigasi Soal</Typography>
-          {/* Tombol X untuk menutup sidebar (selalu ada di sidebar saat terbuka) */}
           <IconButton variant="text" color="blue-gray" onClick={toggleSidebar}>
             <XMarkIcon className="h-5 w-5" />
           </IconButton>
@@ -48,7 +45,6 @@ function NavigasiSoalSidebar({ soalList, soalSekarangIndex, setSoalSekarangIndex
     </>
   );
 }
-// --- Akhir Komponen NavigasiSoalSidebar ---
 
 export default function PengerjaanUjianPage() {
   const { props } = usePage();
@@ -80,22 +76,40 @@ export default function PengerjaanUjianPage() {
             const dataUjianApi = response.data;
             const initialAnswers = {};
             const initialRagu = {};
+            let soalListProcessed = [];
+
             if (dataUjianApi.soalList && Array.isArray(dataUjianApi.soalList)) {
-              dataUjianApi.soalList.forEach(soal => {
-                initialAnswers[soal.id] = soal.tipe === "pilihan_ganda" ? null : "";
+              soalListProcessed = dataUjianApi.soalList.map(soal => {
+                let parsedOpsi = soal.opsi;
+                // --- [MODIFIKASI CONDIITIONAL PARSING] ---
+                if ((soal.tipe === "pilihan_ganda" || soal.tipe === "benar_salah") && typeof soal.opsi === 'string') {
+                  try {
+                    parsedOpsi = JSON.parse(soal.opsi);
+                  } catch (e) {
+                    console.error(`Gagal parse JSON opsi untuk soal ID: ${soal.id} (tipe: ${soal.tipe})`, "Error:", e, "Opsi asli:", soal.opsi);
+                    parsedOpsi = [];
+                  }
+                }
+                return { ...soal, opsi: parsedOpsi };
+              });
+
+              soalListProcessed.forEach(soal => {
+                // --- [MODIFIKASI INITIAL ANSWERS] ---
+                initialAnswers[soal.id] = (soal.tipe === "pilihan_ganda" || soal.tipe === "benar_salah") ? null : "";
                 initialRagu[soal.id] = false;
               });
             } else {
               console.warn("dataUjianApi.soalList tidak valid:", dataUjianApi.soalList);
-              dataUjianApi.soalList = [];
             }
+
             setJawabanUser(initialAnswers);
             setStatusRaguRagu(initialRagu);
-            setDetailUjian(dataUjianApi);
+            setDetailUjian({ ...dataUjianApi, soalList: soalListProcessed });
             setSisaWaktuDetik(dataUjianApi.durasiTotalDetik || 0);
             setIsLoadingSoal(false);
           })
           .catch(err => {
+            // ... (error handling tetap sama) ...
             console.error("Gagal mengambil soal dari API Laravel:", err);
             let errorMessage = "Gagal memuat soal dari server.";
             if (err.response) {
@@ -116,6 +130,7 @@ export default function PengerjaanUjianPage() {
   }, [idUjianDariProps]);
 
   const handleSelesaiUjianCallback = React.useCallback(() => {
+    // ... (fungsi tetap sama) ...
     setOpenDialogSelesai(false);
     const dataDikumpulkan = {
       jawaban: jawabanUser,
@@ -132,9 +147,10 @@ export default function PengerjaanUjianPage() {
   }, [jawabanUser, statusRaguRagu, detailUjian]);
 
   useEffect(() => {
+    // ... (timer tetap sama) ...
     if (!detailUjian) return;
     if (sisaWaktuDetik <= 0 && detailUjian.soalList && detailUjian.soalList.length > 0) {
-      handleSelesaiUjianCallback(true);
+      handleSelesaiUjianCallback();
       return;
     }
     const timer = setInterval(() => { setSisaWaktuDetik(prev => Math.max(0, prev - 1)); }, 1000);
@@ -143,7 +159,17 @@ export default function PengerjaanUjianPage() {
 
   const soalSekarang = detailUjian?.soalList?.[soalSekarangIndex];
 
+  useEffect(() => {
+    if (!isLoadingSoal && soalSekarang) {
+      console.log('%c[useEffect DEBUG] Soal Saat Ini:', 'color: green; font-weight: bold;', soalSekarang);
+      console.log(`[useEffect DEBUG] Tipe Soal: ${soalSekarang.tipe}`);
+      console.log('[useEffect DEBUG] Opsi Soal:', soalSekarang.opsi);
+      console.log(`[useEffect DEBUG] Apakah opsi array?: ${Array.isArray(soalSekarang.opsi)}`);
+    }
+  }, [soalSekarang, isLoadingSoal]);
+
   const formatWaktu = (totalDetik) => {
+    // ... (fungsi tetap sama) ...
     const jam = Math.floor(totalDetik / 3600);
     const menit = Math.floor((totalDetik % 3600) / 60);
     const detik = totalDetik % 60;
@@ -157,7 +183,7 @@ export default function PengerjaanUjianPage() {
   const progresPersen = detailUjian?.soalList?.length > 0 ? ((soalSekarangIndex + 1) / detailUjian.soalList.length) * 100 : 0;
   const soalListDenganStatusRagu = detailUjian?.soalList?.map(soal => ({ ...soal, raguRagu: statusRaguRagu[soal.id] || false })) || [];
 
-  // --- Tampilan Loading, Error, atau jika data belum siap ---
+  // ... (Tampilan Loading, Error, data belum siap tetap sama) ...
   if (isLoadingSoal) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-blue-gray-50 p-6">
@@ -196,16 +222,15 @@ export default function PengerjaanUjianPage() {
     );
   }
 
-  // --- Tampilan Utama Pengerjaan Ujian ---
   return (
     <div className="min-h-screen bg-blue-gray-50 flex flex-col">
       <Head title={`Mengerjakan: ${detailUjian.judulUjian || "Ujian"}`} />
-      {/* Header Utama - Sekarang akan bergeser */}
       <header className={`
         sticky top-0 z-30 bg-white shadow px-4 py-3 w-full
         transition-all duration-300 ease-in-out
-        ${navigasiSoalOpen ? 'pr-72 sm:pr-80' : 'pr-4 sm:pr-4'} /* Memberikan padding kanan yang sama dengan lebar sidebar */
+        ${navigasiSoalOpen ? 'md:pr-[20rem]' : 'pr-4'}
       `}>
+        {/* ... (isi header tetap sama) ... */}
         <div className="flex items-center justify-between">
           <div>
             <Typography variant="small" color="blue-gray" className="font-normal opacity-75">{detailUjian.namaMataKuliah || "Mata Kuliah"}</Typography>
@@ -214,7 +239,6 @@ export default function PengerjaanUjianPage() {
           <div className="flex items-center gap-2 sm:gap-4">
             <Chip value={`Soal ${soalSekarang.nomor || (soalSekarangIndex + 1)}/${detailUjian.soalList.length}`} variant="ghost" className="hidden sm:inline-block"/>
             <Chip icon={<ClockIcon className="h-4 w-4"/>} value={formatWaktu(sisaWaktuDetik)} color={sisaWaktuDetik < (5 * 60) ? "red" : (sisaWaktuDetik < (15*60) ? "amber" : "green")} variant="ghost"/>
-            {/* Tombol hamburger untuk membuka navigasi soal (selalu terlihat) */}
             <IconButton variant="text" color="blue-gray" onClick={() => setNavigasiSoalOpen(prev => !prev)}>
               <ListBulletIcon className="h-6 w-6" />
             </IconButton>
@@ -223,15 +247,11 @@ export default function PengerjaanUjianPage() {
         {detailUjian.soalList.length > 0 && <Progress value={progresPersen} color="blue" size="sm" className="mt-2 absolute bottom-0 left-0 right-0 rounded-none" />}
       </header>
 
-      {/* Kontainer Flex utama untuk konten dan sidebar */}
-      {/* Menggunakan gap-0 agar sidebar tidak membuat jarak tambahan saat tertutup */}
       <div className="flex-grow w-full flex overflow-hidden relative">
-        {/* Main Content Area */}
-        {/* Konten utama akan memiliki margin kanan berdasarkan status navigasi soal */}
         <main className={`
-          flex-grow p-4 sm:p-6 md:p-8 overflow-y-auto 
+          flex-grow p-4 sm:p-6 md:p-8 overflow-y-auto
           transition-all duration-300 ease-in-out
-          ${navigasiSoalOpen ? 'mr-72 sm:mr-80' : 'mr-0'} /* Mendorong konten sesuai lebar sidebar */
+          ${navigasiSoalOpen ? 'md:mr-[20rem]' : 'mr-0'}
         `}>
           <Card className="p-6 mb-6 shadow-md border border-blue-gray-100">
             <div className="flex justify-between items-center">
@@ -242,43 +262,93 @@ export default function PengerjaanUjianPage() {
             <Typography variant="paragraph" className="mb-6 whitespace-pre-line leading-relaxed">
               {soalSekarang.pertanyaan}
             </Typography>
-            {soalSekarang.tipe === "pilihan_ganda" && soalSekarang.opsi && (
-              <div className="flex flex-col gap-3">
-                {soalSekarang.opsi.map((opsiItem, index) => {
-                  const optionText = typeof opsiItem === 'object' ? opsiItem.teks : opsiItem;
-                  const optionValue = typeof opsiItem === 'object' ? opsiItem.id : opsiItem;
-                  return (
-                    <Radio 
-                      key={index} 
-                      id={`opsi-${soalSekarang.id}-${index}`} 
-                      name={`soal-${soalSekarang.id}`}
-                      label={
+
+            {/* Render Pilihan Ganda */}
+            {soalSekarang.tipe === "pilihan_ganda" && (
+              Array.isArray(soalSekarang.opsi) && soalSekarang.opsi.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {soalSekarang.opsi.map((opsiItem, index) => {
+                    const optionText = typeof opsiItem === 'object' && opsiItem !== null ? opsiItem.teks : opsiItem;
+                    const optionValue = typeof opsiItem === 'object' && opsiItem !== null ? opsiItem.id : opsiItem;
+                    return (
+                      <Radio
+                        key={`${soalSekarang.id}-pg-opsi-${index}`} // Key lebih spesifik
+                        id={`opsi-${soalSekarang.id}-${index}`}
+                        name={`soal-${soalSekarang.id}`}
+                        label={
                           <Typography color="blue-gray" className="font-normal flex items-center">
                               <span className="font-semibold mr-2">{String.fromCharCode(65 + index)}.</span> {optionText}
                           </Typography>
-                      }
-                      value={optionValue} 
-                      checked={jawabanUser[soalSekarang.id] === optionValue}
-                      onChange={() => handlePilihJawaban(soalSekarang.id, optionValue)} 
-                      ripple={true} 
-                      className="hover:before:opacity-0 border-blue-gray-300"
-                      containerProps={{ className: "p-0 -ml-0.5" }}
-                      labelProps={{className: "ml-2 text-sm"}}
-                    />
-                  );
-                })}
-              </div>
+                        }
+                        value={optionValue}
+                        checked={jawabanUser[soalSekarang.id] === optionValue}
+                        onChange={() => handlePilihJawaban(soalSekarang.id, optionValue)}
+                        ripple={true}
+                        className="hover:before:opacity-0 border-blue-gray-300"
+                        containerProps={{ className: "p-0 -ml-0.5" }}
+                        labelProps={{className: "ml-2 text-sm"}}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <Typography color="orange" className="text-sm my-4">
+                  Soal pilihan ganda ini tidak memiliki opsi jawaban yang valid.
+                </Typography>
+              )
             )}
+
+            {/* --- [BLOK BARU UNTUK SOAL BENAR/SALAH] --- */}
+            {soalSekarang.tipe === "benar_salah" && (
+              Array.isArray(soalSekarang.opsi) && soalSekarang.opsi.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {soalSekarang.opsi.map((opsiItem, index) => {
+                    // Asumsi format opsi untuk benar/salah adalah [{"id":"Benar","teks":"Benar"}, {"id":"Salah","teks":"Salah"}]
+                    // atau bisa juga cuma ["Benar", "Salah"]
+                    const optionText = typeof opsiItem === 'object' && opsiItem !== null ? opsiItem.teks : opsiItem;
+                    const optionValue = typeof opsiItem === 'object' && opsiItem !== null ? opsiItem.id : opsiItem;
+                    return (
+                      <Radio
+                        key={`${soalSekarang.id}-bs-opsi-${index}`} // Key lebih spesifik
+                        id={`opsi-bs-${soalSekarang.id}-${index}`}
+                        name={`soal-bs-${soalSekarang.id}`}
+                        label={
+                          <Typography color="blue-gray" className="font-normal">
+                            {optionText}
+                          </Typography>
+                        }
+                        value={optionValue} // Ini akan menjadi "Benar" atau "Salah" jika formatnya {"id":"Benar", ...}
+                        checked={jawabanUser[soalSekarang.id] === optionValue}
+                        onChange={() => handlePilihJawaban(soalSekarang.id, optionValue)}
+                        ripple={true}
+                        className="hover:before:opacity-0 border-blue-gray-300"
+                        containerProps={{ className: "p-0 -ml-0.5" }}
+                        labelProps={{className: "ml-2 text-sm"}}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <Typography color="orange" className="text-sm my-4">
+                  Soal Benar/Salah ini tidak memiliki opsi jawaban yang valid.
+                </Typography>
+              )
+            )}
+            {/* --- [AKHIR BLOK BARU UNTUK SOAL BENAR/SALAH] --- */}
+
+
+            {/* Render Esai */}
             {soalSekarang.tipe === "esai" && (
-              <Textarea 
-                label="Ketik Jawaban Anda di Sini..." 
-                value={jawabanUser[soalSekarang.id] || ""} 
-                onChange={(e) => handlePilihJawaban(soalSekarang.id, e.target.value)} 
+              <Textarea
+                label="Ketik Jawaban Anda di Sini..."
+                value={jawabanUser[soalSekarang.id] || ""}
+                onChange={(e) => handlePilihJawaban(soalSekarang.id, e.target.value)}
                 rows={6}
                 className="text-sm"
               />
             )}
           </Card>
+          {/* ... (Tombol navigasi bawah tetap sama) ... */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-8">
              <Button variant="text" color="blue-gray" onClick={handleSoalSebelumnya} disabled={soalSekarangIndex === 0} className="flex items-center gap-2">
               <ArrowLeftIcon className="h-5 w-5" /> Soal Sebelumnya
@@ -297,18 +367,18 @@ export default function PengerjaanUjianPage() {
             )}
           </div>
         </main>
-        {/* Sidebar Navigasi Soal */}
-        <NavigasiSoalSidebar 
-            soalList={soalListDenganStatusRagu} 
-            soalSekarangIndex={soalSekarangIndex} 
-            setSoalSekarangIndex={setSoalSekarangIndex} 
-            jawabanUser={jawabanUser} 
-            statusRaguRagu={statusRaguRagu} 
-            isOpen={navigasiSoalOpen} 
+        <NavigasiSoalSidebar
+            soalList={soalListDenganStatusRagu}
+            soalSekarangIndex={soalSekarangIndex}
+            setSoalSekarangIndex={setSoalSekarangIndex}
+            jawabanUser={jawabanUser}
+            statusRaguRagu={statusRaguRagu}
+            isOpen={navigasiSoalOpen}
             toggleSidebar={() => setNavigasiSoalOpen(prev => !prev)}
         />
       </div>
       <Dialog open={openDialogSelesai} handler={() => setOpenDialogSelesai(false)} size="xs">
+        {/* ... (Dialog tetap sama) ... */}
         <DialogHeader><Typography variant="h5" color="blue-gray">Konfirmasi Selesai Ujian</Typography></DialogHeader>
         <DialogBody divider className="text-gray-700">Apakah Anda yakin ingin menyelesaikan dan mengumpulkan ujian ini? Jawaban tidak bisa diubah lagi.</DialogBody>
         <DialogFooter>
