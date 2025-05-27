@@ -76,6 +76,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Models\Ujian;
+use App\Models\MataKuliah;
 
 /*
 |--------------------------------------------------------------------------
@@ -164,11 +166,16 @@ Route::middleware('auth')->group(function () use ($masterMataKuliah, $masterSemu
         return Inertia::render('Ujian/DaftarUjianPage', ['mataKuliah' => $mataKuliah, 'daftarUjian' => $daftarUjianFiltered]);
     })->name('ujian.daftarPerMataKuliah');
 
-    Route::get('/ujian/{id_ujian}/kerjakan', function ($id_ujian) use ($masterSemuaUjian, $masterMataKuliah) {
-        if (!isset($masterSemuaUjian[$id_ujian])) { abort(404, 'Ujian tidak ditemukan.'); }
-        $detailUjian = $masterSemuaUjian[$id_ujian];
-        $detailUjian['namaMataKuliah'] = $masterMataKuliah[$detailUjian['mata_kuliah_id']]['nama'] ?? 'Mata Kuliah Tidak Diketahui';
-        return Inertia::render('Ujian/PengerjaanUjianPage', ['idUjianAktif' => (int)$id_ujian, 'detailUjianProp' => $detailUjian]);
+    // **PERBAIKAN UTAMA UNTUK ROUTE PENGERJAAN UJIAN**
+    Route::get('/ujian/{id_ujian}/kerjakan', function ($id_ujian) {
+        // Hapus semua penggunaan $masterSemuaUjian di sini
+        // Cukup pastikan ID ujian ada di database sebelum merender Inertia
+        $ujian = Ujian::find($id_ujian); // Ambil dari database
+        if (!$ujian) {
+            abort(404, 'Ujian tidak ditemukan di database.');
+        }
+        // Sekarang hanya kirim ID ujian ke frontend
+        return Inertia::render('Ujian/PengerjaanUjianPage', ['idUjianAktif' => (int)$id_ujian]);
     })->name('ujian.kerjakan');
 
     Route::get('/ujian/{id_ujian}/selesai-konfirmasi', function ($id_ujian) use ($masterSemuaUjian, $masterMataKuliah) {

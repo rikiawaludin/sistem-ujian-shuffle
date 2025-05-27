@@ -12,17 +12,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
         $this->call([
-            UserSeeder::class,
-            MataKuliahSeeder::class,
-            UjianSeeder::class,
-            SoalSeeder::class,
-            UjianSoalSeeder::class,       // Setelah UjianSeeder dan SoalSeeder
-            MataKuliahUserSeeder::class,  // Setelah UserSeeder dan MataKuliahSeeder
-            PengerjaanUjianSeeder::class, // Setelah UserSeeder dan UjianSeeder
-            JawabanPesertaDetailSeeder::class, // Setelah PengerjaanUjianSeeder dan SoalSeeder
+            UserSeeder::class,          // 1. User harus ada duluan
+            MataKuliahSeeder::class,    // 2. Mata Kuliah harus ada duluan (butuh dosen dari User)
+            UjianSeeder::class,         // 3. Ujian harus ada duluan (butuh Mata Kuliah)
+            SoalSeeder::class,          // 4. Soal harus ada duluan (butuh dosen dari User)
+            UjianSoalSeeder::class,     // 5. Ujian dan Soal harus ada duluan
+            MataKuliahUserSeeder::class, // 6. User dan Mata Kuliah harus ada duluan
+            PengerjaanUjianSeeder::class, // 7. User dan Ujian harus ada duluan
+            JawabanPesertaDetailSeeder::class, // 8. Pengerjaan Ujian dan Soal harus ada duluan
         ]);
     }
 }

@@ -16,6 +16,12 @@ class MataKuliahSeeder extends Seeder
         $dosen1 = User::where('email', 'budi.dosen@example.com')->first();
         $dosen2 = User::where('email', 'siti.dosen@example.com')->first();
 
+        // Pastikan dosen ditemukan
+        if (!$dosen1 || !$dosen2) {
+            $this->command->error('Dosen tidak ditemukan. Pastikan UserSeeder dijalankan terlebih dahulu.');
+            return;
+        }
+
         MataKuliah::create([
             'nama_mata_kuliah' => 'Kalkulus Lanjutan',
             'kode_mata_kuliah' => 'KAL001',
@@ -54,6 +60,15 @@ class MataKuliahSeeder extends Seeder
             'deskripsi' => 'Pembelajaran Bahasa Inggris untuk keperluan teknis dan akademis.',
             'dosen_id' => $dosen1->id, // Atau dosen lain jika ada
             'icon_url' => '/images/icons/english.png',
+        ]);
+
+        // Tambahkan mata kuliah Pemrograman Web Lanjut
+        MataKuliah::create([
+            'nama_mata_kuliah' => 'Pemrograman Web Lanjut',
+            'kode_mata_kuliah' => 'PWL001', // Kode unik
+            'deskripsi' => 'Pengembangan aplikasi web menggunakan framework PHP modern.',
+            'dosen_id' => $dosen2->id, // Dosen Siti sebagai pengajar web
+            'icon_url' => '/images/icons/web.png',
         ]);
     }
 }
