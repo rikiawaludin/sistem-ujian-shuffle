@@ -1,4 +1,3 @@
-// resources/js/Pages/Ujian/PengerjaanUjianPage.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Typography, Button, Radio, Textarea, Card, IconButton, Progress, Chip, Dialog, DialogHeader, DialogBody, DialogFooter, Spinner,
@@ -6,18 +5,28 @@ import {
 import {
   ArrowLeftIcon, ArrowRightIcon, ListBulletIcon, XMarkIcon, ClockIcon, FlagIcon, CheckCircleIcon, XCircleIcon, InformationCircleIcon,
 } from "@heroicons/react/24/solid";
-import { router, usePage, Head, Link } from '@inertiajs/react'; // <<<--- Pastikan Link diimpor
+import { router, usePage, Head, Link } from '@inertiajs/react';
 import axios from 'axios';
 
-// --- Komponen NavigasiSoalSidebar (Tidak ada perubahan dari kode Anda) ---
+// --- Komponen NavigasiSoalSidebar ---
 function NavigasiSoalSidebar({ soalList, soalSekarangIndex, setSoalSekarangIndex, jawabanUser, statusRaguRagu, isOpen, toggleSidebar }) {
   return (
     <>
+      {/* Overlay (hanya muncul di mobile saat sidebar terbuka untuk efek menimpa) */}
       {isOpen && (<div className="fixed inset-0 z-50 bg-black/30 md:hidden" onClick={toggleSidebar} aria-label="close sidebar"></div>)}
-      <div className={`fixed top-0 right-0 h-full w-72 sm:w-80 bg-white shadow-xl transition-transform duration-300 ease-in-out z-[60] border-l border-blue-gray-100 ${isOpen ? "translate-x-0" : "translate-x-full"} flex flex-col`}>
+
+      {/* Sidebar itu sendiri */}
+      <div className={`
+        fixed top-0 h-full w-72 sm:w-80 bg-white shadow-xl transition-transform duration-300 ease-in-out z-[60] border-l border-blue-gray-100
+        ${isOpen ? "translate-x-0 right-0" : "translate-x-full -right-72 sm:-right-80"} /* Menggunakan right-0 dan -right-width untuk posisi */
+        flex flex-col
+      `}>
         <div className="flex justify-between items-center p-4 border-b border-blue-gray-100">
           <Typography variant="h6" color="blue-gray">Navigasi Soal</Typography>
-          <IconButton variant="text" color="blue-gray" onClick={toggleSidebar}><XMarkIcon className="h-5 w-5" /></IconButton>
+          {/* Tombol X untuk menutup sidebar (selalu ada di sidebar saat terbuka) */}
+          <IconButton variant="text" color="blue-gray" onClick={toggleSidebar}>
+            <XMarkIcon className="h-5 w-5" />
+          </IconButton>
         </div>
         <div className="flex-grow p-4 grid grid-cols-4 sm:grid-cols-5 gap-2 overflow-y-auto">
           {soalList.map((soal, index) => {
@@ -56,79 +65,76 @@ export default function PengerjaanUjianPage() {
   const [navigasiSoalOpen, setNavigasiSoalOpen] = useState(false);
   const [openDialogSelesai, setOpenDialogSelesai] = useState(false);
 
-useEffect(() => {
-  if (idUjianDariProps) {
-    setIsLoadingSoal(true);
-    setErrorSoal(null);
+  useEffect(() => {
+    if (idUjianDariProps) {
+      setIsLoadingSoal(true);
+      setErrorSoal(null);
 
-    // Ambil CSRF cookie dulu
-    axios.get('http://localhost:8000/sanctum/csrf-cookie', { withCredentials: true })
-      .then(() => {
-        // Setelah CSRF cookie siap, panggil API ambil-soal
-        axios.get(route('api.ujian.ambilsoal', { id_ujian: idUjianDariProps }), {
-          withCredentials: true,
-        })
-        .then(response => {
-          const dataUjianApi = response.data;
-          const initialAnswers = {};
-          const initialRagu = {};
-          if (dataUjianApi.soalList && Array.isArray(dataUjianApi.soalList)) {
-            dataUjianApi.soalList.forEach(soal => {
-              initialAnswers[soal.id] = soal.tipe === "pilihan_ganda" ? null : "";
-              initialRagu[soal.id] = false;
-            });
-          } else {
-            console.warn("dataUjianApi.soalList tidak valid:", dataUjianApi.soalList);
-            dataUjianApi.soalList = [];
-          }
-          setJawabanUser(initialAnswers);
-          setStatusRaguRagu(initialRagu);
-          setDetailUjian(dataUjianApi);
-          setSisaWaktuDetik(dataUjianApi.durasiTotalDetik || 0);
-          setIsLoadingSoal(false);
-        })
-        .catch(err => {
-          console.error("Gagal mengambil soal dari API Laravel:", err);
-          let errorMessage = "Gagal memuat soal dari server.";
-          if (err.response) {
-            errorMessage = err.response.data?.message || `Error ${err.response.status}`;
-          } else if (err.request) {
-            errorMessage = "Tidak ada respons dari server. Periksa koneksi atau API backend.";
-          } else {
-            errorMessage = err.message;
-          }
-          setErrorSoal(errorMessage);
-          setIsLoadingSoal(false);
+      axios.get('http://localhost:8000/sanctum/csrf-cookie', { withCredentials: true })
+        .then(() => {
+          const apiUrl = route('api.ujian.ambilsoal', { id_ujian: idUjianDariProps });
+          axios.get(apiUrl, {
+            withCredentials: true,
+          })
+          .then(response => {
+            const dataUjianApi = response.data;
+            const initialAnswers = {};
+            const initialRagu = {};
+            if (dataUjianApi.soalList && Array.isArray(dataUjianApi.soalList)) {
+              dataUjianApi.soalList.forEach(soal => {
+                initialAnswers[soal.id] = soal.tipe === "pilihan_ganda" ? null : "";
+                initialRagu[soal.id] = false;
+              });
+            } else {
+              console.warn("dataUjianApi.soalList tidak valid:", dataUjianApi.soalList);
+              dataUjianApi.soalList = [];
+            }
+            setJawabanUser(initialAnswers);
+            setStatusRaguRagu(initialRagu);
+            setDetailUjian(dataUjianApi);
+            setSisaWaktuDetik(dataUjianApi.durasiTotalDetik || 0);
+            setIsLoadingSoal(false);
+          })
+          .catch(err => {
+            console.error("Gagal mengambil soal dari API Laravel:", err);
+            let errorMessage = "Gagal memuat soal dari server.";
+            if (err.response) {
+              errorMessage = err.response.data?.message || `Error ${err.response.status}`;
+            } else if (err.request) {
+              errorMessage = "Tidak ada respons dari server. Periksa koneksi atau API backend.";
+            } else {
+              errorMessage = err.message;
+            }
+            setErrorSoal(errorMessage);
+            setIsLoadingSoal(false);
+          });
         });
-      });
-  } else {
-    setErrorSoal("ID Ujian tidak valid atau tidak ditemukan untuk memulai ujian.");
-    setIsLoadingSoal(false);
-  }
-}, [idUjianDariProps]);
+    } else {
+      setErrorSoal("ID Ujian tidak valid atau tidak ditemukan untuk memulai ujian.");
+      setIsLoadingSoal(false);
+    }
+  }, [idUjianDariProps]);
 
-  
   const handleSelesaiUjianCallback = React.useCallback(() => {
     setOpenDialogSelesai(false);
     const dataDikumpulkan = {
-        jawaban: jawabanUser,
-        statusRaguRagu: statusRaguRagu,
-        ujianId: detailUjian?.id,
+      jawaban: jawabanUser,
+      statusRaguRagu: statusRaguRagu,
+      ujianId: detailUjian?.id,
     };
     console.log("Data Ujian yang Dikumpulkan (Simulasi):", dataDikumpulkan);
     if (detailUjian?.id) {
-        // Redirect ke halaman konfirmasi dengan ID ujian yang baru saja selesai
-        router.visit(route('ujian.selesai.konfirmasi', { id_ujian: detailUjian.id }));
+      router.visit(route('ujian.selesai.konfirmasi', { id_ujian: detailUjian.id }));
     } else {
-        console.error("Tidak bisa submit, detailUjian.id tidak ditemukan");
-        router.visit(route('dashboard')); // Fallback jika ID ujian tidak ada
+      console.error("Tidak bisa submit, detailUjian.id tidak ditemukan");
+      router.visit(route('dashboard'));
     }
-  }, [jawabanUser, statusRaguRagu, detailUjian]); // `detailUjian` perlu ada di dependency jika `detailUjian.id` dipakai
+  }, [jawabanUser, statusRaguRagu, detailUjian]);
 
   useEffect(() => {
-    if (!detailUjian) return; // Jangan jalankan timer jika detailUjian belum ada
+    if (!detailUjian) return;
     if (sisaWaktuDetik <= 0 && detailUjian.soalList && detailUjian.soalList.length > 0) {
-      handleSelesaiUjianCallback(true); 
+      handleSelesaiUjianCallback(true);
       return;
     }
     const timer = setInterval(() => { setSisaWaktuDetik(prev => Math.max(0, prev - 1)); }, 1000);
@@ -147,7 +153,7 @@ useEffect(() => {
   const handleTandaiRaguRagu = () => { if(soalSekarang) setStatusRaguRagu(prev => ({ ...prev, [soalSekarang.id]: !prev[soalSekarang.id] })); };
   const handleSoalSebelumnya = () => { setSoalSekarangIndex(prev => Math.max(0, prev - 1)); };
   const handleSoalBerikutnya = () => { if(detailUjian && detailUjian.soalList) setSoalSekarangIndex(prev => Math.min(detailUjian.soalList.length - 1, prev + 1)); };
-  
+
   const progresPersen = detailUjian?.soalList?.length > 0 ? ((soalSekarangIndex + 1) / detailUjian.soalList.length) * 100 : 0;
   const soalListDenganStatusRagu = detailUjian?.soalList?.map(soal => ({ ...soal, raguRagu: statusRaguRagu[soal.id] || false })) || [];
 
@@ -169,7 +175,7 @@ useEffect(() => {
         <XCircleIcon className="h-16 w-16 text-red-500 mb-4" />
         <Typography variant="h5" color="red">Gagal Memuat Soal</Typography>
         <Typography color="blue-gray" className="mt-2 mb-6">{errorSoal}</Typography>
-        <Link href={route('dashboard')}> {/* Menggunakan Link yang sudah diimpor */}
+        <Link href={route('dashboard')}>
             <Button color="blue">Kembali ke Dashboard</Button>
         </Link>
       </div>
@@ -183,7 +189,7 @@ useEffect(() => {
         <InformationCircleIcon className="h-16 w-16 text-amber-500 mb-4" />
         <Typography variant="h5" color="blue-gray">Ujian Tidak Tersedia</Typography>
         <Typography color="blue-gray" className="mt-2 mb-6">Detail ujian tidak ditemukan atau tidak ada soal yang dapat dimuat.</Typography>
-        <Link href={route('dashboard')}> {/* Menggunakan Link yang sudah diimpor */}
+        <Link href={route('dashboard')}>
             <Button color="blue">Kembali ke Dashboard</Button>
         </Link>
       </div>
@@ -194,7 +200,12 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-blue-gray-50 flex flex-col">
       <Head title={`Mengerjakan: ${detailUjian.judulUjian || "Ujian"}`} />
-      <header className="sticky top-0 z-30 bg-white shadow px-4 py-3 w-full">
+      {/* Header Utama - Sekarang akan bergeser */}
+      <header className={`
+        sticky top-0 z-30 bg-white shadow px-4 py-3 w-full
+        transition-all duration-300 ease-in-out
+        ${navigasiSoalOpen ? 'pr-72 sm:pr-80' : 'pr-4 sm:pr-4'} /* Memberikan padding kanan yang sama dengan lebar sidebar */
+      `}>
         <div className="flex items-center justify-between">
           <div>
             <Typography variant="small" color="blue-gray" className="font-normal opacity-75">{detailUjian.namaMataKuliah || "Mata Kuliah"}</Typography>
@@ -203,6 +214,7 @@ useEffect(() => {
           <div className="flex items-center gap-2 sm:gap-4">
             <Chip value={`Soal ${soalSekarang.nomor || (soalSekarangIndex + 1)}/${detailUjian.soalList.length}`} variant="ghost" className="hidden sm:inline-block"/>
             <Chip icon={<ClockIcon className="h-4 w-4"/>} value={formatWaktu(sisaWaktuDetik)} color={sisaWaktuDetik < (5 * 60) ? "red" : (sisaWaktuDetik < (15*60) ? "amber" : "green")} variant="ghost"/>
+            {/* Tombol hamburger untuk membuka navigasi soal (selalu terlihat) */}
             <IconButton variant="text" color="blue-gray" onClick={() => setNavigasiSoalOpen(prev => !prev)}>
               <ListBulletIcon className="h-6 w-6" />
             </IconButton>
@@ -211,8 +223,16 @@ useEffect(() => {
         {detailUjian.soalList.length > 0 && <Progress value={progresPersen} color="blue" size="sm" className="mt-2 absolute bottom-0 left-0 right-0 rounded-none" />}
       </header>
 
-      <div className="flex-grow w-full flex flex-row overflow-hidden relative">
-        <main className="flex-grow p-4 sm:p-6 md:p-8 overflow-y-auto">
+      {/* Kontainer Flex utama untuk konten dan sidebar */}
+      {/* Menggunakan gap-0 agar sidebar tidak membuat jarak tambahan saat tertutup */}
+      <div className="flex-grow w-full flex overflow-hidden relative">
+        {/* Main Content Area */}
+        {/* Konten utama akan memiliki margin kanan berdasarkan status navigasi soal */}
+        <main className={`
+          flex-grow p-4 sm:p-6 md:p-8 overflow-y-auto 
+          transition-all duration-300 ease-in-out
+          ${navigasiSoalOpen ? 'mr-72 sm:mr-80' : 'mr-0'} /* Mendorong konten sesuai lebar sidebar */
+        `}>
           <Card className="p-6 mb-6 shadow-md border border-blue-gray-100">
             <div className="flex justify-between items-center">
                 <Typography variant="h6" color="blue-gray" className="mb-1">Soal No. {soalSekarang.nomor || (soalSekarangIndex + 1)}</Typography>
@@ -277,6 +297,7 @@ useEffect(() => {
             )}
           </div>
         </main>
+        {/* Sidebar Navigasi Soal */}
         <NavigasiSoalSidebar 
             soalList={soalListDenganStatusRagu} 
             soalSekarangIndex={soalSekarangIndex} 
