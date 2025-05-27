@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\UjianSoalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,3 +18,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Rute untuk mengambil soal ujian (nantinya akan diacak oleh Express.js)
+Route::middleware('auth:sanctum')->get('/ujian/{id_ujian}/ambil-soal', [UjianSoalController::class, 'getSoalUntukUjian'])->name('api.ujian.ambilsoal');

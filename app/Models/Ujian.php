@@ -48,7 +48,7 @@ class Ujian extends Model
      */
     public function soal() // Nama relasi bisa juga 'soals'
     {
-        return $this->belongsToMany(Soal::class, 'ujian_soal')
+        return $this->belongsToMany(Soal::class, 'ujian_soal', 'ujian_id', 'soal_id')
                     ->withTimestamps()
                     ->withPivot('nomor_urut_di_ujian', 'bobot_nilai_soal');
     }
