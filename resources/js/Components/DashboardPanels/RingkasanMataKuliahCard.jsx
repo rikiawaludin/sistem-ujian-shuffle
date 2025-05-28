@@ -28,7 +28,7 @@ export function RingkasanMataKuliahCard({ mataKuliah }) {
         className="m-0 rounded-none h-48" // Sesuaikan tinggi gambar (h-48 atau h-40)
       >
         <img
-          src={mataKuliah.img || "/images/placeholder-matakuliah.png"} // Sediakan placeholder jika gambar mata kuliah tidak ada
+          src={mataKuliah.img || "/images/fisika.jpg"} // Sediakan placeholder jika gambar mata kuliah tidak ada
           alt={mataKuliah.nama}
           className="h-full w-full object-cover"
         />

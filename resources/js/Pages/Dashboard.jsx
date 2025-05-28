@@ -9,7 +9,7 @@ import 'swiper/css';
 import PanelRiwayatUjian from '@/Components/DashboardPanels/PanelRiwayatUjian'; // Ini bisa menampilkan ringkasan dari prop historiUjian atau data statis internalnya
 import PanelUjianAktif from '@/Components/DashboardPanels/PanelUjianAktif';
 import PanelUjianMendatang from '@/Components/DashboardPanels/PanelUjianMendatang';
-import RingkasanMataKuliahCard from '@/Components/RingkasanMataKuliahCard';
+import RingkasanMataKuliahCard from '@/Components/DashboardPanels/RingkasanMataKuliahCard';
 import HistoriUjianRingkasanCard from '@/Components/DashboardPanels/HistoriUjianRingkasanCard';
 
 export default function Dashboard() {
