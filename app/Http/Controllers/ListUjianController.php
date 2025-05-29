@@ -112,16 +112,16 @@ class ListUjianController extends Controller
     public function detailHasilUjian($id_attempt)
     {
         $attempt = PengerjaanUjian::with([
-            'ujian:id,judul_ujian,kkm,mata_kuliah_id', // Pilih kolom spesifik dari Ujian
-            'ujian.mataKuliah:id,nama_mata_kuliah', // Pilih kolom spesifik dari MataKuliah
-            'ujian.soal', // Ambil semua soal dari ujian tersebut
-            'detailJawaban.soal:id,pertanyaan,tipe_soal,opsi_jawaban,kunci_jawaban,penjelasan' // Pilih kolom spesifik dari Soal yang dijawab
+            'ujian:id,judul_ujian,kkm,mata_kuliah_id,durasi', // Ambil durasi juga
+            'ujian.mataKuliah:id,nama_mata_kuliah',
+            'ujian.soal', // Relasi untuk mendapatkan semua soal di ujian tersebut
+            'detailJawaban.soal' // Relasi untuk mendapatkan detail soal dari jawaban peserta
         ])
-        ->where('user_id', Auth::id()) // Pastikan user hanya bisa lihat miliknya
+        ->where('user_id', Auth::id())
         ->findOrFail((int)$id_attempt);
 
         $ujianDetail = $attempt->ujian;
-        if (!$ujianDetail) { // Seharusnya tidak terjadi karena findOrFail di atas, tapi sebagai pengaman
+        if (!$ujianDetail) {
             abort(404, 'Detail ujian untuk hasil ini tidak ditemukan.');
         }
         $mataKuliahDetail = $ujianDetail->mataKuliah;
@@ -134,49 +134,81 @@ class ListUjianController extends Controller
 
         $jawabanUserPerSoalMap = $attempt->detailJawaban->keyBy('soal_id');
 
-        // Ambil semua soal yang seharusnya ada di ujian tersebut
-        // Kemudian gabungkan dengan jawaban peserta
-        $detailSoalJawaban = $ujianDetail->soal->map(function($soalMasterUjian, $index) use ($jawabanUserPerSoalMap) {
+        $detailSoalJawaban = collect($ujianDetail->soal)->map(function($soalMasterUjian, $index) use ($jawabanUserPerSoalMap) {
             $jawabanDataAttempt = $jawabanUserPerSoalMap->get($soalMasterUjian->id);
+            
+            $nomorUrut = $soalMasterUjian->pivot->nomor_urut_di_ujian ?? ($index + 1);
+
+            // $soalMasterUjian->opsi_jawaban sudah di-cast ke array oleh model Soal
+            $opsiJawabanFinal = $soalMasterUjian->opsi_jawaban; 
+            
+            // $soalMasterUjian->kunci_jawaban sudah di-cast oleh model Soal
+            // Normalisasi kunci jawaban untuk PG/BS menjadi string tunggal jika memungkinkan
+            $kunciJawabanFinal = $soalMasterUjian->kunci_jawaban;
+            if (($soalMasterUjian->tipe_soal === 'pilihan_ganda' || $soalMasterUjian->tipe_soal === 'benar_salah') && is_array($kunciJawabanFinal) && count($kunciJawabanFinal) === 1) {
+                $firstKey = $kunciJawabanFinal[0];
+                if (is_object($firstKey) && isset($firstKey->id)) {
+                    $kunciJawabanFinal = (string)$firstKey->id;
+                } elseif (is_object($firstKey) && isset($firstKey->teks)) {
+                    $kunciJawabanFinal = (string)$firstKey->teks;
+                } elseif (is_string($firstKey)) {
+                     $kunciJawabanFinal = $firstKey;
+                }
+            } elseif (is_object($kunciJawabanFinal) && isset($kunciJawabanFinal->id)){ // Jika objek tunggal {id: "X"}
+                $kunciJawabanFinal = (string)$kunciJawabanFinal->id;
+            }
+
+            
+            // Untuk esai, biarkan kunciJawaban apa adanya (biasanya string deskriptif)
+
+            // Normalisasi jawabanPengguna untuk PG/BS menjadi string tunggal jika dari array
+            $jawabanPenggunaFinal = $jawabanDataAttempt->jawaban_user ?? ($soalMasterUjian->tipe_soal === 'esai' ? '' : null);
+            // $jawabanDataAttempt->jawaban_user sudah di-cast oleh model JawabanPesertaDetail
+            if (($soalMasterUjian->tipe_soal === 'pilihan_ganda' || $soalMasterUjian->tipe_soal === 'benar_salah') && is_array($jawabanPenggunaFinal) && count($jawabanPenggunaFinal) === 1) {
+                 $firstAnswer = $jawabanPenggunaFinal[0];
+                 // Jika jawaban pengguna disimpan sebagai array objek [{id:"A"}]
+                 if(is_object($firstAnswer) && isset($firstAnswer->id)){
+                    $jawabanPenggunaFinal = (string)$firstAnswer->id;
+                 } else if (is_string($firstAnswer)){
+                    $jawabanPenggunaFinal = $firstAnswer;
+                 }
+            }
+
 
             return [
                 'idSoal' => $soalMasterUjian->id,
-                'nomorSoal' => $soalMasterUjian->pivot->nomor_urut_di_ujian ?? ($index + 1),
+                'nomorSoal' => $nomorUrut,
                 'pertanyaan' => $soalMasterUjian->pertanyaan,
                 'tipeSoal' => $soalMasterUjian->tipe_soal,
-                'opsiJawaban' => $soalMasterUjian->opsi_jawaban, // Ini sudah di-cast oleh model Soal
-                'jawabanPengguna' => $jawabanDataAttempt->jawaban_user ?? ($soalMasterUjian->tipe_soal === 'esai' ? '' : null), // jawaban_user juga di-cast di JawabanPesertaDetail
-                'kunciJawaban' => $soalMasterUjian->kunci_jawaban, // Ini sudah di-cast
+                'opsiJawaban' => $opsiJawabanFinal,
+                'jawabanPengguna' => $jawabanPenggunaFinal,
+                'kunciJawaban' => $kunciJawabanFinal,
                 'isBenar' => $jawabanDataAttempt->is_benar ?? null,
                 'penjelasan' => $soalMasterUjian->penjelasan,
             ];
-        });
+        })->sortBy('nomorSoal')->values()->all();
 
-        $jumlahSoalDiUjian = $ujianDetail->soal->count();
+        // ... (sisa perhitungan jumlah benar/salah/tidak dijawab tetap sama) ...
+        $jumlahSoalDiUjian = count($detailSoalJawaban);
         $jumlahBenar = $attempt->detailJawaban->where('is_benar', true)->count();
-        // $jumlahSalah = $attempt->detailJawaban->where('is_benar', false)->count();
-        // Untuk jumlah salah, kita perlu lebih hati-hati jika ada soal yang tidak dinilai (is_benar === null)
-        $jumlahSalah = $attempt->detailJawaban->filter(function ($item) {
-            return $item->is_benar === false;
-        })->count();
-
-        $jumlahDijawab = $attempt->detailJawaban->filter(function ($item) {
-            // Definisi dijawab bisa bervariasi, misal tidak null dan tidak string kosong
-            return $item->jawaban_user !== null && 
-                   (is_string($item->jawaban_user) ? trim($item->jawaban_user) !== '' : true);
-        })->count();
+        $jumlahSalah = $attempt->detailJawaban->filter(fn ($item) => $item->is_benar === false)->count();
+        $jumlahDijawab = $attempt->detailJawaban->filter(fn ($item) => $item->jawaban_user !== null && (is_string($item->jawaban_user) ? trim($item->jawaban_user) !== '' && trim($item->jawaban_user) !== 'null': true))->count();
         $jumlahTidakDijawab = $jumlahSoalDiUjian - $jumlahDijawab;
 
 
         $hasilUjianData = [
             'idAttempt' => $attempt->id,
-            'namaMataKuliah' => $mataKuliahDetail->nama_mata_kuliah ?? 'Mata Kuliah Tidak Diketahui',
-            'judulUjian' => $ujianDetail->judul_ujian ?? 'Judul Ujian Tidak Diketahui',
+            'namaMataKuliah' => $mataKuliahDetail->nama_mata_kuliah ?? 'N/A',
+            'judulUjian' => $ujianDetail->judul_ujian ?? 'N/A',
+            'ujian' => [
+                'id' => $ujianDetail->id,
+                'mata_kuliah_id' => $ujianDetail->mata_kuliah_id,
+            ],
             'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y, H:i') : ($attempt->created_at ? $attempt->created_at->format('d M Y, H:i') : 'N/A'),
             'skorTotal' => $attempt->skor_total,
             'kkm' => $kkmUjian,
             'statusKelulusan' => $statusKelulusan,
-            'waktuDihabiskan' => $attempt->waktu_dihabiskan_detik ? gmdate("H\j i\m s\d", $attempt->waktu_dihabiskan_detik) : "N/A", // s bukan d
+            'waktuDihabiskan' => $attempt->waktu_dihabiskan_detik ? gmdate("H\j i\m s\d", $attempt->waktu_dihabiskan_detik) : "N/A",
             'jumlahSoalBenar' => $jumlahBenar,
             'jumlahSoalSalah' => $jumlahSalah,
             'jumlahSoalTidakDijawab' => $jumlahTidakDijawab,
@@ -185,6 +217,7 @@ class ListUjianController extends Controller
 
         return Inertia::render('Ujian/DetailHasilUjianPage', ['hasilUjian' => $hasilUjianData]);
     }
+
 
     /**
      * Menampilkan halaman riwayat semua ujian pengguna.

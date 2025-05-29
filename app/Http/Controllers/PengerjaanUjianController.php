@@ -18,7 +18,7 @@ class PengerjaanUjianController extends Controller
     {
         $request->validate([
             'ujianId' => 'required|integer|exists:ujian,id',
-            'pengerjaanId' => 'sometimes|integer|exists:pengerjaan_ujian,id', // ID pengerjaan dari frontend (opsional tapi bagus)
+            'pengerjaanId' => 'sometimes|nullable|integer|exists:pengerjaan_ujian,id',
             'jawaban' => 'required|array',
             'jawaban.*' => 'nullable',
             'statusRaguRagu' => 'required|array',
@@ -27,7 +27,7 @@ class PengerjaanUjianController extends Controller
 
         $user = Auth::user();
         $ujianId = $request->input('ujianId');
-        $pengerjaanIdDariRequest = $request->input('pengerjaanId'); // Bisa dikirim dari frontend
+        $pengerjaanIdDariRequest = $request->input('pengerjaanId');
         $jawabanUserMap = $request->input('jawaban');
         $statusRaguRaguMap = $request->input('statusRaguRagu');
 
@@ -39,27 +39,24 @@ class PengerjaanUjianController extends Controller
                             ->first();
         }
         
-        // Jika tidak ada pengerjaanId dari request, atau tidak ketemu, coba cari yang sedang dikerjakan
         if (!$pengerjaan) {
              $pengerjaan = PengerjaanUjian::where('ujian_id', $ujianId)
                             ->where('user_id', $user->id)
                             ->where('status_pengerjaan', 'sedang_dikerjakan')
-                            ->orderBy('created_at', 'desc') // Ambil yang terbaru jika ada duplikat (seharusnya tidak)
+                            ->orderBy('created_at', 'desc')
                             ->first();
         }
 
-
         if (!$pengerjaan) {
-            Log::error("Submit Ujian: PengerjaanUjian tidak ditemukan untuk Ujian ID {$ujianId}, User ID {$user->id}. Data request:", $request->all());
-            return back()->withErrors(['submit_error' => 'Sesi pengerjaan ujian tidak ditemukan atau sudah selesai.']);
+            Log::error("Submit Ujian GAGAL: PengerjaanUjian tidak ditemukan. Ujian ID {$ujianId}, User ID {$user->id}.", $request->all());
+            return back()->withErrors(['submit_error' => 'Sesi pengerjaan ujian tidak valid atau tidak ditemukan.']);
         }
         
-        if ($pengerjaan->status_pengerjaan === 'selesai' || $pengerjaan->status_pengerjaan === 'selesai_waktu_habis') {
-            Log::warning("Submit Ujian: PengerjaanUjian ID {$pengerjaan->id} sudah selesai. Percobaan submit ganda?");
+        if ($pengerjaan->status_pengerjaan !== 'sedang_dikerjakan') {
+            Log::warning("Submit Ujian DITOLAK: PengerjaanUjian ID {$pengerjaan->id} statusnya bukan 'sedang_dikerjakan' (status: {$pengerjaan->status_pengerjaan}). Mungkin sudah disubmit.", $request->all());
             return redirect()->route('ujian.hasil.detail', ['id_attempt' => $pengerjaan->id])
-                             ->with('info_message', 'Ujian ini sudah pernah dikumpulkan sebelumnya.');
+                             ->with('info_message', 'Ujian ini sudah pernah dikumpulkan atau statusnya tidak valid untuk submit.');
         }
-
 
         DB::beginTransaction();
         try {
@@ -67,29 +64,23 @@ class PengerjaanUjianController extends Controller
             $waktuSelesai = now();
             $waktuDihabiskanDetik = $waktuSelesai->diffInSeconds($waktuMulaiCarbon);
             
-            // Pastikan waktu dihabiskan tidak melebihi durasi ujian + sedikit toleransi
             $durasiUjianDetik = $pengerjaan->ujian->durasi * 60;
-            if($waktuDihabiskanDetik > ($durasiUjianDetik + 60) ){ // Toleransi 1 menit
-                // Jika waktu habis signifikan, mungkin statusnya sudah diubah oleh scheduler
-                // atau ini adalah submit yang sangat terlambat.
-                // Kita tetap set waktunya sesuai durasi.
-                Log::warning("Submit Ujian: Pengerjaan ID {$pengerjaan->id} disubmit jauh setelah waktu habis. Menggunakan durasi ujian.");
-                $waktuDihabiskanDetik = $durasiUjianDetik;
-                $waktuSelesai = $waktuMulaiCarbon->copy()->addSeconds($durasiUjianDetik);
+            if($waktuDihabiskanDetik > ($durasiUjianDetik + 120) ){ // Toleransi 2 menit untuk keterlambatan jaringan/proses
+                Log::warning("Submit Ujian: Pengerjaan ID {$pengerjaan->id} disubmit terlambat. Waktu dihabiskan: {$waktuDihabiskanDetik} vs Durasi: {$durasiUjianDetik}. Waktu selesai disesuaikan.");
+                $waktuDihabiskanDetik = $durasiUjianDetik; // Cap waktu dihabiskan ke durasi ujian
+                $waktuSelesai = $waktuMulaiCarbon->copy()->addSeconds($durasiUjianDetik); // Waktu selesai juga disesuaikan
+                $pengerjaan->status_pengerjaan = 'selesai_waktu_habis'; // Tandai waktu habis jika disubmit sangat terlambat
+            } else {
+                $pengerjaan->status_pengerjaan = 'selesai';
             }
-
 
             $pengerjaan->waktu_selesai = $waktuSelesai;
             $pengerjaan->waktu_dihabiskan_detik = $waktuDihabiskanDetik;
-            $pengerjaan->status_pengerjaan = 'selesai';
-
+            
             $totalSkor = 0;
-            $soalUjianRefs = $pengerjaan->ujian->soal()->get()->keyBy('id');
+            $soalUjianRefs = $pengerjaan->ujian->soal()->withPivot('bobot_nilai_soal')->get()->keyBy('id');
 
-            // Hapus jawaban detail lama jika ada untuk pengerjaan ini (jika ingin menimpa)
-            // JawabanPesertaDetail::where('pengerjaan_ujian_id', $pengerjaan->id)->delete();
-
-            foreach ($jawabanUserMap as $soalId => $jawaban) {
+            foreach ($jawabanUserMap as $soalId => $jawabanDiterima) {
                 $soalRef = $soalUjianRefs->get((int)$soalId);
                 if (!$soalRef) {
                     Log::warning("Soal ID {$soalId} tidak ditemukan saat submit Pengerjaan ID {$pengerjaan->id}. Skipping.");
@@ -98,32 +89,47 @@ class PengerjaanUjianController extends Controller
 
                 $isBenar = null;
                 $skorPerSoal = 0;
+                $jawabanUntukDisimpan = null;
 
-                if (($soalRef->tipe_soal === 'pilihan_ganda' || $soalRef->tipe_soal === 'benar_salah') && $soalRef->kunci_jawaban) {
-                    $kunciObj = is_array($soalRef->kunci_jawaban) ? $soalRef->kunci_jawaban : json_decode($soalRef->kunci_jawaban, true);
-                    $kunciNilai = null;
-                    if(is_array($kunciObj)){
-                        $kunciNilai = $kunciObj['id'] ?? ($kunciObj[0]['id'] ?? ($kunciObj[0] ?? null));
-                        if($kunciNilai === null && isset($kunciObj['teks'])) $kunciNilai = $kunciObj['teks']; // fallback jika id tidak ada tapi teks ada (untuk format simpel ["Benar", "Salah"])
+                if (isset($jawabanDiterima) && $jawabanDiterima !== '') { // Hanya proses jika ada jawaban
+                    if ($soalRef->tipe_soal === 'pilihan_ganda' || $soalRef->tipe_soal === 'benar_salah') {
+                        $jawabanUntukDisimpan = json_encode(strval($jawabanDiterima)); // Simpan sebagai string JSON tunggal
+                        
+                        if ($soalRef->kunci_jawaban) {
+                            $kunciObj = is_array($soalRef->kunci_jawaban) ? $soalRef->kunci_jawaban : json_decode($soalRef->kunci_jawaban, true);
+                            $kunciNilai = null;
+                            if(is_array($kunciObj) && count($kunciObj) > 0){ // Jika kunci adalah array ["A"] atau [{"id":"A"}]
+                                $kunciPertama = $kunciObj[0];
+                                $kunciNilai = is_object($kunciPertama) ? ($kunciPertama->id ?? $kunciPertama->teks) : $kunciPertama;
+                            } elseif (!is_array($kunciObj)) { // Jika kunci adalah string atau objek tunggal
+                               $kunciNilai = is_object($kunciObj) ? ($kunciObj->id ?? $kunciObj->teks) : $kunciObj;
+                            }
+
+                            if (strval($jawabanDiterima) === strval($kunciNilai)) {
+                                $isBenar = true;
+                                $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10; // Default bobot jika tidak ada
+                            } else {
+                                $isBenar = false;
+                            }
+                        }
+                    } elseif ($soalRef->tipe_soal === 'esai') {
+                        $jawabanUntukDisimpan = json_encode($jawabanDiterima); // Esai juga simpan sebagai string JSON
+                    } else if (is_array($jawabanDiterima)) {
+                        $jawabanUntukDisimpan = json_encode($jawabanDiterima);
                     } else {
-                        $kunciNilai = $kunciObj;
+                        $jawabanUntukDisimpan = json_encode(strval($jawabanDiterima));
                     }
-                    
-                    if (isset($jawaban) && $jawaban !== '' && strval($jawaban) === strval($kunciNilai)) {
-                        $isBenar = true;
-                        $pivotData = DB::table('ujian_soal')->where('ujian_id', $ujianId)->where('soal_id', $soalId)->first();
-                        $bobotSoal = $pivotData->bobot_nilai_soal ?? 1;
-                        $skorPerSoal = $bobotSoal;
-                    } else if (isset($jawaban) && $jawaban !== '') {
-                        $isBenar = false;
-                    }
+                } else {
+                    // Jika jawaban kosong atau null, simpan null (atau string JSON "null")
+                    $jawabanUntukDisimpan = null; // Akan disimpan sebagai NULL di DB jika kolom nullable
+                                                // atau json_encode(null) akan jadi "null"
                 }
                 $totalSkor += $skorPerSoal;
 
                 JawabanPesertaDetail::updateOrCreate(
                     ['pengerjaan_ujian_id' => $pengerjaan->id, 'soal_id' => (int)$soalId],
                     [
-                        'jawaban_user' => is_array($jawaban) ? json_encode($jawaban) : $jawaban,
+                        'jawaban_user' => $jawabanUntukDisimpan,
                         'is_benar' => $isBenar,
                         'skor_per_soal' => $skorPerSoal,
                         'is_ragu_ragu' => $statusRaguRaguMap[$soalId] ?? false,
@@ -138,20 +144,23 @@ class PengerjaanUjianController extends Controller
 
             $sessionKeySoal = 'ujian_attempt_' . $pengerjaan->id . '_soal';
             session()->forget($sessionKeySoal);
-            // session()->forget('pengerjaan_ujian_aktif_id'); // Dihapus oleh Api\UjianSoalController jika attempt baru dimulai
+            // Hapus juga session pengerjaan_ujian_aktif_id agar tidak terpakai lagi
+            if(session('pengerjaan_ujian_aktif_id') == $pengerjaan->id) {
+                session()->forget('pengerjaan_ujian_aktif_id');
+            }
 
-            Log::info("Ujian ID: {$ujianId} berhasil dikumpulkan oleh User ID: {$user->id}. Pengerjaan ID: {$pengerjaan->id}");
+
+            Log::info("Ujian ID: {$ujianId} berhasil dikumpulkan oleh User ID: {$user->id}. Pengerjaan ID: {$pengerjaan->id}, Skor: {$totalSkor}");
             return redirect()->route('ujian.selesai.konfirmasi', ['id_ujian' => $ujianId])
                              ->with('success_message', 'Ujian berhasil dikumpulkan!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Gagal submit ujian untuk Ujian ID: ' . $ujianId . ' oleh User ID: ' . $user->id, [
+            Log::error("Gagal submit ujian untuk Pengerjaan ID: " . ($pengerjaan->id ?? 'Tidak Diketahui') . " Ujian ID: {$ujianId}, User: {$user->id}", [
                 'error' => $e->getMessage(),
-                'pengerjaan_id_on_error' => $pengerjaan->id ?? 'N/A',
-                'trace_snippet' => substr($e->getTraceAsString(), 0, 1000)
+                'trace' => $e->getTraceAsString() // Lebih detail untuk debugging
             ]);
-            return back()->withErrors(['submit_error' => 'Gagal menyimpan jawaban ujian. Silakan coba lagi. Detail: ' . $e->getMessage()]);
+            return back()->withErrors(['submit_error' => 'Gagal menyimpan jawaban ujian. Silakan coba lagi. (' . $e->getMessage() . ')']);
         }
     }
 }

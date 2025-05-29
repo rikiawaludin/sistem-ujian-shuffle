@@ -1,23 +1,26 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Pastikan path ini benar
 import { Typography, Card, Button, IconButton } from "@material-tailwind/react";
 import { ArrowLeftIcon } from "@heroicons/react/24/solid";
-import { Link, usePage, Head, router } from '@inertiajs/react';
+import { usePage, Head, router } from '@inertiajs/react';
 
-// Impor komponen baru
+// Pastikan path impor komponen anak benar
 import SoalReviewItem from './DetailHasilComponents/SoalReviewItem';
 import RingkasanHasilUjian from './DetailHasilComponents/RingkasanHasilUjian';
 
 export default function DetailHasilUjianPage() {
-  const { hasilUjian, auth } = usePage().props; // Ambil auth jika diperlukan oleh AuthenticatedLayout
+  const { hasilUjian, auth } = usePage().props;
 
   const handleKembali = () => {
-    if (route().has('ujian.riwayat')) {
+    if (hasilUjian && hasilUjian.ujian && hasilUjian.ujian.mata_kuliah_id && route().has('ujian.daftarPerMataKuliah')) {
+      router.get(route('ujian.daftarPerMataKuliah', { id_mata_kuliah: hasilUjian.ujian.mata_kuliah_id }));
+    } else if (route().has('ujian.riwayat')) {
       router.get(route('ujian.riwayat'));
     } else if (route().has('dashboard')) {
       router.get(route('dashboard'));
     } else {
-      window.history.back(); // Fallback jika rute tidak ada
+      // Fallback jika tidak ada histori atau rute lain, bisa ke halaman utama
+      router.get(route('dashboard')); // Atau '/' jika dashboard tidak selalu ada/dikenal
     }
   };
 
@@ -41,14 +44,16 @@ export default function DetailHasilUjianPage() {
     );
   }
 
+  // Judul halaman, pastikan hasilUjian.judulUjian ada
+  const pageTitle = `Hasil Ujian: ${hasilUjian?.judulUjian || 'Ujian'}`;
+
   return (
     <AuthenticatedLayout 
-        user={auth.user} // Asumsi AuthenticatedLayout memerlukan user
-        title={`Hasil Ujian: ${hasilUjian.judulUjian}`}
+        user={auth.user}
+        title={pageTitle}
     >
-      <Head title={`Hasil Ujian: ${hasilUjian.judulUjian}`} />
+      <Head title={pageTitle} />
 
-      {/* Header Halaman */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <IconButton variant="text" color="blue-gray" onClick={handleKembali} className="mr-3" aria-label="Kembali">
@@ -60,10 +65,8 @@ export default function DetailHasilUjianPage() {
         </div>
       </div>
 
-      {/* Komponen Ringkasan Hasil Ujian */}
       <RingkasanHasilUjian hasilUjian={hasilUjian} />
 
-      {/* Pembahasan Jawaban */}
       <div>
         <Typography variant="h5" color="blue-gray" className="mb-5 font-semibold">
           Pembahasan Jawaban
@@ -81,7 +84,6 @@ export default function DetailHasilUjianPage() {
         )}
       </div>
 
-      {/* Tombol Kembali di Bagian Bawah */}
       <div className="mt-10 flex justify-center">
         <Button color="blue-gray" variant='outlined' onClick={handleKembali} className="flex items-center gap-2">
           <ArrowLeftIcon className="h-5 w-5"/>
