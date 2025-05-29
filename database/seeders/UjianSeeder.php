@@ -80,10 +80,10 @@ class UjianSeeder extends Seeder
                 ['judul_ujian' => 'Ujian Komprehensif Web Lanjut', 'mata_kuliah_id' => $mkWeb->id],
                 [
                     'deskripsi' => 'Ujian mencakup semua materi Pemrograman Web Lanjut.',
-                    'durasi' => 120, // menit
-                    'kkm' => 70,
-                    'tanggal_mulai' => now()->addDays(20),
-                    'tanggal_selesai' => now()->addDays(20)->addHours(3),
+                    'durasi' => 5, // menit
+                    'kkm' => 30,
+                    'tanggal_mulai' => now('Asia/Jakarta')->addMinutes(2),
+                    'tanggal_selesai' => now('Asia/Jakarta')->addMinutes(7),
                     'jenis_ujian' => 'uas',
                     'acak_soal' => true,
                     'acak_opsi' => true,

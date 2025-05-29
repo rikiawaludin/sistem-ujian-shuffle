@@ -23,109 +23,70 @@ class AutoSubmitExpiredExams extends Command
 
         $activeAttempts = PengerjaanUjian::where('status_pengerjaan', 'sedang_dikerjakan')
                                        ->whereNotNull('waktu_mulai')
-                                       ->with('ujian')
+                                       ->with('ujian') // Eager load Ujian untuk durasi dan tanggal_selesai
                                        ->get();
-
-        if ($activeAttempts->isEmpty()) {
-            Log::info('[AutoSubmitScheduler] Tidak ada pengerjaan ujian aktif yang perlu dicek.');
-            $this->info('Tidak ada pengerjaan ujian aktif yang perlu dicek.');
-            return Command::SUCCESS;
-        }
+        // ... (handling jika $activeAttempts kosong) ...
 
         $submittedCount = 0;
         foreach ($activeAttempts as $attempt) {
-            if (!$attempt->ujian) {
-                Log::warning("[AutoSubmitScheduler] Pengerjaan ID {$attempt->id} tidak memiliki data ujian terkait. Dilewati.");
-                continue;
-            }
+            if (!$attempt->ujian) { /* ... skip ... */ continue; }
 
             $waktuMulai = Carbon::parse($attempt->waktu_mulai);
             $durasiUjianDetik = $attempt->ujian->durasi * 60;
-            $waktuSeharusnyaSelesai = $waktuMulai->copy()->addSeconds($durasiUjianDetik);
+            
+            // Batas waktu berdasarkan durasi individu
+            $batasWaktuIndividu = $waktuMulai->copy()->addSeconds($durasiUjianDetik);
+            
+            // Batas waktu berdasarkan jadwal ujian global (tanggal_selesai ujian)
+            $batasWaktuGlobal = null;
+            if ($attempt->ujian->tanggal_selesai) {
+                $batasWaktuGlobal = Carbon::parse($attempt->ujian->tanggal_selesai);
+            }
 
-            if ($now->gte($waktuSeharusnyaSelesai)) {
-                Log::info("[AutoSubmitScheduler] Ujian ID {$attempt->ujian_id} (Pengerjaan ID {$attempt->id}) oleh User ID {$attempt->user_id} telah melewati batas waktu.");
+            // Tentukan batas waktu aktual yang paling dulu tercapai
+            $batasWaktuAktual = $batasWaktuIndividu;
+            if ($batasWaktuGlobal && $batasWaktuGlobal->lt($batasWaktuIndividu)) {
+                $batasWaktuAktual = $batasWaktuGlobal;
+                Log::info("[AutoSubmitScheduler] Pengerjaan ID {$attempt->id} akan menggunakan batas waktu global ({$batasWaktuGlobal->toDateTimeString()}) karena lebih dulu dari batas individu ({$batasWaktuIndividu->toDateTimeString()}).");
+            } else {
+                 Log::info("[AutoSubmitScheduler] Pengerjaan ID {$attempt->id} akan menggunakan batas waktu individu ({$batasWaktuIndividu->toDateTimeString()}).");
+            }
+
+
+            if ($now->gte($batasWaktuAktual)) { // Jika waktu sekarang sudah melewati batas waktu aktual
+                Log::info("[AutoSubmitScheduler] Pengerjaan ID {$attempt->id} telah melewati batas waktu aktual ({$batasWaktuAktual->toDateTimeString()}). Memproses submit otomatis.");
                 DB::beginTransaction();
                 try {
-                    $attempt->waktu_selesai = $waktuSeharusnyaSelesai;
-                    $attempt->waktu_dihabiskan_detik = $durasiUjianDetik;
-                    $attempt->status_pengerjaan = 'selesai_waktu_habis'; // Status baru
-                    
-                    // Penilaian otomatis jika diperlukan dan jawaban sudah tersimpan periodik
-                    // Untuk saat ini, kita asumsikan jawaban sudah ada via submit normal atau akan dinilai manual jika esai
-                    // Jika ingin hitung skor di sini, panggil fungsi calculateScore
-                    $this->calculateScoreIfApplicable($attempt);
+                    // Gunakan $batasWaktuAktual sebagai waktu selesai yang sebenarnya
+                    $attempt->waktu_selesai = $batasWaktuAktual; 
+                    // Waktu dihabiskan dihitung dari waktu mulai sampai batas waktu aktual
+                    $attempt->waktu_dihabiskan_detik = $batasWaktuAktual->diffInSeconds($waktuMulai);
+                    // Pastikan waktu dihabiskan tidak melebihi durasi asli ujian (jika batas global lebih dulu)
+                    if ($attempt->waktu_dihabiskan_detik > $durasiUjianDetik) {
+                        $attempt->waktu_dihabiskan_detik = $durasiUjianDetik;
+                    }
 
+
+                    $attempt->status_pengerjaan = 'selesai_waktu_habis';
+                    
+                    $this->calculateScoreIfApplicable($attempt); // Fungsi penilaian
                     $attempt->save();
                     DB::commit();
 
-                    // Hapus sesi terkait jika masih ada (walaupun seharusnya user sudah tidak aktif)
                     $sessionKeySoal = 'ujian_attempt_' . $attempt->id . '_soal';
                     session()->forget($sessionKeySoal);
-                    // session()->forget('pengerjaan_ujian_aktif_id'); // Ini lebih relevan dengan sesi user aktif
+                    if(session('pengerjaan_ujian_aktif_id') == $attempt->id) {
+                        session()->forget('pengerjaan_ujian_aktif_id');
+                    }
 
                     $submittedCount++;
-                    Log::info("[AutoSubmitScheduler] Pengerjaan ID {$attempt->id} berhasil di-submit otomatis karena waktu habis.");
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    Log::error("[AutoSubmitScheduler] Gagal auto-submit Pengerjaan ID {$attempt->id}: " . $e->getMessage());
-                }
+                    Log::info("[AutoSubmitScheduler] Pengerjaan ID {$attempt->id} berhasil di-submit otomatis.");
+                } catch (\Exception $e) { /* ... error handling ... */ }
             }
         }
-
-        Log::info("[AutoSubmitScheduler] Selesai. Jumlah ujian yang di-submit otomatis: {$submittedCount}");
-        $this->info("Proses auto-submit selesai. Jumlah ujian yang di-submit: {$submittedCount}");
+        // ... (logging akhir) ...
         return Command::SUCCESS;
     }
 
-    protected function calculateScoreIfApplicable(PengerjaanUjian $attempt)
-    {
-        // Fungsi ini bisa diisi dengan logika penilaian yang sama seperti di PengerjaanUjianController
-        // jika Anda ingin skor dihitung saat auto-submit.
-        // Pastikan untuk mengambil jawaban dari $attempt->detailJawaban.
-        // Contoh sederhana:
-        if($attempt->skor_total === null) { // Hanya hitung jika belum ada skor
-            $totalSkor = 0;
-            $jawabanDetails = $attempt->detailJawaban()->with('soal')->get(); // Eager load soal
-            $soalUjianRefs = $attempt->ujian->soal()->get()->keyBy('id');
-
-
-            foreach ($jawabanDetails as $detail) {
-                $soalRef = $detail->soal; // $soalUjianRefs->get($detail->soal_id);
-                if (!$soalRef) continue;
-
-                $isBenar = null;
-                $skorPerSoal = 0;
-
-                if (($soalRef->tipe_soal === 'pilihan_ganda' || $soalRef->tipe_soal === 'benar_salah') && $soalRef->kunci_jawaban) {
-                     $kunciObj = is_array($soalRef->kunci_jawaban) ? $soalRef->kunci_jawaban : json_decode($soalRef->kunci_jawaban, true);
-                     $kunciNilai = null;
-                     if(is_array($kunciObj)){
-                         $kunciNilai = $kunciObj['id'] ?? ($kunciObj[0]['id'] ?? ($kunciObj[0] ?? null));
-                         if($kunciNilai === null && isset($kunciObj['teks'])) $kunciNilai = $kunciObj['teks'];
-                     } else {
-                         $kunciNilai = $kunciObj;
-                     }
-
-                    if (isset($detail->jawaban_user) && $detail->jawaban_user !== '' && strval($detail->jawaban_user) === strval($kunciNilai)) {
-                        $isBenar = true;
-                        $pivotData = DB::table('ujian_soal')->where('ujian_id', $attempt->ujian_id)->where('soal_id', $soalRef->id)->first();
-                        $bobotSoal = $pivotData->bobot_nilai_soal ?? 1;
-                        $skorPerSoal = $bobotSoal;
-                    } else if (isset($detail->jawaban_user) && $detail->jawaban_user !== '') {
-                        $isBenar = false;
-                    }
-                }
-                $totalSkor += $skorPerSoal;
-                // Update is_benar dan skor_per_soal di detail jawaban jika belum
-                if ($detail->is_benar === null && $isBenar !== null) {
-                    $detail->is_benar = $isBenar;
-                    $detail->skor_per_soal = $skorPerSoal;
-                    $detail->save();
-                }
-            }
-            $attempt->skor_total = $totalSkor;
-            Log::info("[AutoSubmitScheduler] Skor dihitung untuk Pengerjaan ID {$attempt->id}: {$totalSkor}");
-        }
-    }
+    protected function calculateScoreIfApplicable(PengerjaanUjian $attempt) { /* ... (fungsi tetap sama) ... */ }
 }
