@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Ujian;
-use App\Services\UjianProses\SoalFormatterService;
-use App\Services\UjianProses\ExpressShuffleClientService;
+use App\Models\PengerjaanUjian; // Untuk membuat attempt 'sedang_dikerjakan'
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use App\Services\UjianProses\SoalFormatterService; // Asumsi service ini ada
+use App\Services\UjianProses\ExpressShuffleClientService; // Asumsi service ini ada
 
 class UjianSoalController extends Controller
 {
@@ -25,64 +28,94 @@ class UjianSoalController extends Controller
 
     public function getSoalUntukUjian(Request $request, $id_ujian)
     {
-        $ujian = Ujian::with(['soal', 'mataKuliah'])->find($id_ujian);
+        $ujian = Ujian::with(['mataKuliah'])->findOrFail($id_ujian);
+        $user = Auth::user();
 
-        if (!$ujian) {
-            return response()->json(['message' => 'Ujian tidak ditemukan'], 404);
-        }
+        $sessionKeySoal = 'ujian_berlangsung_' . $ujian->id . '_user_' . $user->id . '_soal';
+        $sessionKeyWaktuMulai = 'ujian_berlangsung_' . $ujian->id . '_user_' . $user->id . '_waktu_mulai';
+        $sessionKeyAttemptId = 'ujian_berlangsung_' . $ujian->id . '_user_' . $user->id . '_attempt_id'; // Untuk menyimpan ID PengerjaanUjian
 
-        if ($ujian->soal->isEmpty()) {
-            Log::warning('[UjianSoalCtrl] Tidak ada soal untuk Ujian ID: ' . $id_ujian);
-            return response()->json([
-                'id' => $ujian->id,
-                'namaMataKuliah' => $ujian->mataKuliah->nama_mata_kuliah ?? 'N/A',
-                'judulUjian' => $ujian->judul_ujian,
-                'durasiTotalDetik' => $ujian->durasi * 60,
-                'soalList' => [],
-            ]);
-        }
+        $soalListDariSesi = session($sessionKeySoal);
+        $waktuMulaiDariSesi = session($sessionKeyWaktuMulai);
 
-        try {
-            // 1. Format Soal dari Laravel untuk dikirim ke Express.js
-            $soalUntukExpress = $this->soalFormatter->formatForExpress($ujian->soal);
+        $soalListFormatted = null;
+        $sisaWaktuDetikDihitung = $ujian->durasi * 60; // Default durasi penuh
+
+        if ($soalListDariSesi && $waktuMulaiDariSesi) {
+            // Ujian sudah dimulai sebelumnya (misalnya refresh)
+            $soalListFormatted = $soalListDariSesi;
+            $waktuMulaiCarbon = Carbon::parse($waktuMulaiDariSesi);
+            $detikTelahBerlalu = now()->diffInSeconds($waktuMulaiCarbon);
+            $sisaWaktuDetikDihitung = max(0, ($ujian->durasi * 60) - $detikTelahBerlalu);
+
+            Log::info("[API UjianSoalCtrl] Ujian ID {$ujian->id} dilanjutkan dari sesi oleh User ID {$user->id}. Sisa waktu: {$sisaWaktuDetikDihitung} detik.");
+
+        } else {
+            // Ujian baru dimulai atau sesi tidak ada/kadaluarsa
+            Log::info("[API UjianSoalCtrl] Ujian ID {$ujian->id} dimulai baru oleh User ID {$user->id}. Mengambil soal dari Express.");
             
-            // 2. Ambil konfigurasi pengacakan dari model Ujian
-            $configPengacakan = [
-                'acakUrutanSoal' => $ujian->acak_soal ?? true,
-                'acakUrutanOpsi' => $ujian->acak_opsi ?? true,
-                'acakUrutanPasangan' => $ujian->acak_opsi_pasangan ?? true, // Anda mungkin perlu menambahkan field ini ke model Ujian
-            ];
+            // Hapus pengerjaan 'sedang_dikerjakan' sebelumnya jika ada, atau tandai 'dibatalkan'
+            PengerjaanUjian::where('ujian_id', $ujian->id)
+                           ->where('user_id', $user->id)
+                           ->where('status_pengerjaan', 'sedang_dikerjakan')
+                           ->update(['status_pengerjaan' => 'dibatalkan_sistem', 'waktu_selesai' => now()]);
 
-            // 3. Panggil Express.js untuk melakukan pengacakan
-            $shuffledSoalFromExpress = $this->expressClient->shuffleSoalList($soalUntukExpress, $configPengacakan);
 
-            if ($shuffledSoalFromExpress === null) {
-                // Error sudah di-log oleh ExpressShuffleClientService
-                return response()->json(['message' => 'Gagal mendapatkan data soal yang diacak.'], 500);
+            // Buat record PengerjaanUjian dengan status 'sedang_dikerjakan'
+            $pengerjaanBaru = PengerjaanUjian::create([
+                'ujian_id' => $ujian->id,
+                'user_id' => $user->id,
+                'waktu_mulai' => now(),
+                'status_pengerjaan' => 'sedang_dikerjakan',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+            session([$sessionKeyAttemptId => $pengerjaanBaru->id]);
+
+
+            if ($ujian->soal->isEmpty()) {
+                Log::warning('[API UjianSoalCtrl] Tidak ada soal untuk Ujian ID: ' . $ujian->id);
+                // Tetap simpan sesi agar tidak query terus menerus jika soal memang kosong
+                session([$sessionKeySoal => []]);
+                session([$sessionKeyWaktuMulai => now()->toIso8601String()]);
+                $soalListFormatted = [];
+            } else {
+                try {
+                    $soalUntukExpress = $this->soalFormatter->formatForExpress($ujian->soal);
+                    $configPengacakan = [
+                        'acakUrutanSoal' => $ujian->acak_soal ?? true,
+                        'acakUrutanOpsi' => $ujian->acak_opsi ?? true,
+                        'acakUrutanPasangan' => $ujian->acak_opsi_pasangan ?? true,
+                    ];
+                    $shuffledSoalFromExpress = $this->expressClient->shuffleSoalList($soalUntukExpress, $configPengacakan);
+
+                    if ($shuffledSoalFromExpress === null) {
+                        return response()->json(['message' => 'Gagal mendapatkan data soal yang diacak dari service.'], 500);
+                    }
+                    $soalListFormatted = $this->soalFormatter->formatForFrontend($shuffledSoalFromExpress);
+
+                    session([$sessionKeySoal => $soalListFormatted]);
+                    session([$sessionKeyWaktuMulai => $pengerjaanBaru->waktu_mulai->toIso8601String()]); // Gunakan waktu mulai dari record PengerjaanUjian
+
+                } catch (ConnectionException $e) {
+                    Log::error('[API UjianSoalCtrl] Koneksi ke Express.js gagal', ['error' => $e->getMessage()]);
+                    return response()->json(['message' => 'Tidak dapat terhubung ke layanan soal.'], 503);
+                } catch (\RuntimeException $e) {
+                    Log::error('[API UjianSoalCtrl] Error saat memproses soal', ['error' => $e->getMessage()]);
+                    return response()->json(['message' => $e->getMessage()], ($e->getCode() && is_int($e->getCode())) ? $e->getCode() : 500);
+                } catch (\Exception $e) {
+                    Log::error('[API UjianSoalCtrl] Error umum tidak terduga', ['error' => $e->getMessage()]);
+                    report($e);
+                    return response()->json(['message' => 'Terjadi kesalahan internal.'], 500);
+                }
             }
-
-            // 4. Format daftar soal yang sudah diacak untuk frontend
-            $soalListFormatted = $this->soalFormatter->formatForFrontend($shuffledSoalFromExpress);
-
-        } catch (ConnectionException $e) {
-            Log::error('[UjianSoalCtrl] Koneksi ke Express.js gagal untuk Ujian ID: ' . $id_ujian, ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Tidak dapat terhubung ke layanan pengacakan soal.'], 503); // 503 Service Unavailable
-        } catch (\RuntimeException $e) { // Menangkap RuntimeException dari ExpressClient atau SoalFormatter
-            Log::error('[UjianSoalCtrl] Error saat memproses soal untuk Ujian ID: ' . $id_ujian, ['error' => $e->getMessage()]);
-            return response()->json(['message' => $e->getMessage()], ($e->getCode() && is_int($e->getCode()) && $e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 500);
-        } catch (\Exception $e) {
-            Log::error('[UjianSoalCtrl] Error umum tidak terduga untuk Ujian ID: ' . $id_ujian, ['error' => $e->getMessage()]);
-            report($e); // Melaporkan error ke sistem error reporting Laravel
-            return response()->json(['message' => 'Terjadi kesalahan internal tidak terduga saat memproses soal.'], 500);
         }
-
-        Log::info('[UjianSoalCtrl] Mengirim data final ke frontend untuk Ujian ID: ' . $id_ujian, ['jumlah_soal' => count($soalListFormatted)]);
 
         return response()->json([
             'id' => $ujian->id,
             'namaMataKuliah' => $ujian->mataKuliah->nama_mata_kuliah ?? 'N/A',
             'judulUjian' => $ujian->judul_ujian,
-            'durasiTotalDetik' => $ujian->durasi * 60,
+            'durasiTotalDetik' => $sisaWaktuDetikDihitung, // Ini adalah SISA WAKTU
             'soalList' => $soalListFormatted,
         ]);
     }
