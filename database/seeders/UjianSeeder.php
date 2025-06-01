@@ -5,45 +5,84 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Ujian;
 use App\Models\MataKuliah;
+use Carbon\Carbon; // Import Carbon
 
 class UjianSeeder extends Seeder
 {
     public function run(): void
     {
-        $mkKalkulus = MataKuliah::where('nama_mata_kuliah', 'Kalkulus Lanjutan')->first();
-        $mkPBO = MataKuliah::where('nama_mata_kuliah', 'Pemrograman Berorientasi Objek')->first();
-        $mkSDA = MataKuliah::where('nama_mata_kuliah', 'Struktur Data dan Algoritma')->first();
-        $mkWeb = MataKuliah::where('nama_mata_kuliah', 'Pemrograman Web Lanjut')->first(); // Ini belum ada di MataKuliahSeeder Anda, perlu ditambahkan atau dihilangkan
+        // Ambil mata kuliah berdasarkan kode unik atau nama yang konsisten
+        $mkKalkulusDasar = MataKuliah::where('kode_mata_kuliah', 'KAL101')->first();
+        $mkAlgoPemrograman = MataKuliah::where('kode_mata_kuliah', 'ALP201')->first();
+        $mkStrukturData = MataKuliah::where('kode_mata_kuliah', 'SDA301')->first();
+        $mkPemWebLanjut = MataKuliah::where('kode_mata_kuliah', 'PWL601')->first(); // Sesuai seeder mata kuliah sebelumnya
+        $mkBasisData = MataKuliah::where('kode_mata_kuliah', 'BAS401')->first();
 
-        // Ujian untuk Kalkulus Lanjutan
-        if ($mkKalkulus) {
+        $nowWIB = Carbon::now('Asia/Jakarta');
+
+        // Ujian untuk Kalkulus Dasar (Semester 1)
+        if ($mkKalkulusDasar) {
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'UTS Kalkulus Lanjutan', 'mata_kuliah_id' => $mkKalkulus->id],
+                ['judul_ujian' => 'Kuis 1 Kalkulus Dasar', 'mata_kuliah_id' => $mkKalkulusDasar->id],
                 [
-                    'deskripsi' => 'Ujian Tengah Semester untuk Kalkulus Lanjutan.',
-                    'durasi' => 90, // menit
-                    'kkm' => 60,
-                    'tanggal_mulai' => now()->subDays(5),
-                    'tanggal_selesai' => now()->subDays(5)->addHours(2),
-                    'jenis_ujian' => 'uts',
+                    'deskripsi' => 'Kuis mencakup materi dasar limit dan fungsi.',
+                    'durasi' => 30, // menit
+                    'kkm' => 65,
+                    'tanggal_mulai' => $nowWIB->copy()->subDays(7), // Sudah lewat
+                    'tanggal_selesai' => $nowWIB->copy()->subDays(7)->addHours(2), // Sudah lewat
+                    'jenis_ujian' => 'kuis',
                     'acak_soal' => true,
                     'acak_opsi' => true,
                     'tampilkan_hasil' => 'langsung',
                     'status_publikasi' => 'terbit',
                 ]
             );
+            Ujian::updateOrCreate(
+                ['judul_ujian' => 'UTS Kalkulus Dasar', 'mata_kuliah_id' => $mkKalkulusDasar->id],
+                [
+                    'deskripsi' => 'Ujian Tengah Semester Kalkulus Dasar.',
+                    'durasi' => 90,
+                    'kkm' => 60,
+                    'tanggal_mulai' => $nowWIB->copy()->addDays(3), // Akan datang
+                    'tanggal_selesai' => $nowWIB->copy()->addDays(3)->addHours(3),
+                    'jenis_ujian' => 'uts',
+                    'acak_soal' => true,
+                    'acak_opsi' => true,
+                    'tampilkan_hasil' => 'setelah_selesai',
+                    'status_publikasi' => 'terbit',
+                ]
+            );
         }
 
-        // Ujian untuk Pemrograman Berorientasi Objek
-        if ($mkPBO) {
+        // Ujian untuk Algoritma & Pemrograman (Semester 2)
+        if ($mkAlgoPemrograman) {
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'Kuis 1 Pemrograman Berorientasi Objek', 'mata_kuliah_id' => $mkPBO->id],
+                ['judul_ujian' => 'UAS Algoritma & Pemrograman', 'mata_kuliah_id' => $mkAlgoPemrograman->id],
                 [
-                    'deskripsi' => 'Kuis pertama materi OOP dasar.',
-                    'durasi' => 30, // menit
+                    'deskripsi' => 'Ujian Akhir Semester mencakup semua materi Algoritma dan Pemrograman dasar.',
+                    'durasi' => 120,
+                    'kkm' => 70,
+                    'tanggal_mulai' => $nowWIB->copy()->subDays(1), // Baru saja lewat
+                    'tanggal_selesai' => $nowWIB->copy()->subDays(1)->addHours(4),
+                    'jenis_ujian' => 'uas',
+                    'acak_soal' => true,
+                    'acak_opsi' => false,
+                    'tampilkan_hasil' => 'manual_dosen',
+                    'status_publikasi' => 'terbit',
+                ]
+            );
+        }
+        
+        // Ujian untuk Struktur Data (Semester 3)
+        if ($mkStrukturData) {
+            Ujian::updateOrCreate(
+                ['judul_ujian' => 'Kuis Struktur Data - Linked List', 'mata_kuliah_id' => $mkStrukturData->id],
+                [
+                    'deskripsi' => 'Kuis singkat tentang konsep Linked List.',
+                    'durasi' => 45,
                     'kkm' => 75,
-                    'tanggal_mulai' => now()->subDays(10),
-                    'tanggal_selesai' => now()->subDays(10)->addMinutes(45),
+                    'tanggal_mulai' => $nowWIB->copy()->addMinutes(5), // Ujian sedang/akan berlangsung (untuk testing)
+                    'tanggal_selesai' => $nowWIB->copy()->addMinutes(50), // Selesai dalam 50 menit dari sekarang
                     'jenis_ujian' => 'kuis',
                     'acak_soal' => false,
                     'acak_opsi' => true,
@@ -53,44 +92,60 @@ class UjianSeeder extends Seeder
             );
         }
 
-        // Ujian untuk Struktur Data dan Algoritma
-        if ($mkSDA) {
+
+        // Ujian untuk Pemrograman Web Lanjut (Semester 6) - Ini yang Anda gunakan untuk testing
+        if ($mkPemWebLanjut) {
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'UAS Struktur Data', 'mata_kuliah_id' => $mkSDA->id],
+                ['judul_ujian' => 'Ujian Komprehensif Web Lanjut', 'mata_kuliah_id' => $mkPemWebLanjut->id],
                 [
-                    'deskripsi' => 'Ujian Akhir Semester untuk Struktur Data dan Algoritma.',
-                    'durasi' => 120, // menit
-                    'kkm' => 70,
-                    'tanggal_mulai' => now()->subDays(2),
-                    'tanggal_selesai' => now()->subDays(2)->addHours(3),
+                    'deskripsi' => 'Ujian mencakup semua materi Pemrograman Web Lanjut.',
+                    'durasi' => 5, // Durasi singkat untuk testing
+                    'kkm' => 70, // KKM disesuaikan
+                    'tanggal_mulai' => $nowWIB,
+                    'tanggal_selesai' => $nowWIB->copy()->addMinutes(3), 
                     'jenis_ujian' => 'uas',
                     'acak_soal' => true,
                     'acak_opsi' => true,
                     'tampilkan_hasil' => 'manual_dosen',
+                    'status_publikasi' => 'terbit',
+                ]
+            );
+             Ujian::updateOrCreate(
+                ['judul_ujian' => 'Kuis Cepat API Web Lanjut', 'mata_kuliah_id' => $mkPemWebLanjut->id],
+                [
+                    'deskripsi' => 'Kuis singkat tentang desain API.',
+                    'durasi' => 15, 
+                    'kkm' => 80, 
+                    'tanggal_mulai' => $nowWIB->copy()->addDays(10), // Jauh di masa depan
+                    'tanggal_selesai' => $nowWIB->copy()->addDays(10)->addHours(1),
+                    'jenis_ujian' => 'kuis',
+                    'acak_soal' => true,
+                    'acak_opsi' => true,
+                    'tampilkan_hasil' => 'langsung',
+                    'status_publikasi' => 'terbit',
+                ]
+            );
+        }
+        
+        // Ujian untuk Basis Data (Semester 4)
+        if ($mkBasisData) {
+            Ujian::updateOrCreate(
+                ['judul_ujian' => 'UTS Basis Data', 'mata_kuliah_id' => $mkBasisData->id],
+                [
+                    'deskripsi' => 'Materi Normalisasi dan SQL Dasar.',
+                    'durasi' => 75,
+                    'kkm' => 60,
+                    'tanggal_mulai' => $nowWIB->copy()->addHours(-1), // Sedang berlangsung
+                    'tanggal_selesai' => $nowWIB->copy()->addHours(1), // Selesai 1 jam lagi
+                    'jenis_ujian' => 'uts',
+                    'acak_soal' => true,
+                    'acak_opsi' => true,
+                    'tampilkan_hasil' => 'setelah_selesai',
                     'status_publikasi' => 'terbit',
                 ]
             );
         }
 
-        // Ujian Komprehensif Web Lanjut (yang sudah ada)
-        // PERHATIAN: 'Pemrograman Web Lanjut' BELUM ADA di MataKuliahSeeder Anda.
-        // Anda perlu menambahkannya di MataKuliahSeeder atau hapus ujian ini jika tidak relevan.
-        if ($mkWeb) { // Ini akan menjadi null jika mkWeb tidak ada
-            Ujian::updateOrCreate(
-                ['judul_ujian' => 'Ujian Komprehensif Web Lanjut', 'mata_kuliah_id' => $mkWeb->id],
-                [
-                    'deskripsi' => 'Ujian mencakup semua materi Pemrograman Web Lanjut.',
-                    'durasi' => 5, // menit
-                    'kkm' => 30,
-                    'tanggal_mulai' => now('Asia/Jakarta')->addMinutes(2),
-                    'tanggal_selesai' => now('Asia/Jakarta')->addMinutes(7),
-                    'jenis_ujian' => 'uas',
-                    'acak_soal' => true,
-                    'acak_opsi' => true,
-                    'tampilkan_hasil' => 'manual_dosen',
-                    'status_publikasi' => 'terbit',
-                ]
-            );
-        }
+        $this->command->info('Seeder Ujian selesai.');
     }
 }

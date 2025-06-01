@@ -20,8 +20,14 @@
         "vite": "^5.0.0"
     },
     "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.0",
+        "@fontsource/roboto": "^5.2.5",
         "@heroicons/react": "^2.2.0",
         "@material-tailwind/react": "^2.1.10",
+        "@mui/icons-material": "^7.1.0",
+        "@mui/material": "^7.1.0",
+        "@mui/x-data-grid": "^8.5.0",
         "flowbite": "^3.1.2",
         "swiper": "^11.2.7"
     }

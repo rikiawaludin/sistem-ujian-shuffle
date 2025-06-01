@@ -18,9 +18,9 @@ return new class extends Migration
             $table->foreignId('ujian_id')->constrained('ujian')->onDelete('cascade'); // Jika ujian dihapus, relasi ini juga dihapus
 
             // Foreign Key ke tabel soal
-            $table->foreignId('soal_id')->constrained('soal')->onDelete('cascade'); // Jika soal dihapus, relasi ini juga dihapus
+            $table->foreignId('soal_id')->constrained('bank_soal')->onDelete('cascade'); // Jika soal dihapus, relasi ini juga dihapus
 
-            $table->integer('nomor_urut_di_ujian')->nullable(); // Jika Anda memerlukan urutan soal yang spesifik dalam ujian
+            $table->integer('nomor_urut_di_ujian')->nullable(); // Jika memerlukan urutan soal yang spesifik dalam ujian
             $table->integer('bobot_nilai_soal')->nullable(); // Jika setiap soal dalam ujian memiliki bobot nilai yang berbeda
 
             $table->timestamps(); // Kolom created_at dan updated_at

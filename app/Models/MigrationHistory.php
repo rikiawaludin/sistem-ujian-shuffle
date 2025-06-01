@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class MataKuliah extends Model
+class MigrationHistory extends Model
 {
     use HasFactory;
 
@@ -14,7 +14,7 @@ class MataKuliah extends Model
      *
      * @var string
      */
-    protected $table = 'mata_kuliah';
+    protected $table = 'migration_history';
 
     /**
      * The attributes that are mass assignable.
@@ -22,9 +22,18 @@ class MataKuliah extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'nama',
-        'kode',
-        'external_id',
+        'is_dosen',
+        'is_prodi',
+        'is_admin',
+        'is_mahasiswa',
+        'is_mata_kuliah',
+        // Saran dari respons sebelumnya:
+        // 'entity_type',
+        // 'records_added',
+        // 'records_updated',
+        // 'records_failed',
+        // 'notes',
+        // 'status_success'
     ];
 
     /**
@@ -33,13 +42,12 @@ class MataKuliah extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'is_dosen' => 'boolean',
+        'is_prodi' => 'boolean',
+        'is_admin' => 'boolean',
+        'is_mahasiswa' => 'boolean',
+        'is_mata_kuliah' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-
-    // Relasi contoh:
-    // public function ujian()
-    // {
-    //     return $this->hasMany(Ujian::class);
-    // }
 }

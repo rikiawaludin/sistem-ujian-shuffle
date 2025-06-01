@@ -2,38 +2,47 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use Illuminate\Http\Request; // Tambahkan Request
 use Inertia\Inertia;
 use App\Models\MataKuliah;
 use App\Models\PengerjaanUjian;
-use Illuminate\Support\Facades\Auth; // Import Auth facade
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
 class DashboardController extends Controller
 {
-    /**
-     * Menampilkan halaman dashboard.
-     *
-     * @return \Inertia\Response
-     */
-    public function index()
+
+    public function index(Request $request) // Tambahkan Request $request
     {
-        $daftarMataKuliahProcessed = MataKuliah::with(['dosen']) // Eager load dosen
+
+        // $user = $this->user_service()->getMyProfile();
+
+        // dd($user['profile']);
+
+        $user = $this->user_profile();
+
+         dd($user);
+
+        // Ambil parameter filter semester dari request
+        $selectedSemester = $request->query('semester'); // contoh: ?semester=1
+        $selectedTahunAjaran = $request->query('tahun_ajaran', '2024/2025'); // Default tahun ajaran jika tidak ada
+
+        $mataKuliahQuery = MataKuliah::with(['dosen'])
             ->withCount('ujian AS jumlah_ujian_tersedia')
-            ->get()
+            ->tahunAjaran($selectedTahunAjaran); // Filter berdasarkan tahun ajaran (menggunakan scope)
+
+        if ($selectedSemester && $selectedSemester !== 'semua') { // Jika ada filter semester dan bukan 'semua'
+            $mataKuliahQuery->semester((int)$selectedSemester); // Filter berdasarkan semester (menggunakan scope)
+        }
+
+        $daftarMataKuliahProcessed = $mataKuliahQuery->orderBy('semester')->orderBy('nama_mata_kuliah')->get()
             ->map(function ($mk) {
+                // ... (logika map yang sudah ada untuk dosen dan img) ...
                 $dosenNama = 'Dosen Belum Ditugaskan';
                 if ($mk->dosen) {
                     $dosenNama = $mk->dosen->name;
                 }
-
-                // Menggunakan asset() untuk URL gambar jika disimpan di public/storage
-                // Pastikan Anda sudah menjalankan `php artisan storage:link`
-                // dan icon_url menyimpan path relatif dari folder 'storage/app/public/'
-                // Contoh: jika icon_url adalah 'mata_kuliah_icons/kalkulus.jpg',
-                // maka asset('storage/mata_kuliah_icons/kalkulus.jpg') akan menghasilkan URL yang benar.
-                // Jika icon_url sudah URL absolut atau path publik langsung, sesuaikan.
                 $imageUrl = $mk->icon_url ? asset('storage/' . trim($mk->icon_url, '/')) : '/images/placeholder-matakuliah.png';
-
 
                 return [
                     'id' => $mk->id,
@@ -42,27 +51,36 @@ class DashboardController extends Controller
                     'deskripsi_singkat' => $mk->deskripsi,
                     'img' => $imageUrl,
                     'jumlah_ujian_tersedia' => $mk->jumlah_ujian_tersedia,
+                    'semester' => $mk->semester, // Kirim data semester
+                    'tahun_ajaran' => $mk->tahun_ajaran, // Kirim data tahun ajaran
                 ];
             });
 
+        // Ambil daftar semester yang unik dari mata kuliah yang ada untuk tahun ajaran terpilih
+        $availableSemesters = MataKuliah::where('tahun_ajaran', $selectedTahunAjaran)
+                                ->distinct()
+                                ->orderBy('semester', 'asc')
+                                ->pluck('semester');
+
+        // ... (logika historiUjianUntukDashboard tetap sama) ...
         $historiUjianUntukDashboard = [];
-        if (Auth::check()) { // Gunakan Auth::check()
-            $pengerjaanUjianTerakhir = PengerjaanUjian::where('user_id', Auth::id()) // Gunakan Auth::id()
+        if (Auth::check()) {
+            $pengerjaanUjianTerakhir = PengerjaanUjian::where('user_id', Auth::id())
                 ->with(['ujian.mataKuliah'])
-                ->orderBy('waktu_selesai', 'desc') // Urutkan berdasarkan waktu selesai, atau created_at jika waktu_selesai bisa null
+                ->orderBy('waktu_selesai', 'desc')
+                ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();
 
             $historiUjianUntukDashboard = $pengerjaanUjianTerakhir->map(function ($attempt) {
-                $ujian = $attempt->ujian;
+                // ... (logika map histori ujian) ...
+                 $ujian = $attempt->ujian;
                 $mataKuliah = $ujian ? $ujian->mataKuliah : null;
-                $kkm = $ujian ? ($ujian->kkm ?? 0) : 0; // Pastikan $ujian ada sebelum akses kkm
+                $kkm = $ujian ? ($ujian->kkm ?? 0) : 0;
                 $statusKelulusan = "Belum Dinilai";
-
                 if (isset($attempt->skor_total)) {
                     $statusKelulusan = ($attempt->skor_total >= $kkm ? "Lulus" : "Tidak Lulus");
                 }
-
                 return [
                     'id_pengerjaan' => $attempt->id,
                     'namaUjian' => $ujian->judul_ujian ?? 'Ujian Tidak Ditemukan',
@@ -75,10 +93,12 @@ class DashboardController extends Controller
             });
         }
 
+
         return Inertia::render('Dashboard', [
             'daftarMataKuliah' => $daftarMataKuliahProcessed,
             'historiUjian' => $historiUjianUntukDashboard,
-            // 'auth' => ['user' => Auth::user()] // Inertia biasanya otomatis membagikan data auth.user jika middleware ShareInertiaData dikonfigurasi
+            'availableSemesters' => $availableSemesters,
+            'filters' => ['semester' => $selectedSemester, 'tahun_ajaran' => $selectedTahunAjaran] // <-- PASTIKAN INI DIKIRIM DENGAN BENAR
         ]);
     }
 }

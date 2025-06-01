@@ -2,15 +2,22 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail; // Aktifkan jika Anda menggunakan verifikasi email
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; // Jika Anda menggunakan Sanctum untuk API token
+use Laravel\Sanctum\HasApiTokens; // Jika Anda menggunakan Sanctum
 
-class User extends Authenticatable // implements MustVerifyEmail (jika perlu)
+class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'users';
 
     /**
      * The attributes that are mass assignable.
@@ -18,12 +25,13 @@ class User extends Authenticatable // implements MustVerifyEmail (jika perlu)
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'external_user_id',
-        'role',
-        'avatar_url',
+        'external_id',
+        'is_dosen',
+        'is_mahasiswa',
+        'is_prodi',
+        'is_admin',
+        // Jika Anda menggunakan password untuk login lokal (misal admin)
+        // 'password',
     ];
 
     /**
@@ -32,8 +40,8 @@ class User extends Authenticatable // implements MustVerifyEmail (jika perlu)
      * @var array<int, string>
      */
     protected $hidden = [
-        'password',
-        'remember_token',
+        // 'password',
+        // 'remember_token',
     ];
 
     /**
@@ -42,43 +50,23 @@ class User extends Authenticatable // implements MustVerifyEmail (jika perlu)
      * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at' => 'datetime', // Jika Anda memiliki kolom ini
-        'password' => 'hashed',
+        // 'email_verified_at' => 'datetime',
+        'is_dosen' => 'boolean',
+        'is_mahasiswa' => 'boolean',
+        'is_prodi' => 'boolean',
+        'is_admin' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    /**
-     * Mata kuliah yang diajar oleh dosen ini.
-     */
-    public function mataKuliahDiajar()
-    {
-        return $this->hasMany(MataKuliah::class, 'dosen_id');
-    }
+    // Relasi contoh jika diperlukan:
+    // public function pengerjaanUjian()
+    // {
+    //     return $this->hasMany(PengerjaanUjian::class);
+    // }
 
-    /**
-     * Soal yang dibuat oleh dosen ini.
-     */
-    public function soalDibuat()
-    {
-        return $this->hasMany(Soal::class, 'dosen_pembuat_id');
-    }
-
-    /**
-     * Pengerjaan ujian yang dilakukan oleh siswa ini.
-     */
-    public function pengerjaanUjian()
-    {
-        return $this->hasMany(PengerjaanUjian::class, 'user_id');
-    }
-
-    /**
-     * Mata kuliah yang diikuti oleh siswa ini (melalui tabel pivot mata_kuliah_user).
-     */
-    public function mataKuliahDiikuti()
-    {
-        return $this->belongsToMany(MataKuliah::class, 'mata_kuliah_user')
-                    ->withTimestamps()
-                    ->withPivot('status_progres', 'tanggal_pendaftaran');
-    }
+    // public function bankSoalDibuat() // Jika dosen membuat soal
+    // {
+    //     return $this->hasMany(BankSoal::class, 'dosen_pembuat_id');
+    // }
 }

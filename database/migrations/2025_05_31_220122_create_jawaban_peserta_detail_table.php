@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('pengerjaan_ujian_id')->constrained('pengerjaan_ujian')->onDelete('cascade');
 
             // Foreign Key ke tabel soal
-            $table->foreignId('soal_id')->constrained('soal')->onDelete('cascade');
+            $table->foreignId('soal_id')->constrained('bank_soal')->onDelete('cascade');
 
             $table->text('jawaban_user')->nullable(); // Jawaban dari pengguna (bisa teks untuk esai, atau JSON untuk pilihan ganda/menjodohkan)
             $table->boolean('is_benar')->nullable(); // Status kebenaran jawaban, bisa null jika belum dinilai (misal esai)
