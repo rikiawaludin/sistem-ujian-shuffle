@@ -37,7 +37,10 @@ Route::middleware('auth.token')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
     Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
-    Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah'); // <--- UBAH DI SINI
+    Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');
+    Route::post('/sync/dosen', [SyncController::class, 'SyncDosen'])->name('admin.sync.dosen'); 
+    Route::post('/sync/prodi', [SyncController::class, 'SyncProdi'])->name('admin.sync.prodi'); 
+    Route::post('/sync/admin', [SyncController::class, 'SyncAdmin'])->name('admin.sync.admin'); 
 
     Route::prefix('ujian')->name('ujian.')->group(function () {
         Route::get('/mata-kuliah/{id_mata_kuliah}', [ListUjianController::class, 'daftarPerMataKuliah'])->name('daftarPerMataKuliah');

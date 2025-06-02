@@ -232,8 +232,6 @@ export default function DashboardAdminPage({
     const userColumns = [
         { field: 'id', headerName: 'ID Internal' },
         { field: 'external_id', headerName: 'ID Eksternal' },
-        { field: 'name', headerName: 'Nama' },
-        { field: 'email', headerName: 'Email' },
         { field: 'created_at', headerName: 'Ditambahkan', valueGetter: (params) => params.row.created_at ? new Date(params.row.created_at).toLocaleString() : '' },
         { field: 'updated_at', headerName: 'Diperbarui', valueGetter: (params) => params.row.updated_at ? new Date(params.row.updated_at).toLocaleString() : '' },
     ];

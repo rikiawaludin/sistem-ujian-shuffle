@@ -15,6 +15,8 @@ class AdminController extends Controller
     // Ambil data untuk ditampilkan di tabel
     $mahasiswaData = User::where('is_mahasiswa', true)->orderBy('created_at', 'desc')->get();
     $dosenData = User::where('is_dosen', true)->orderBy('created_at', 'desc')->get();
+    $prodiData = User::where('is_prodi', true)->orderBy('created_at', 'desc')->get();
+    $adminData = User::where('is_admin', true)->orderBy('created_at', 'desc')->get(); 
     // ... data untuk prodi dan admin
 
     $mataKuliahData = MataKuliah::orderBy('created_at', 'desc')->get();
@@ -34,7 +36,8 @@ class AdminController extends Controller
     return Inertia::render('Admin/DashboardAdminPage', [
         'mahasiswaData' => $mahasiswaData,
         'dosenData' => $dosenData,
-        // ... prodiData, adminData
+        'prodiData' => $prodiData,
+        'adminData' => $adminData, 
         'mataKuliahData' => $mataKuliahData,
         'migrationHistoryUsers' => $migrationHistoryUsers,
         'migrationHistoryMataKuliah' => $migrationHistoryMataKuliah,
