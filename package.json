@@ -28,6 +28,7 @@
         "@mui/icons-material": "^7.1.0",
         "@mui/material": "^7.1.0",
         "@mui/x-data-grid": "^8.5.0",
+        "@tanstack/react-table": "^8.21.3",
         "flowbite": "^3.1.2",
         "swiper": "^11.2.7"
     }

@@ -7,25 +7,26 @@ use Illuminate\Http\Request;
 use App\Jobs\SyncMahasiswaJob;
 use App\Jobs\SyncMataKuliahJob;
 use App\Jobs\SyncDosenJob;
-use App\Jobs\SyncProdiJob; 
+use App\Jobs\SyncProdiJob;
 use App\Jobs\SyncAdminJob;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Session; // Pastikan Session di-import jika menggunakan Session::get() secara global
+// Session facade tidak perlu di-import di sini jika Anda menggunakan $request->session()
 
 class SyncController extends Controller
 {
+    /**
+     * Mengambil token otentikasi pengguna dari request.
+     * Sesuaikan logika ini berdasarkan bagaimana token Anda disimpan/diakses.
+     */
     private function getUserAuthToken(Request $request): ?string
     {
-        // Coba ambil token dari sesi dengan kunci 'token' seperti di MyWebService
-        $sessionToken = $request->session()->get('token'); // Cara standar mengambil dari sesi dalam controller
-
+        $sessionToken = $request->session()->get('token'); // Kunci sesi utama
         if ($sessionToken) {
             Log::info('SyncController::getUserAuthToken: Token ditemukan di sesi dengan kunci "token".');
             return $sessionToken;
         }
 
-        // Sebagai fallback, cek bearer token jika ada (sesuai implementasi Anda sebelumnya)
-        $bearerToken = $request->bearerToken();
+        $bearerToken = $request->bearerToken(); // Fallback ke Bearer token jika ada
         if ($bearerToken) {
             Log::info('SyncController::getUserAuthToken: Token ditemukan sebagai Bearer token di request.');
             return $bearerToken;
@@ -35,80 +36,81 @@ class SyncController extends Controller
         return null;
     }
 
+    /**
+     * Menangani error jika token tidak ditemukan dan wajib.
+     * Mengembalikan respons JSON agar bisa ditangkap oleh onError di frontend.
+     */
+    private function handleMissingTokenError(string $syncType)
+    {
+        $errorMessage = "Gagal memulai sinkronisasi {$syncType}: Token otentikasi pengguna tidak tersedia atau tidak valid.";
+        Log::error($errorMessage . ' (dari SyncController)');
+        // Mengembalikan respons JSON dengan status error agar Inertia bisa menanganinya di onError
+        return response()->json(['message' => $errorMessage], 401); // 401 Unauthorized
+    }
+
     public function syncMahasiswa(Request $request)
     {
         $userToken = $this->getUserAuthToken($request);
 
+        // Asumsikan token selalu wajib untuk mahasiswa berdasarkan diskusi sebelumnya
         if (!$userToken) {
-            return back()->with('flash', [
-                'type' => 'error',
-                'message' => 'Gagal memulai sinkronisasi: Token otentikasi pengguna tidak tersedia di sesi.'
-            ]);
+            return $this->handleMissingTokenError('mahasiswa');
         }
 
         SyncMahasiswaJob::dispatch($userToken);
 
-        return back()->with('flash', [
-            'type' => 'info',
-            'message' => 'Proses sinkronisasi data mahasiswa telah dimulai di latar belakang.'
-        ]);
+        // Respon JSON untuk konfirmasi dispatch, bukan flash message untuk "telah dimulai"
+        // return response(null, 204);
     }
 
     public function syncMataKuliah(Request $request)
     {
         $userToken = $this->getUserAuthToken($request);
 
+        // Asumsikan token selalu wajib untuk mata kuliah berdasarkan diskusi sebelumnya
         if (!$userToken) {
-            return back()->with('flash', [
-                'type' => 'error',
-                'message' => 'Gagal memulai sinkronisasi: Token otentikasi pengguna tidak tersedia di sesi.'
-            ]);
+            return $this->handleMissingTokenError('mata kuliah');
         }
 
-        SyncMataKuliahJob::dispatch($userToken); // Teruskan token ke job
-
-        return back()->with('flash', [
-            'type' => 'info',
-            'message' => 'Proses sinkronisasi data mata kuliah telah dimulai di latar belakang.'
-        ]);
+        SyncMataKuliahJob::dispatch($userToken);
+        // return response(null, 204);
     }
 
     public function syncDosen(Request $request)
     {
-    $userToken = $this->getUserAuthToken($request); // Gunakan method yang sudah ada
+        $userToken = $this->getUserAuthToken($request);
 
-    if (!$userToken && env('EXTERNAL_API_REQUIRES_TOKEN', true)) { // Tambah check jika token wajib
-        return back()->with('flash', [
-            'type' => 'error',
-            'message' => 'Gagal memulai sinkronisasi dosen: Token otentikasi pengguna tidak tersedia.'
-        ]);
-    }
+        // Anda menambahkan check env di sini, ini bagus jika beberapa endpoint mungkin tidak butuh token
+        // Sesuaikan 'EXTERNAL_API_DOSEN_REQUIRES_TOKEN' dengan nama variabel .env Anda jika berbeda
+        if (!$userToken && env('EXTERNAL_API_DOSEN_REQUIRES_TOKEN', true)) {
+            return $this->handleMissingTokenError('dosen');
+        }
 
-        SyncDosenJob::dispatch($userToken); // Teruskan token
-
-        return back()->with('flash', [
-            'type' => 'info',
-            'message' => 'Proses sinkronisasi data dosen telah dimulai di latar belakang.'
-        ]);
+        // Jika token tidak wajib dan tidak ada, dispatch tanpa token (atau dengan null)
+        // Job SyncDosenJob sudah diatur untuk handle $token = null di constructornya
+        SyncDosenJob::dispatch($userToken); // $userToken bisa null jika tidak wajib dan tidak ditemukan
+        // return response(null, 204);
     }
 
     public function syncProdi(Request $request)
     {
         $userToken = $this->getUserAuthToken($request);
+
         if (!$userToken && env('EXTERNAL_API_PRODI_REQUIRES_TOKEN', true)) {
-            return back()->with('flash', [ /* ... error token ... */ ]);
+            return $this->handleMissingTokenError('prodi');
         }
         SyncProdiJob::dispatch($userToken);
-        return back()->with('flash', ['type' => 'info', 'message' => 'Sinkronisasi data prodi telah dimulai.']);
+        // return response(null, 204);
     }
 
     public function syncAdmin(Request $request)
     {
         $userToken = $this->getUserAuthToken($request);
+
         if (!$userToken && env('EXTERNAL_API_ADMIN_REQUIRES_TOKEN', true)) {
-            return back()->with('flash', [ /* ... error token ... */ ]);
+            return $this->handleMissingTokenError('admin');
         }
         SyncAdminJob::dispatch($userToken);
-        return back()->with('flash', ['type' => 'info', 'message' => 'Sinkronisasi data admin telah dimulai.']);
+        // return response(null, 204);
     }
 }
