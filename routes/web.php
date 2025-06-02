@@ -31,7 +31,7 @@ Route::controller(AuthController::class)
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth.token'])->name('dashboard');
 
-Route::middleware('auth.token')->group(function () {
+Route::middleware('auth.token', 'auth.admin')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
