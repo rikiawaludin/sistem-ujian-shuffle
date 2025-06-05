@@ -47,8 +47,9 @@ export default function Dashboard() {
   const fetchKelasKuliahMahasiswa = useCallback(async () => {
     // ... (logika fetchKelasKuliahMahasiswa menggunakan axios seperti di respons sebelumnya,
     //      pastikan URL dan header benar. Fungsi ini akan mengisi setKelasKuliahMahasiswaApi) ...
-    if (!apiBaseUrl || !sessionToken) {
-      setErrorKelasKuliah("Konfigurasi API atau token tidak tersedia untuk mengambil data kelas kuliah.");
+    if (!apiBaseUrl || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
+      console.warn('Dashboard.jsx: Menghentikan fetchKelasKuliahMahasiswa karena sessionToken hilang atau tidak valid.', { apiBaseUrl, sessionToken });
+      setErrorKelasKuliah("Token sesi tidak valid atau tidak ditemukan. Silakan coba login kembali.");
       setIsLoadingKelasKuliah(false); return;
     }
     setIsLoadingKelasKuliah(true); setErrorKelasKuliah(null);
@@ -56,28 +57,34 @@ export default function Dashboard() {
     if (apiBaseUrl.endsWith('/')) cleanApiBaseUrl = apiBaseUrl.slice(0, -1);
     const apiUrl = `${cleanApiBaseUrl}/ujian/mata-kuliah/mahasiswa`;
     console.log(`Dashboard.jsx: Fetching (axios) from API URL: ${apiUrl}`);
+    // debug
+    console.log(`Dashboard.jsx: Mempersiapkan untuk mengambil dari URL API: ${apiUrl}`);
+    console.log(`Dashboard.jsx: Tipe sessionToken: ${typeof sessionToken}`);
+    console.log(`Dashboard.jsx: Nilai sessionToken: "${sessionToken}"`);
+    console.log(`Dashboard.jsx: Header Authorization akan menjadi: "Bearer ${sessionToken}"`);
+
     try {
       const response = await axios.get(apiUrl, {
         headers: { 'Authorization': `Bearer ${sessionToken}`, 'Accept': 'application/json' }
       });
       setKelasKuliahMahasiswaApi(response.data.data?.kelas_kuliah || []);
-    } catch (error) { /* ... error handling seperti sebelumnya ... */ 
-        console.error("Error fetching kelas kuliah mahasiswa:", error);
-        let errorMessage = "Gagal mengambil data kelas kuliah.";
-        if (error.response && error.response.data && error.response.data.message) {
-            errorMessage = error.response.data.message;
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        setErrorKelasKuliah(errorMessage);
-        setKelasKuliahMahasiswaApi([]);
+    } catch (error) { /* ... error handling seperti sebelumnya ... */
+      console.error("Error fetching kelas kuliah mahasiswa:", error);
+      let errorMessage = "Gagal mengambil data kelas kuliah.";
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setErrorKelasKuliah(errorMessage);
+      setKelasKuliahMahasiswaApi([]);
     } finally { setIsLoadingKelasKuliah(false); }
   }, [apiBaseUrl, sessionToken]);
 
   useEffect(() => {
     fetchKelasKuliahMahasiswa();
   }, [fetchKelasKuliahMahasiswa]);
-  
+
   const handleSemesterChange = (value) => {
     router.get(route('dashboard'), {
       semester: value,
@@ -91,7 +98,7 @@ export default function Dashboard() {
 
   const mataKuliahTampilList = useMemo(() => {
     if (!kelasKuliahMahasiswaApi || kelasKuliahMahasiswaApi.length === 0) return [];
-    
+
     return kelasKuliahMahasiswaApi
       .filter(kelas => kelas && kelas.matakuliah && kelas.matakuliah.mk_id)
       .map(kelas => {
@@ -103,36 +110,36 @@ export default function Dashboard() {
         const mkLokal = daftarMataKuliahLokal ? daftarMataKuliahLokal[matkulApi.mk_id] : null;
 
         if (!mkLokal) {
-            // Mata kuliah dari API tidak ada di DB lokal.
-            // Anda bisa memilih untuk tidak menampilkannya atau tampilkan dengan data minimal dari API.
-            // Untuk contoh ini, kita tetap tampilkan dengan data API, tapi beri log.
-            console.warn(`Mata kuliah dari API (ID: ${matkulApi.mk_id}, Nama: ${matkulApi.nm_mk}) tidak ditemukan di data lokal. Ditampilkan dengan data API saja.`);
+          // Mata kuliah dari API tidak ada di DB lokal.
+          // Anda bisa memilih untuk tidak menampilkannya atau tampilkan dengan data minimal dari API.
+          // Untuk contoh ini, kita tetap tampilkan dengan data API, tapi beri log.
+          console.warn(`Mata kuliah dari API (ID: ${matkulApi.mk_id}, Nama: ${matkulApi.nm_mk}) tidak ditemukan di data lokal. Ditampilkan dengan data API saja.`);
         }
 
         let dosenNamaDisplay = "Dosen akan segera ditentukan";
         if (dosenApi.nm_dosen && String(dosenApi.nm_dosen).trim() !== "") {
-            dosenNamaDisplay = `${String(dosenApi.nm_dosen).trim()}${dosenApi.gelar ? ', ' + String(dosenApi.gelar).trim() : ''}`;
+          dosenNamaDisplay = `${String(dosenApi.nm_dosen).trim()}${dosenApi.gelar ? ', ' + String(dosenApi.gelar).trim() : ''}`;
         } else if (mkLokal && mkLokal.dosen_lokal && mkLokal.dosen_lokal.nama) {
-            dosenNamaDisplay = mkLokal.dosen_lokal.nama;
+          dosenNamaDisplay = mkLokal.dosen_lokal.nama;
         }
-        
+
         return {
-            id: matkulApi.mk_id,
-            external_id_kelas: dataKelasApi.kelas_kuliah_id,
-            nama: matkulApi.nm_mk, // Prioritaskan nama dari API untuk mata kuliah yang diikuti
-            kode_mk: matkulApi.kd_mk,
-            dosen: { 
-                nama: dosenNamaDisplay, 
-                external_id: dosenApi.dosen_id 
-            },
-            deskripsi_singkat: mkLokal?.deskripsi_lokal || matkulApi.nm_mk,
-            img: mkLokal?.img_lokal || '/images/placeholder-matakuliah.png',
-            jumlah_ujian_tersedia: mkLokal?.jumlah_ujian_tersedia_lokal || 0, // Ambil dari data lokal
-            semester: matkulApi.semester,
-            tahun_ajaran_kelas: dataKelasApi.tahun_id,
-            // Tambahkan field lain yang dibutuhkan RingkasanMataKuliahCard
-            // Misalnya, jika Anda butuh ID lokal MK untuk link ujian:
-            id_matakuliah_lokal: mkLokal?.id_lokal || null 
+          id: matkulApi.mk_id,
+          external_id_kelas: dataKelasApi.kelas_kuliah_id,
+          nama: matkulApi.nm_mk, // Prioritaskan nama dari API untuk mata kuliah yang diikuti
+          kode_mk: matkulApi.kd_mk,
+          dosen: {
+            nama: dosenNamaDisplay,
+            external_id: dosenApi.dosen_id
+          },
+          deskripsi_singkat: mkLokal?.deskripsi_lokal || matkulApi.nm_mk,
+          img: mkLokal?.img_lokal || '/images/placeholder-matakuliah.png',
+          jumlah_ujian_tersedia: mkLokal?.jumlah_ujian_tersedia_lokal || 0, // Ambil dari data lokal
+          semester: matkulApi.semester,
+          tahun_ajaran_kelas: dataKelasApi.tahun_id,
+          // Tambahkan field lain yang dibutuhkan RingkasanMataKuliahCard
+          // Misalnya, jika Anda butuh ID lokal MK untuk link ujian:
+          id_matakuliah_lokal: mkLokal?.id_lokal || null
         };
       })
       // Filter berdasarkan semester yang dipilih di UI
@@ -147,7 +154,7 @@ export default function Dashboard() {
     <AuthenticatedLayout user={auth.user} title="Dashboard Ujian">
       {/* ... (Head, Alert, Top Content, Panel Ujian Atas, <hr> tetap sama) ... */}
       {/* ... (Pastikan semua impor komponen panel sudah benar) ... */}
-      
+
       <div id="mata-kuliah-section" className="mb-12 px-4 md:px-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <Typography variant="h4" color="blue-gray" className="font-semibold">
@@ -155,15 +162,15 @@ export default function Dashboard() {
           </Typography>
           <div className="w-full sm:w-auto sm:min-w-[200px] md:min-w-[250px]">
             <Select
-                label="Pilih Semester"
-                value={selectedSemester} // Pastikan selectedSemester adalah string
-                onChange={(value) => handleSemesterChange(value)} // Material Tailwind Select langsung memberi value
-                animate={{ mount: { y: 0 }, unmount: { y: 25 } }}
+              label="Pilih Semester"
+              value={selectedSemester} // Pastikan selectedSemester adalah string
+              onChange={(value) => handleSemesterChange(value)} // Material Tailwind Select langsung memberi value
+              animate={{ mount: { y: 0 }, unmount: { y: 25 } }}
             >
-                <Option value="semua">Semua Semester</Option>
-                {semesterOptions.map(smt => (
-                    <Option key={`smt-opt-${smt}`} value={String(smt)}>Semester {smt}</Option>
-                ))}
+              <Option value="semua">Semua Semester</Option>
+              {semesterOptions.map(smt => (
+                <Option key={`smt-opt-${smt}`} value={String(smt)}>Semester {smt}</Option>
+              ))}
             </Select>
           </div>
         </div>
