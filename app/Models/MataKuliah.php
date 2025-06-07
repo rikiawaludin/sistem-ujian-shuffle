@@ -9,37 +9,26 @@ class MataKuliah extends Model
 {
     use HasFactory;
 
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'mata_kuliah';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'nama',
         'kode',
         'external_id',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    // Relasi contoh:
-    // public function ujian()
-    // {
-    //     return $this->hasMany(Ujian::class);
-    // }
+    /**
+     * Definisikan relasi ke model Ujian.
+     * Satu Mata Kuliah bisa memiliki banyak Ujian.
+     */
+    public function ujian()
+    {
+        // Relasi ini dibutuhkan untuk withCount('ujian') di controller lain jika perlu
+        return $this->hasMany(Ujian::class, 'mata_kuliah_id');
+    }
 }

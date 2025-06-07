@@ -1,12 +1,14 @@
 import React from 'react';
 import { Card, CardHeader, CardBody, CardFooter, Typography, Button } from "@material-tailwind/react";
 import { Link } from '@inertiajs/react';
-import { DocumentTextIcon, UserGroupIcon, AcademicCapIcon, TagIcon } from "@heroicons/react/24/solid"; // Tambahkan AcademicCapIcon & TagIcon
+import { DocumentTextIcon, UserGroupIcon, AcademicCapIcon, TagIcon, LockClosedIcon } from "@heroicons/react/24/solid";
 
 export default function RingkasanMataKuliahCard({ mataKuliah }) {
   const dosenDefault = {
     nama: mataKuliah.dosen?.nama || "Belum ada dosen",
   };
+
+  const hasLocalData = !!mataKuliah.id_matakuliah_lokal;
 
   return (
     <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 border border-blue-gray-50 overflow-hidden flex flex-col h-full">
@@ -14,10 +16,10 @@ export default function RingkasanMataKuliahCard({ mataKuliah }) {
         floated={false}
         shadow={false}
         color="transparent"
-        className="m-0 rounded-none h-40 sm:h-48" // Sesuaikan tinggi gambar
+        className="m-0 rounded-none h-40 sm:h-48"
       >
         <img
-          src={mataKuliah.img || "/images/placeholder-matakuliah.png"}
+          src={mataKuliah.img || "/public/images/placeholder-matakuliah.jpg"}
           alt={mataKuliah.nama || "Gambar Mata Kuliah"}
           className="h-full w-full object-cover"
         />
@@ -30,7 +32,6 @@ export default function RingkasanMataKuliahCard({ mataKuliah }) {
           {mataKuliah.nama}
         </Typography>
         
-        {/* Tampilkan Semester dan Tahun Ajaran */}
         {(mataKuliah.semester || mataKuliah.tahun_ajaran) && (
             <div className="flex items-center text-xs text-blue-gray-600 mb-2">
                 <TagIcon className="h-3.5 w-3.5 mr-1 opacity-70" />
@@ -55,20 +56,35 @@ export default function RingkasanMataKuliahCard({ mataKuliah }) {
         </div>
       </CardBody>
       <CardFooter className="pt-2 p-4">
-        <Link href={route('ujian.daftarPerMataKuliah', { id_mata_kuliah: mataKuliah.id })}>
-          <Button 
-            size="sm" 
-            variant="gradient" 
-            color="blue" 
-            fullWidth
-            className="flex items-center justify-center gap-2"
-          >
-            Lihat Detail Ujian
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-            </svg>
-          </Button>
-        </Link>
+        {hasLocalData ? (
+            <Link href={route('ujian.daftarPerMataKuliah', { id_mata_kuliah: mataKuliah.id_matakuliah_lokal })}>
+              <Button 
+                size="sm" 
+                variant="gradient" 
+                color="blue" 
+                fullWidth
+                className="flex items-center justify-center gap-2"
+              >
+                Lihat Detail Ujian
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </Button>
+            </Link>
+        ) : (
+            <Button 
+              size="sm" 
+              variant="outlined" 
+              color="blue-gray" 
+              fullWidth
+              disabled
+              className="flex items-center justify-center gap-2"
+              title="Data mata kuliah ini belum tersedia di sistem ujian"
+            >
+              <LockClosedIcon className="w-4 h-4" />
+              Detail Tidak Tersedia
+            </Button>
+        )}
       </CardFooter>
     </Card>
   );

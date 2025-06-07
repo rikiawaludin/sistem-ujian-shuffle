@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\MataKuliah;
-use App\Models\Ujian;
 use App\Models\PengerjaanUjian;
-use App\Models\Soal; // diperlukan untuk casting opsi di detail hasil
-use Illuminate\Support\Facades\Auth; // Import Auth facade
-use Carbon\Carbon; // Import Carbon untuk format tanggal
+use App\Models\BankSoal;
+use App\Models\Ujian;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class ListUjianController extends Controller
 {
@@ -18,77 +18,75 @@ class ListUjianController extends Controller
      */
     public function daftarPerMataKuliah($id_mata_kuliah)
     {
-        $mataKuliah = MataKuliah::with(['dosen'])->findOrFail($id_mata_kuliah);
+        $mataKuliah = MataKuliah::findOrFail($id_mata_kuliah);
 
-        $daftarUjianFiltered = Ujian::where('mata_kuliah_id', $id_mata_kuliah)
-            // ->where('status_publikasi', 'terbit') // Mungkin Anda hanya ingin menampilkan ujian yang sudah terbit
-            ->select(['id', 'judul_ujian', 'deskripsi', 'durasi', 'kkm', 'tanggal_selesai', 'status_publikasi'])
-            ->get()
-            ->map(function($ujianItem) { // Ganti nama variabel agar tidak konflik
-                $pengerjaanTerakhir = null;
-                if (Auth::check()) {
-                    $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujianItem->id)
-                                            ->where('user_id', Auth::id())
-                                            ->orderBy('created_at', 'desc')
-                                            ->first();
+        // Ambil semua ujian terkait dengan mata kuliah, hitung soalnya dengan efisien
+        $ujianTersedia = Ujian::where('mata_kuliah_id', $id_mata_kuliah)
+                            ->where('status_publikasi', 'published') // Hanya tampilkan yang sudah dipublikasi
+                            ->withCount('soal') // Efisien, menghasilkan 'soal_count'
+                            ->get();
+
+        $now = Carbon::now();
+
+        // Proses setiap ujian untuk menentukan statusnya bagi user saat ini
+        $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now) {
+            
+            // Cari pengerjaan terakhir oleh user untuk ujian ini
+            $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujian->id)
+                                    ->where('user_id', Auth::id())
+                                    ->latest('waktu_mulai') // Ambil yang paling baru
+                                    ->first();
+
+            $statusUjian = "Tidak Tersedia";
+
+            // Logika penentuan status yang lebih akurat
+            if ($now->between($ujian->tanggal_mulai, $ujian->tanggal_selesai)) {
+                if (!$pengerjaanTerakhir) {
+                    $statusUjian = "Belum Dikerjakan";
+                } elseif ($pengerjaanTerakhir->status_pengerjaan === 'sedang_dikerjakan') {
+                    $statusUjian = "Sedang Dikerjakan";
+                } elseif ($pengerjaanTerakhir->status_pengerjaan === 'selesai') {
+                    $statusUjian = "Selesai";
                 }
-
-                $statusUjian = 'Belum Dikerjakan';
-                if ($pengerjaanTerakhir) {
-                    if ($pengerjaanTerakhir->status_pengerjaan === 'selesai') {
-                        $statusUjian = 'Selesai';
-                    } elseif ($pengerjaanTerakhir->status_pengerjaan === 'sedang_dikerjakan') {
-                        // Logika untuk 'Sedang Dikerjakan' mungkin perlu pemeriksaan waktu tersisa
-                        // Untuk saat ini, kita bisa tandai saja
-                        $statusUjian = 'Sedang Dikerjakan';
-                    }
-                } elseif ($ujianItem->status_publikasi !== 'terbit') {
-                    $statusUjian = 'Tidak Tersedia'; // Atau 'Segera Hadir', 'Ditutup' dll.
+            } elseif ($now->lt($ujian->tanggal_mulai)) {
+                $statusUjian = "Akan Datang";
+            } elseif ($now->gt($ujian->tanggal_selesai)) {
+                if ($pengerjaanTerakhir && $pengerjaanTerakhir->status_pengerjaan === 'selesai') {
+                    $statusUjian = "Selesai";
+                } else {
+                    $statusUjian = "Waktu Habis";
                 }
-
-
-                return [
-                    'id' => $ujianItem->id,
-                    // 'mata_kuliah_id' => $ujianItem->mata_kuliah_id, // Tidak perlu jika sudah di scope mata kuliah
-                    'nama' => $ujianItem->judul_ujian,
-                    'deskripsi' => $ujianItem->deskripsi,
-                    'durasi' => $ujianItem->durasi . " Menit",
-                    'jumlahSoal' => $ujianItem->soal()->count(), // Relasi 'soal' di model Ujian
-                    'batasWaktuPengerjaan' => $ujianItem->tanggal_selesai ? Carbon::parse($ujianItem->tanggal_selesai)->format('d F Y, H:i') : 'Fleksibel',
-                    'status' => $statusUjian,
-                    'kkm' => $ujianItem->kkm,
-                    'id_pengerjaan_terakhir' => $pengerjaanTerakhir->id ?? null,
-                    'skor' => $pengerjaanTerakhir->skor_total ?? null,
-                ];
-            });
-
-        $dosenNama = 'Dosen Belum Ditugaskan';
-        if ($mataKuliah->dosen) {
-            $dosenNama = $mataKuliah->dosen->name;
-        }
-        $imageUrl = $mataKuliah->icon_url ? asset('storage/' . trim($mataKuliah->icon_url, '/')) : '/images/placeholder-matakuliah.png';
+            }
+            
+            return [
+                'id' => $ujian->id,
+                'nama' => $ujian->judul_ujian,
+                'deskripsi' => $ujian->deskripsi,
+                'durasi' => $ujian->durasi . " Menit",
+                'jumlahSoal' => $ujian->soal_count, // Hasil dari withCount('soal')
+                'kkm' => $ujian->kkm,
+                'batasWaktuPengerjaan' => $ujian->tanggal_selesai ? Carbon::parse($ujian->tanggal_selesai)->format('d F Y, H:i') : 'Fleksibel',
+                'status' => $statusUjian,
+                'skor' => $pengerjaanTerakhir->skor_total ?? null,
+                'id_pengerjaan_terakhir' => $pengerjaanTerakhir->id ?? null,
+            ];
+        });
 
         return Inertia::render('Ujian/DaftarUjianPage', [
-            'mataKuliah' => (object)[ // Kirim sebagai objek jika frontend mengharapkannya
+            'mataKuliah' => [
                 'id' => $mataKuliah->id,
-                'nama' => $mataKuliah->nama_mata_kuliah,
-                'dosen' => ['nama' => $dosenNama],
-                'deskripsi_singkat' => $mataKuliah->deskripsi,
-                'img' => $imageUrl,
+                'nama' => $mataKuliah->nama, // Pastikan model MataKuliah menggunakan 'nama'
             ],
-            'daftarUjian' => $daftarUjianFiltered
+            'daftarUjian' => $daftarUjian
         ]);
     }
 
     /**
      * Menampilkan halaman pengerjaan ujian.
-     * Frontend akan mengambil soal via API.
      */
     public function kerjakanUjian($id_ujian)
     {
-        // Hanya perlu memastikan ujian ada dan pengguna berhak mengakses (jika ada logika tambahan)
         $ujian = Ujian::select('id', 'judul_ujian')->findOrFail((int)$id_ujian);
-        // Anda bisa menambahkan pengecekan apakah ujian sudah/boleh dimulai oleh user ini
         return Inertia::render('Ujian/PengerjaanUjianPage', ['idUjianAktif' => $ujian->id]);
     }
 
@@ -97,12 +95,12 @@ class ListUjianController extends Controller
      */
     public function konfirmasiSelesaiUjian($id_ujian)
     {
-        $ujian = Ujian::with('mataKuliah:id,nama_mata_kuliah') // Hanya ambil kolom yang perlu dari mataKuliah
+        $ujian = Ujian::with('mataKuliah:id,nama') // Menggunakan 'nama'
                     ->select('id', 'judul_ujian', 'mata_kuliah_id')
                     ->findOrFail((int)$id_ujian);
         return Inertia::render('Ujian/KonfirmasiSelesaiUjianPage', [
             'namaUjian' => $ujian->judul_ujian,
-            'namaMataKuliah' => $ujian->mataKuliah->nama_mata_kuliah ?? 'Mata Kuliah Tidak Diketahui'
+            'namaMataKuliah' => $ujian->mataKuliah->nama ?? 'Mata Kuliah Tidak Diketahui'
         ]);
     }
 
@@ -112,10 +110,10 @@ class ListUjianController extends Controller
     public function detailHasilUjian($id_attempt)
     {
         $attempt = PengerjaanUjian::with([
-            'ujian:id,judul_ujian,kkm,mata_kuliah_id,durasi', // Ambil durasi juga
-            'ujian.mataKuliah:id,nama_mata_kuliah',
-            'ujian.soal', // Relasi untuk mendapatkan semua soal di ujian tersebut
-            'detailJawaban.soal' // Relasi untuk mendapatkan detail soal dari jawaban peserta
+            'ujian:id,judul_ujian,kkm,mata_kuliah_id,durasi',
+            'ujian.mataKuliah:id,nama', // Menggunakan 'nama'
+            'ujian.soal',
+            'detailJawaban.soal'
         ])
         ->where('user_id', Auth::id())
         ->findOrFail((int)$id_attempt);
@@ -136,44 +134,20 @@ class ListUjianController extends Controller
 
         $detailSoalJawaban = collect($ujianDetail->soal)->map(function($soalMasterUjian, $index) use ($jawabanUserPerSoalMap) {
             $jawabanDataAttempt = $jawabanUserPerSoalMap->get($soalMasterUjian->id);
-            
             $nomorUrut = $soalMasterUjian->pivot->nomor_urut_di_ujian ?? ($index + 1);
-
-            // $soalMasterUjian->opsi_jawaban sudah di-cast ke array oleh model Soal
             $opsiJawabanFinal = $soalMasterUjian->opsi_jawaban; 
-            
-            // $soalMasterUjian->kunci_jawaban sudah di-cast oleh model Soal
-            // Normalisasi kunci jawaban untuk PG/BS menjadi string tunggal jika memungkinkan
             $kunciJawabanFinal = $soalMasterUjian->kunci_jawaban;
+            
             if (($soalMasterUjian->tipe_soal === 'pilihan_ganda' || $soalMasterUjian->tipe_soal === 'benar_salah') && is_array($kunciJawabanFinal) && count($kunciJawabanFinal) === 1) {
                 $firstKey = $kunciJawabanFinal[0];
-                if (is_object($firstKey) && isset($firstKey->id)) {
-                    $kunciJawabanFinal = (string)$firstKey->id;
-                } elseif (is_object($firstKey) && isset($firstKey->teks)) {
-                    $kunciJawabanFinal = (string)$firstKey->teks;
-                } elseif (is_string($firstKey)) {
-                     $kunciJawabanFinal = $firstKey;
-                }
-            } elseif (is_object($kunciJawabanFinal) && isset($kunciJawabanFinal->id)){ // Jika objek tunggal {id: "X"}
-                $kunciJawabanFinal = (string)$kunciJawabanFinal->id;
+                $kunciJawabanFinal = is_object($firstKey) && isset($firstKey->id) ? (string)$firstKey->id : $firstKey;
             }
 
-            
-            // Untuk esai, biarkan kunciJawaban apa adanya (biasanya string deskriptif)
-
-            // Normalisasi jawabanPengguna untuk PG/BS menjadi string tunggal jika dari array
-            $jawabanPenggunaFinal = $jawabanDataAttempt->jawaban_user ?? ($soalMasterUjian->tipe_soal === 'esai' ? '' : null);
-            // $jawabanDataAttempt->jawaban_user sudah di-cast oleh model JawabanPesertaDetail
+            $jawabanPenggunaFinal = $jawabanDataAttempt->jawaban_user ?? null;
             if (($soalMasterUjian->tipe_soal === 'pilihan_ganda' || $soalMasterUjian->tipe_soal === 'benar_salah') && is_array($jawabanPenggunaFinal) && count($jawabanPenggunaFinal) === 1) {
                  $firstAnswer = $jawabanPenggunaFinal[0];
-                 // Jika jawaban pengguna disimpan sebagai array objek [{id:"A"}]
-                 if(is_object($firstAnswer) && isset($firstAnswer->id)){
-                    $jawabanPenggunaFinal = (string)$firstAnswer->id;
-                 } else if (is_string($firstAnswer)){
-                    $jawabanPenggunaFinal = $firstAnswer;
-                 }
+                 $jawabanPenggunaFinal = is_object($firstAnswer) && isset($firstAnswer->id) ? (string)$firstAnswer->id : $firstAnswer;
             }
-
 
             return [
                 'idSoal' => $soalMasterUjian->id,
@@ -188,23 +162,18 @@ class ListUjianController extends Controller
             ];
         })->sortBy('nomorSoal')->values()->all();
 
-        // ... (sisa perhitungan jumlah benar/salah/tidak dijawab tetap sama) ...
         $jumlahSoalDiUjian = count($detailSoalJawaban);
         $jumlahBenar = $attempt->detailJawaban->where('is_benar', true)->count();
         $jumlahSalah = $attempt->detailJawaban->filter(fn ($item) => $item->is_benar === false)->count();
-        $jumlahDijawab = $attempt->detailJawaban->filter(fn ($item) => $item->jawaban_user !== null && (is_string($item->jawaban_user) ? trim($item->jawaban_user) !== '' && trim($item->jawaban_user) !== 'null': true))->count();
+        $jumlahDijawab = $attempt->detailJawaban->filter(fn ($item) => $item->jawaban_user !== null)->count();
         $jumlahTidakDijawab = $jumlahSoalDiUjian - $jumlahDijawab;
-
 
         $hasilUjianData = [
             'idAttempt' => $attempt->id,
-            'namaMataKuliah' => $mataKuliahDetail->nama_mata_kuliah ?? 'N/A',
+            'namaMataKuliah' => $mataKuliahDetail->nama ?? 'N/A', // Menggunakan 'nama'
             'judulUjian' => $ujianDetail->judul_ujian ?? 'N/A',
-            'ujian' => [
-                'id' => $ujianDetail->id,
-                'mata_kuliah_id' => $ujianDetail->mata_kuliah_id,
-            ],
-            'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y, H:i') : ($attempt->created_at ? $attempt->created_at->format('d M Y, H:i') : 'N/A'),
+            'ujian' => [ 'id' => $ujianDetail->id, 'mata_kuliah_id' => $ujianDetail->mata_kuliah_id ],
+            'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y, H:i') : 'N/A',
             'skorTotal' => $attempt->skor_total,
             'kkm' => $kkmUjian,
             'statusKelulusan' => $statusKelulusan,
@@ -218,7 +187,6 @@ class ListUjianController extends Controller
         return Inertia::render('Ujian/DetailHasilUjianPage', ['hasilUjian' => $hasilUjianData]);
     }
 
-
     /**
      * Menampilkan halaman riwayat semua ujian pengguna.
      */
@@ -227,15 +195,15 @@ class ListUjianController extends Controller
         $semuaHistoriUjian = [];
         if (Auth::check()) {
             $pengerjaanUjian = PengerjaanUjian::where('user_id', Auth::id())
-                ->with(['ujian:id,judul_ujian,kkm,mata_kuliah_id', 'ujian.mataKuliah:id,nama_mata_kuliah'])
-                ->orderBy('waktu_selesai', 'desc') // Urutkan berdasarkan waktu selesai
-                ->orderBy('created_at', 'desc')   // Lalu berdasarkan waktu dibuat
+                ->with(['ujian:id,judul_ujian,kkm,mata_kuliah_id', 'ujian.mataKuliah:id,nama']) // Menggunakan 'nama'
+                ->orderBy('waktu_selesai', 'desc')
+                ->orderBy('created_at', 'desc')
                 ->get();
 
             $semuaHistoriUjian = $pengerjaanUjian->map(function ($attempt) {
                 $ujian = $attempt->ujian;
                 $mataKuliah = $ujian ? $ujian->mataKuliah : null;
-                $kkmUjian = $ujian ? ($ujian->kkm ?? 0) : 0;
+                $kkmUjian = $ujian->kkm ?? 0;
                 $statusKelulusan = "Belum Dinilai";
 
                 if (isset($attempt->skor_total)) {
@@ -245,8 +213,8 @@ class ListUjianController extends Controller
                 return [
                     'id_pengerjaan' => $attempt->id,
                     'namaUjian' => $ujian->judul_ujian ?? 'Ujian Tidak Ditemukan',
-                    'namaMataKuliah' => $mataKuliah->nama_mata_kuliah ?? 'Mata Kuliah Tidak Ditemukan',
-                    'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y') : ($attempt->created_at ? $attempt->created_at->format('d M Y') : 'N/A'),
+                    'namaMataKuliah' => $mataKuliah->nama ?? 'Mata Kuliah Tidak Ditemukan', // Menggunakan 'nama'
+                    'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y') : 'N/A',
                     'skor' => $attempt->skor_total,
                     'kkm' => $kkmUjian,
                     'statusKelulusan' => $statusKelulusan,

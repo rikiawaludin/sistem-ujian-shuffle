@@ -1,10 +1,8 @@
-// resources/js/Pages/Dashboard.jsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Typography, Card, Select, Option, Spinner, Alert } from "@material-tailwind/react";
 import { usePage, Head, router } from '@inertiajs/react';
 import axios from 'axios'; // Menggunakan axios
-import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 
 import PanelRiwayatUjian from '@/Components/DashboardPanels/PanelRiwayatUjian';
@@ -45,8 +43,6 @@ export default function Dashboard() {
   }, [filters]);
 
   const fetchKelasKuliahMahasiswa = useCallback(async () => {
-    // ... (logika fetchKelasKuliahMahasiswa menggunakan axios seperti di respons sebelumnya,
-    //      pastikan URL dan header benar. Fungsi ini akan mengisi setKelasKuliahMahasiswaApi) ...
     if (!apiBaseUrl || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
       console.warn('Dashboard.jsx: Menghentikan fetchKelasKuliahMahasiswa karena sessionToken hilang atau tidak valid.', { apiBaseUrl, sessionToken });
       setErrorKelasKuliah("Token sesi tidak valid atau tidak ditemukan. Silakan coba login kembali.");
@@ -57,18 +53,13 @@ export default function Dashboard() {
     if (apiBaseUrl.endsWith('/')) cleanApiBaseUrl = apiBaseUrl.slice(0, -1);
     const apiUrl = `${cleanApiBaseUrl}/ujian/mata-kuliah/mahasiswa`;
     console.log(`Dashboard.jsx: Fetching (axios) from API URL: ${apiUrl}`);
-    // debug
-    console.log(`Dashboard.jsx: Mempersiapkan untuk mengambil dari URL API: ${apiUrl}`);
-    console.log(`Dashboard.jsx: Tipe sessionToken: ${typeof sessionToken}`);
-    console.log(`Dashboard.jsx: Nilai sessionToken: "${sessionToken}"`);
-    console.log(`Dashboard.jsx: Header Authorization akan menjadi: "Bearer ${sessionToken}"`);
-
+    
     try {
       const response = await axios.get(apiUrl, {
         headers: { 'Authorization': `Bearer ${sessionToken}`, 'Accept': 'application/json' }
       });
       setKelasKuliahMahasiswaApi(response.data.data?.kelas_kuliah || []);
-    } catch (error) { /* ... error handling seperti sebelumnya ... */
+    } catch (error) {
       console.error("Error fetching kelas kuliah mahasiswa:", error);
       let errorMessage = "Gagal mengambil data kelas kuliah.";
       if (error.response && error.response.data && error.response.data.message) {
@@ -90,10 +81,6 @@ export default function Dashboard() {
       semester: value,
       tahun_ajaran: selectedTahunAjaran
     }, { preserveState: true, preserveScroll: true, replace: true });
-    // Catatan: Karena filter semester sekarang diterapkan di frontend pada `mataKuliahTampilList`,
-    // pemanggilan `router.get` di sini hanya untuk memperbarui URL dan prop `filters` jika
-    // Anda ingin state filter konsisten dengan URL. `fetchKelasKuliahMahasiswa` tidak perlu
-    // dipanggil ulang di sini kecuali API eksternal juga mendukung filter semester.
   };
 
   const mataKuliahTampilList = useMemo(() => {
@@ -103,46 +90,38 @@ export default function Dashboard() {
       .filter(kelas => kelas && kelas.matakuliah && kelas.matakuliah.mk_id)
       .map(kelas => {
         const matkulApi = kelas.matakuliah;
-        const dosenApi = kelas.dosen ?? {}; // Default ke objek kosong jika dosen null/undefined
+        const dosenApi = kelas.dosen ?? {};
         const dataKelasApi = kelas.data_kelas ?? {};
-
-        // Validasi/Enrich dengan data MK Lokal
         const mkLokal = daftarMataKuliahLokal ? daftarMataKuliahLokal[matkulApi.mk_id] : null;
 
         if (!mkLokal) {
-          // Mata kuliah dari API tidak ada di DB lokal.
-          // Anda bisa memilih untuk tidak menampilkannya atau tampilkan dengan data minimal dari API.
-          // Untuk contoh ini, kita tetap tampilkan dengan data API, tapi beri log.
           console.warn(`Mata kuliah dari API (ID: ${matkulApi.mk_id}, Nama: ${matkulApi.nm_mk}) tidak ditemukan di data lokal. Ditampilkan dengan data API saja.`);
         }
 
         let dosenNamaDisplay = "Dosen akan segera ditentukan";
         if (dosenApi.nm_dosen && String(dosenApi.nm_dosen).trim() !== "") {
-          dosenNamaDisplay = `${String(dosenApi.nm_dosen).trim()}${dosenApi.gelar ? ', ' + String(dosenApi.gelar).trim() : ''}`;
+            dosenNamaDisplay = `${String(dosenApi.nm_dosen).trim()}${dosenApi.gelar ? ', ' + String(dosenApi.gelar).trim() : ''}`;
         } else if (mkLokal && mkLokal.dosen_lokal && mkLokal.dosen_lokal.nama) {
-          dosenNamaDisplay = mkLokal.dosen_lokal.nama;
+            dosenNamaDisplay = mkLokal.dosen_lokal.nama;
         }
-
+        
         return {
-          id: matkulApi.mk_id,
-          external_id_kelas: dataKelasApi.kelas_kuliah_id,
-          nama: matkulApi.nm_mk, // Prioritaskan nama dari API untuk mata kuliah yang diikuti
-          kode_mk: matkulApi.kd_mk,
-          dosen: {
-            nama: dosenNamaDisplay,
-            external_id: dosenApi.dosen_id
-          },
-          deskripsi_singkat: mkLokal?.deskripsi_lokal || matkulApi.nm_mk,
-          img: mkLokal?.img_lokal || '/images/placeholder-matakuliah.png',
-          jumlah_ujian_tersedia: mkLokal?.jumlah_ujian_tersedia_lokal || 0, // Ambil dari data lokal
-          semester: matkulApi.semester,
-          tahun_ajaran_kelas: dataKelasApi.tahun_id,
-          // Tambahkan field lain yang dibutuhkan RingkasanMataKuliahCard
-          // Misalnya, jika Anda butuh ID lokal MK untuk link ujian:
-          id_matakuliah_lokal: mkLokal?.id_lokal || null
+            id: matkulApi.mk_id,
+            external_id_kelas: dataKelasApi.kelas_kuliah_id,
+            nama: matkulApi.nm_mk,
+            kode_mk: matkulApi.kd_mk,
+            dosen: { 
+                nama: dosenNamaDisplay, 
+                external_id: dosenApi.dosen_id 
+            },
+            deskripsi_singkat: mkLokal?.deskripsi_lokal || matkulApi.nm_mk,
+            img: mkLokal?.img_lokal || '/public/images/placeholder-matakuliah.jpg',
+            jumlah_ujian_tersedia: mkLokal?.jumlah_ujian_tersedia_lokal || 0,
+            semester: matkulApi.semester,
+            tahun_ajaran_kelas: dataKelasApi.tahun_id,
+            id_matakuliah_lokal: mkLokal?.id_lokal || null 
         };
       })
-      // Filter berdasarkan semester yang dipilih di UI
       .filter(mk => selectedSemester === 'semua' || String(mk.semester) === String(selectedSemester));
   }, [kelasKuliahMahasiswaApi, selectedSemester, daftarMataKuliahLokal]);
 
@@ -152,9 +131,28 @@ export default function Dashboard() {
 
   return (
     <AuthenticatedLayout user={auth.user} title="Dashboard Ujian">
-      {/* ... (Head, Alert, Top Content, Panel Ujian Atas, <hr> tetap sama) ... */}
-      {/* ... (Pastikan semua impor komponen panel sudah benar) ... */}
+      <Head title="Dashboard" />
+      
+      {/* Top Content: Greeting */}
+      <div className="mb-8 px-4 md:px-0">
+        <Typography variant="h3" color="blue-gray" className="font-bold">
+            Selamat Datang, {auth.user.name.split(' ')[0]}!
+        </Typography>
+        <Typography color="gray" className="mt-1 font-normal">
+            Berikut adalah ringkasan aktivitas ujian Anda.
+        </Typography>
+      </div>
 
+      {/* --- BAGIAN PANEL RINGKASAN --- */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-12 px-4 md:px-0">
+        <PanelRiwayatUjian />      {/* Kiri */}
+        <PanelUjianAktif />        {/* Tengah */}
+        <PanelUjianMendatang />    {/* Kanan */}
+      </div>
+
+      <hr className="my-10 border-blue-gray-100" />
+      
+      {/* --- BAGIAN MATA KULIAH --- */}
       <div id="mata-kuliah-section" className="mb-12 px-4 md:px-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <Typography variant="h4" color="blue-gray" className="font-semibold">
@@ -162,15 +160,15 @@ export default function Dashboard() {
           </Typography>
           <div className="w-full sm:w-auto sm:min-w-[200px] md:min-w-[250px]">
             <Select
-              label="Pilih Semester"
-              value={selectedSemester} // Pastikan selectedSemester adalah string
-              onChange={(value) => handleSemesterChange(value)} // Material Tailwind Select langsung memberi value
-              animate={{ mount: { y: 0 }, unmount: { y: 25 } }}
+                label="Pilih Semester"
+                value={selectedSemester}
+                onChange={(value) => handleSemesterChange(value)}
+                animate={{ mount: { y: 0 }, unmount: { y: 25 } }}
             >
-              <Option value="semua">Semua Semester</Option>
-              {semesterOptions.map(smt => (
-                <Option key={`smt-opt-${smt}`} value={String(smt)}>Semester {smt}</Option>
-              ))}
+                <Option value="semua">Semua Semester</Option>
+                {semesterOptions.map(smt => (
+                    <Option key={`smt-opt-${smt}`} value={String(smt)}>Semester {smt}</Option>
+                ))}
             </Select>
           </div>
         </div>
@@ -186,7 +184,6 @@ export default function Dashboard() {
         ) : mataKuliahTampilList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {mataKuliahTampilList.map((mk) => (
-              // Gunakan ID yang paling unik sebagai key, misalnya external_id_kelas
               <RingkasanMataKuliahCard key={mk.external_id_kelas || mk.id} mataKuliah={mk} />
             ))}
           </div>
@@ -199,7 +196,30 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ... (Bagian Histori Ujian tetap sama) ... */}
+      {/* --- BAGIAN HISTORI UJIAN --- */}
+      <div id="histori-ujian-section" className="mb-12 px-4 md:px-0">
+        <Typography variant="h4" color="blue-gray" className="font-semibold mb-6">
+            Riwayat Ujian Anda
+        </Typography>
+        
+        {historiUjianList.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {historiUjianList.map((histori) => (
+              <HistoriUjianRingkasanCard key={histori.id_pengerjaan} histori={histori} />
+            ))}
+          </div>
+        ) : (
+          // Hanya tampilkan pesan jika tidak ada histori, dan mata kuliah sudah selesai loading (untuk menghindari pesan ganda)
+          !isLoadingKelasKuliah && (
+            <Card className="p-8 text-center shadow-md border border-blue-gray-50">
+                <Typography color="blue-gray" className="opacity-80">
+                    Anda belum memiliki riwayat pengerjaan ujian.
+                </Typography>
+            </Card>
+          )
+        )}
+      </div>
+
     </AuthenticatedLayout>
   );
 }

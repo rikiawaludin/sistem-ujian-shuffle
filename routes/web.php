@@ -28,20 +28,14 @@ Route::controller(AuthController::class)
         Route::get('/roles', 'changeUserRole')->middleware('auth.token');
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth.token'])->name('dashboard');
+Route::middleware('auth.token')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-Route::middleware('auth.token', 'auth.admin')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
-    Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
-    Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');
-    Route::post('/sync/dosen', [SyncController::class, 'SyncDosen'])->name('admin.sync.dosen'); 
-    Route::post('/sync/prodi', [SyncController::class, 'SyncProdi'])->name('admin.sync.prodi'); 
-    Route::post('/sync/admin', [SyncController::class, 'SyncAdmin'])->name('admin.sync.admin'); 
 
+    // Semua rute ujian untuk mahasiswa dipindahkan ke sini
     Route::prefix('ujian')->name('ujian.')->group(function () {
         Route::get('/mata-kuliah/{id_mata_kuliah}', [ListUjianController::class, 'daftarPerMataKuliah'])->name('daftarPerMataKuliah');
         Route::get('/{id_ujian}/kerjakan', [ListUjianController::class, 'kerjakanUjian'])->name('kerjakan');
@@ -49,8 +43,18 @@ Route::middleware('auth.token', 'auth.admin')->group(function () {
         Route::get('/hasil/{id_attempt}', [ListUjianController::class, 'detailHasilUjian'])->name('hasil.detail');
         Route::get('/riwayat', [ListUjianController::class, 'riwayatUjian'])->name('riwayat');
         
-        Route::post('/submit', [PengerjaanUjianController::class, 'store'])->name('submit'); // <-- RUTE BARU UNTUK SUBMIT
+        Route::post('/submit', [PengerjaanUjianController::class, 'store'])->name('submit');
     });
+});
+
+Route::middleware('auth.token', 'auth.admin')->group(function () {
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
+    Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
+    Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');
+    Route::post('/sync/dosen', [SyncController::class, 'SyncDosen'])->name('admin.sync.dosen'); 
+    Route::post('/sync/prodi', [SyncController::class, 'SyncProdi'])->name('admin.sync.prodi'); 
+    Route::post('/sync/admin', [SyncController::class, 'SyncAdmin'])->name('admin.sync.admin'); 
+
 });
 
 require __DIR__.'/auth.php';
