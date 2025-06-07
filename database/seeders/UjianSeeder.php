@@ -5,147 +5,122 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Ujian;
 use App\Models\MataKuliah;
-use Carbon\Carbon; // Import Carbon
+use Carbon\Carbon;
 
 class UjianSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
     public function run(): void
     {
-        // Ambil mata kuliah berdasarkan kode unik atau nama yang konsisten
-        $mkKalkulusDasar = MataKuliah::where('kode_mata_kuliah', 'KAL101')->first();
-        $mkAlgoPemrograman = MataKuliah::where('kode_mata_kuliah', 'ALP201')->first();
-        $mkStrukturData = MataKuliah::where('kode_mata_kuliah', 'SDA301')->first();
-        $mkPemWebLanjut = MataKuliah::where('kode_mata_kuliah', 'PWL601')->first(); // Sesuai seeder mata kuliah sebelumnya
-        $mkBasisData = MataKuliah::where('kode_mata_kuliah', 'BAS401')->first();
+        // --- DATA MATA KULIAH BERDASARKAN EXTERNAL_ID DARI API ---
+        // Catatan: Pastikan Anda sudah menjalankan SyncMataKuliahController sehingga
+        // data mata kuliah dengan external_id ini sudah ada di database lokal Anda.
 
-        $nowWIB = Carbon::now('Asia/Jakarta');
+        // Contoh: external_id untuk "Kecerdasan Buatan" dari API Anda adalah 114
+        $mkKecerdasanBuatan = MataKuliah::where('external_id', '114')->first();
 
-        // Ujian untuk Kalkulus Dasar (Semester 1)
-        if ($mkKalkulusDasar) {
+        // Contoh lain, misal "Teori Bahasa dan Otomata" memiliki external_id 67
+        $mkTBO = MataKuliah::where('external_id', '115')->first();
+
+        // Contoh lain, misal "Basis Data" memiliki external_id yang lain
+        $mkBasisData = MataKuliah::where('external_id', '118')->first(); // Ganti '42' dengan external_id yang benar
+
+        // Menggunakan Waktu Indonesia Barat (WIB) sebagai referensi
+        $now = Carbon::now('Asia/Jakarta');
+
+        // --- UJIAN UNTUK KECERDASAN BUATAN (external_id: 114) ---
+        if ($mkKecerdasanBuatan) {
+            // Ujian 1: Kuis yang sedang berlangsung
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'Kuis 1 Kalkulus Dasar', 'mata_kuliah_id' => $mkKalkulusDasar->id],
                 [
-                    'deskripsi' => 'Kuis mencakup materi dasar limit dan fungsi.',
-                    'durasi' => 30, // menit
-                    'kkm' => 65,
-                    'tanggal_mulai' => $nowWIB->copy()->subDays(7), // Sudah lewat
-                    'tanggal_selesai' => $nowWIB->copy()->subDays(7)->addHours(2), // Sudah lewat
+                    'mata_kuliah_id' => $mkKecerdasanBuatan->id,
+                    'judul_ujian' => 'Kuis 1: Pengenalan AI & Agent Cerdas'
+                ],
+                [
+                    'deskripsi' => 'Kuis singkat mencakup materi dasar tentang definisi AI dan tipe-tipe agent.',
+                    'durasi' => 5, // menit
+                    'kkm' => 70,
+                    'tanggal_mulai' => $now,
+                    'tanggal_selesai' => $now->copy()->addMinutes(5),
                     'jenis_ujian' => 'kuis',
                     'acak_soal' => true,
                     'acak_opsi' => true,
                     'tampilkan_hasil' => 'langsung',
-                    'status_publikasi' => 'terbit',
+                    'status_publikasi' => 'published',
                 ]
             );
+
+            // Ujian 2: UTS yang akan datang
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'UTS Kalkulus Dasar', 'mata_kuliah_id' => $mkKalkulusDasar->id],
                 [
-                    'deskripsi' => 'Ujian Tengah Semester Kalkulus Dasar.',
+                    'mata_kuliah_id' => $mkKecerdasanBuatan->id,
+                    'judul_ujian' => 'UTS Kecerdasan Buatan'
+                ],
+                [
+                    'deskripsi' => 'Ujian Tengah Semester mencakup materi hingga Algoritma Pencarian.',
                     'durasi' => 90,
-                    'kkm' => 60,
-                    'tanggal_mulai' => $nowWIB->copy()->addDays(3), // Akan datang
-                    'tanggal_selesai' => $nowWIB->copy()->addDays(3)->addHours(3),
+                    'kkm' => 65,
+                    'tanggal_mulai' => $now->copy()->addDays(5), // Mulai dalam 5 hari
+                    'tanggal_selesai' => $now->copy()->addDays(5)->addHours(2), // Jendela waktu 2 jam
                     'jenis_ujian' => 'uts',
                     'acak_soal' => true,
                     'acak_opsi' => true,
                     'tampilkan_hasil' => 'setelah_selesai',
-                    'status_publikasi' => 'terbit',
+                    'status_publikasi' => 'published',
                 ]
             );
         }
 
-        // Ujian untuk Algoritma & Pemrograman (Semester 2)
-        if ($mkAlgoPemrograman) {
+        // --- UJIAN UNTUK TEORI BAHASA DAN OTOMATA (external_id: 67) ---
+        if ($mkTBO) {
+            // Ujian 1: UAS yang sudah lewat
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'UAS Algoritma & Pemrograman', 'mata_kuliah_id' => $mkAlgoPemrograman->id],
                 [
-                    'deskripsi' => 'Ujian Akhir Semester mencakup semua materi Algoritma dan Pemrograman dasar.',
+                    'mata_kuliah_id' => $mkTBO->id,
+                    'judul_ujian' => 'UAS Teori Bahasa dan Otomata'
+                ],
+                [
+                    'deskripsi' => 'Ujian Akhir Semester mencakup semua materi hingga Mesin Turing.',
                     'durasi' => 120,
-                    'kkm' => 70,
-                    'tanggal_mulai' => $nowWIB->copy()->subDays(1), // Baru saja lewat
-                    'tanggal_selesai' => $nowWIB->copy()->subDays(1)->addHours(4),
+                    'kkm' => 60,
+                    'tanggal_mulai' => $now->copy()->subDays(10), // Mulai 10 hari yang lalu
+                    'tanggal_selesai' => $now->copy()->subDays(10)->addHours(3), // Selesai pada hari yang sama
                     'jenis_ujian' => 'uas',
                     'acak_soal' => true,
                     'acak_opsi' => false,
                     'tampilkan_hasil' => 'manual_dosen',
-                    'status_publikasi' => 'terbit',
+                    'status_publikasi' => 'published',
                 ]
             );
         }
         
-        // Ujian untuk Struktur Data (Semester 3)
-        if ($mkStrukturData) {
-            Ujian::updateOrCreate(
-                ['judul_ujian' => 'Kuis Struktur Data - Linked List', 'mata_kuliah_id' => $mkStrukturData->id],
-                [
-                    'deskripsi' => 'Kuis singkat tentang konsep Linked List.',
-                    'durasi' => 45,
-                    'kkm' => 75,
-                    'tanggal_mulai' => $nowWIB->copy()->addMinutes(5), // Ujian sedang/akan berlangsung (untuk testing)
-                    'tanggal_selesai' => $nowWIB->copy()->addMinutes(50), // Selesai dalam 50 menit dari sekarang
-                    'jenis_ujian' => 'kuis',
-                    'acak_soal' => false,
-                    'acak_opsi' => true,
-                    'tampilkan_hasil' => 'langsung',
-                    'status_publikasi' => 'terbit',
-                ]
-            );
-        }
-
-
-        // Ujian untuk Pemrograman Web Lanjut (Semester 6) - Ini yang Anda gunakan untuk testing
-        if ($mkPemWebLanjut) {
-            Ujian::updateOrCreate(
-                ['judul_ujian' => 'Ujian Komprehensif Web Lanjut', 'mata_kuliah_id' => $mkPemWebLanjut->id],
-                [
-                    'deskripsi' => 'Ujian mencakup semua materi Pemrograman Web Lanjut.',
-                    'durasi' => 5, // Durasi singkat untuk testing
-                    'kkm' => 70, // KKM disesuaikan
-                    'tanggal_mulai' => $nowWIB,
-                    'tanggal_selesai' => $nowWIB->copy()->addMinutes(3), 
-                    'jenis_ujian' => 'uas',
-                    'acak_soal' => true,
-                    'acak_opsi' => true,
-                    'tampilkan_hasil' => 'manual_dosen',
-                    'status_publikasi' => 'terbit',
-                ]
-            );
-             Ujian::updateOrCreate(
-                ['judul_ujian' => 'Kuis Cepat API Web Lanjut', 'mata_kuliah_id' => $mkPemWebLanjut->id],
-                [
-                    'deskripsi' => 'Kuis singkat tentang desain API.',
-                    'durasi' => 15, 
-                    'kkm' => 80, 
-                    'tanggal_mulai' => $nowWIB->copy()->addDays(10), // Jauh di masa depan
-                    'tanggal_selesai' => $nowWIB->copy()->addDays(10)->addHours(1),
-                    'jenis_ujian' => 'kuis',
-                    'acak_soal' => true,
-                    'acak_opsi' => true,
-                    'tampilkan_hasil' => 'langsung',
-                    'status_publikasi' => 'terbit',
-                ]
-            );
-        }
-        
-        // Ujian untuk Basis Data (Semester 4)
+        // --- UJIAN UNTUK BASIS DATA (ganti external_id) ---
         if ($mkBasisData) {
+            // Ujian 1: Ujian yang tidak dipublikasikan (draft)
             Ujian::updateOrCreate(
-                ['judul_ujian' => 'UTS Basis Data', 'mata_kuliah_id' => $mkBasisData->id],
                 [
-                    'deskripsi' => 'Materi Normalisasi dan SQL Dasar.',
-                    'durasi' => 75,
-                    'kkm' => 60,
-                    'tanggal_mulai' => $nowWIB->copy()->addHours(-1), // Sedang berlangsung
-                    'tanggal_selesai' => $nowWIB->copy()->addHours(1), // Selesai 1 jam lagi
-                    'jenis_ujian' => 'uts',
+                    'mata_kuliah_id' => $mkBasisData->id,
+                    'judul_ujian' => 'Kuis Tambahan Basis Data'
+                ],
+                [
+                    'deskripsi' => 'Kuis ini masih dalam tahap persiapan.',
+                    'durasi' => 15,
+                    'kkm' => 75,
+                    'tanggal_mulai' => $now->copy()->addMonth(), // Jauh di masa depan
+                    'tanggal_selesai' => $now->copy()->addMonth()->addDay(),
+                    'jenis_ujian' => 'kuis',
                     'acak_soal' => true,
                     'acak_opsi' => true,
-                    'tampilkan_hasil' => 'setelah_selesai',
-                    'status_publikasi' => 'terbit',
+                    'tampilkan_hasil' => 'langsung',
+                    'status_publikasi' => 'draft', // Statusnya draft, tidak akan muncul untuk mahasiswa
                 ]
             );
         }
 
-        $this->command->info('Seeder Ujian selesai.');
+        $this->command->info('Seeder Ujian yang relevan dengan data API telah selesai.');
     }
 }

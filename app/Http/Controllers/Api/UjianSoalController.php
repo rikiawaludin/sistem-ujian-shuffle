@@ -34,12 +34,13 @@ class UjianSoalController extends Controller
 
         // Validasi Jendela Waktu Pelaksanaan Ujian Global
         if ($ujian->tanggal_mulai && $now->lt(Carbon::parse($ujian->tanggal_mulai))) {
-            return response()->json(['message' => 'Ujian belum dapat dimulai karena belum memasuki periode pelaksanaan.'], 403);
+            return response()->json(['message' => 'Ujian belum dapat dimulai.'], 403);
         }
         if ($ujian->tanggal_selesai && $now->gte(Carbon::parse($ujian->tanggal_selesai))) {
-            return response()->json(['message' => 'Periode untuk memulai atau melanjutkan ujian ini sudah berakhir.'], 403);
+            return response()->json(['message' => 'Periode ujian telah berakhir.'], 403);
         }
 
+        // Cari pengerjaan yang sedang berlangsung
         $pengerjaanAktif = PengerjaanUjian::where('ujian_id', $ujian->id)
             ->where('user_id', $user->id)
             ->where('status_pengerjaan', 'sedang_dikerjakan')
@@ -48,101 +49,92 @@ class UjianSoalController extends Controller
         $soalListFormatted = null;
         $sisaWaktuDetikFinal = 0;
         $durasiTotalUjianDetik = $ujian->durasi * 60;
-        $sessionKeySoal = null;
 
+        // --- BLOK 1: Jika sudah ada pengerjaan aktif (melanjutkan ujian) ---
         if ($pengerjaanAktif) {
-            Log::info("[API UjianSoalCtrl] Ditemukan pengerjaan aktif ID: {$pengerjaanAktif->id} untuk Ujian ID {$ujian->id}, User ID {$user->id}.");
             $sessionKeySoal = 'ujian_attempt_' . $pengerjaanAktif->id . '_soal';
-            $waktuMulaiAbsolut = Carbon::parse($pengerjaanAktif->waktu_mulai);
             
-            // Hitung sisa waktu berdasarkan durasi individu
-            $detikTelahBerlaluDariMulai = $now->diffInSeconds($waktuMulaiAbsolut);
-            $sisaWaktuDariDurasiIndividu = max(0, $durasiTotalUjianDetik - $detikTelahBerlaluDariMulai);
+            // Coba ambil soal yang sudah diacak dari sesi
+            $soalListFormatted = session($sessionKeySoal);
 
-            // Hitung sisa waktu sampai batas akhir ujian global (tanggal_selesai ujian)
-            $sisaWaktuSampaiBatasGlobal = PHP_INT_MAX; // Anggap tak terbatas jika tidak ada tanggal_selesai
-            if ($ujian->tanggal_selesai) {
-                $tanggalSelesaiGlobal = Carbon::parse($ujian->tanggal_selesai);
-                if ($now->lt($tanggalSelesaiGlobal)) {
-                    $sisaWaktuSampaiBatasGlobal = $tanggalSelesaiGlobal->diffInSeconds($now);
-                } else {
-                    $sisaWaktuSampaiBatasGlobal = 0; // Waktu global sudah habis
-                }
-            }
-            
-            // Sisa waktu aktual adalah yang terkecil dari keduanya
-            $sisaWaktuDetikFinal = max(0, min($sisaWaktuDariDurasiIndividu, $sisaWaktuSampaiBatasGlobal));
-
-            if ($sisaWaktuDetikFinal <= 0 && $pengerjaanAktif->status_pengerjaan === 'sedang_dikerjakan') {
-                Log::info("[API UjianSoalCtrl] Waktu untuk Pengerjaan ID {$pengerjaanAktif->id} sudah habis (server calc). Sisa: {$sisaWaktuDetikFinal}");
-                // Biarkan scheduler atau frontend yang men-trigger submit
-            }
-            
-            $soalListDariSesi = session($sessionKeySoal);
-            if ($soalListDariSesi && is_array($soalListDariSesi)) {
-                $soalListFormatted = $soalListDariSesi;
+            if ($soalListFormatted && is_array($soalListFormatted)) {
                 Log::info("[API UjianSoalCtrl] SoalList diambil dari sesi untuk Pengerjaan ID {$pengerjaanAktif->id}.");
             } else {
-                Log::warning("[API UjianSoalCtrl] Sesi soalList hilang untuk Pengerjaan ID {$pengerjaanAktif->id}. Mengambil & acak ulang.");
-                // Lanjutkan ke blok di bawah untuk generate soal
+                Log::warning("[API UjianSoalCtrl] Sesi soalList hilang untuk Pengerjaan ID {$pengerjaanAktif->id}. Akan mengacak ulang.");
+                $soalListFormatted = null; // Pastikan null agar masuk ke blok generate ulang
             }
         }
         
+        // --- BLOK 2: Jika memulai ujian baru ATAU sesi hilang ---
         if (!$pengerjaanAktif || $soalListFormatted === null) {
             if (!$pengerjaanAktif) {
-                // ... (logika batalkan attempt lama & buat PengerjaanUjian baru dengan status 'sedang_dikerjakan') ...
-                PengerjaanUjian::where('ujian_id', $ujian->id) // Batalkan attempt 'sedang_dikerjakan' sebelumnya
-                               ->where('user_id', $user->id)
-                               ->where('status_pengerjaan', 'sedang_dikerjakan')
-                               ->update([
-                                   'status_pengerjaan' => 'dibatalkan_memulai_baru',
-                                   'waktu_selesai' => $now
-                                ]);
-                $pengerjaanAktif = PengerjaanUjian::create([ /* ... data pengerjaan baru ... */ 
-                    'ujian_id' => $ujian->id, 'user_id' => $user->id, 'waktu_mulai' => $now,
-                    'status_pengerjaan' => 'sedang_dikerjakan', 'ip_address' => $request->ip(),
+                // Buat pengerjaan baru
+                $pengerjaanAktif = PengerjaanUjian::create([
+                    'ujian_id' => $ujian->id,
+                    'user_id' => $user->id,
+                    'waktu_mulai' => $now,
+                    'status_pengerjaan' => 'sedang_dikerjakan',
+                    'ip_address' => $request->ip(),
                     'user_agent' => $request->userAgent(),
                 ]);
-                Log::info("[API UjianSoalCtrl] PengerjaanUjian ID {$pengerjaanAktif->id} dibuat (status 'sedang_dikerjakan').");
+                Log::info("[API UjianSoalCtrl] PengerjaanUjian ID {$pengerjaanAktif->id} dibuat.");
             }
+            
             $sessionKeySoal = 'ujian_attempt_' . $pengerjaanAktif->id . '_soal';
-            $waktuMulaiAbsolut = Carbon::parse($pengerjaanAktif->waktu_mulai);
 
-            // Hitung ulang sisa waktu efektif setelah pengerjaan dibuat/ditemukan
-            $detikTelahBerlaluDariMulai = $now->diffInSeconds($waktuMulaiAbsolut);
-            $sisaWaktuDariDurasiIndividu = max(0, $durasiTotalUjianDetik - $detikTelahBerlaluDariMulai);
-            $sisaWaktuSampaiBatasGlobal = PHP_INT_MAX;
-            if ($ujian->tanggal_selesai) {
-                $tanggalSelesaiGlobal = Carbon::parse($ujian->tanggal_selesai);
-                $sisaWaktuSampaiBatasGlobal = $now->lt($tanggalSelesaiGlobal) ? $tanggalSelesaiGlobal->diffInSeconds($now) : 0;
-            }
-            $sisaWaktuDetikFinal = max(0, min($sisaWaktuDariDurasiIndividu, $sisaWaktuSampaiBatasGlobal));
-
-            if ($ujian->soal->isEmpty()) { /* ... handling soal kosong ... */ }
-            else {
+            // Jika tidak ada soal sama sekali, langsung kembalikan array kosong
+            if ($ujian->soal->isEmpty()) {
+                 Log::warning("[API UjianSoalCtrl] Ujian ID {$ujian->id} tidak memiliki soal sama sekali.");
+                 $soalListFormatted = [];
+            } else {
+                // Proses pengambilan dan pengacakan soal
                 try {
                     $soalUntukExpress = $this->soalFormatter->formatForExpress($ujian->soal);
-                    $configPengacakan = [ /* ... config ... */ ];
+                    $configPengacakan = ['acakSoal' => $ujian->acak_soal, 'acakOpsi' => $ujian->acak_opsi];
+                    
+                    // Panggil Express Service
                     $shuffledSoalFromExpress = $this->expressClient->shuffleSoalList($soalUntukExpress, $configPengacakan);
-                    if ($shuffledSoalFromExpress === null) { /* ... error ... */ }
+
+                    // Format hasil untuk frontend
                     $soalListFormatted = $this->soalFormatter->formatForFrontend($shuffledSoalFromExpress);
-                } catch (ConnectionException $e) { /* ... error ... */ return response()->json(['message' => 'Tidak dapat terhubung ke layanan soal.'], 503); }
-                  catch (\RuntimeException $e) { /* ... error ... */ return response()->json(['message' => $e->getMessage()], ($e->getCode() && is_int($e->getCode())) ? $e->getCode() : 500); }
-                  catch (\Exception $e) { /* ... error ... */ report($e); return response()->json(['message' => 'Terjadi kesalahan internal.'], 500); }
+                    
+                    // Simpan soal yang sudah diacak ke sesi
+                    session([$sessionKeySoal => $soalListFormatted]);
+                    Log::info("[API UjianSoalCtrl] SoalList disimpan ke sesi untuk Pengerjaan ID {$pengerjaanAktif->id}.");
+
+                } catch (ConnectionException $e) {
+                    Log::error("[API UjianSoalCtrl] Gagal terhubung ke Express Service: " . $e->getMessage());
+                    return response()->json(['message' => 'Tidak dapat terhubung ke layanan soal.'], 503);
+                } catch (\RuntimeException $e) {
+                    Log::error("[API UjianSoalCtrl] Gagal memproses soal: " . $e->getMessage());
+                    return response()->json(['message' => $e->getMessage()], 500);
+                } catch (\Exception $e) {
+                    report($e);
+                    return response()->json(['message' => 'Terjadi kesalahan internal saat memproses soal.'], 500);
+                }
             }
-            session([$sessionKeySoal => $soalListFormatted]);
-            Log::info("[API UjianSoalCtrl] SoalList disimpan ke sesi untuk Pengerjaan ID {$pengerjaanAktif->id}.");
         }
         
-        session(['pengerjaan_ujian_aktif_id' => $pengerjaanAktif->id]);
-
+        // Hitung sisa waktu final setelah semua proses
+        $detikTelahBerlalu = $now->diffInSeconds(Carbon::parse($pengerjaanAktif->waktu_mulai));
+        $sisaWaktuDariDurasiIndividu = max(0, $durasiTotalUjianDetik - $detikTelahBerlalu);
+        $sisaWaktuSampaiBatasGlobal = $ujian->tanggal_selesai ? max(0, Carbon::parse($ujian->tanggal_selesai)->diffInSeconds($now)) : PHP_INT_MAX;
+        $sisaWaktuDetikFinal = min($sisaWaktuDariDurasiIndividu, $sisaWaktuSampaiBatasGlobal);
+        
+        // Kirim respons final ke frontend
         return response()->json([
             'id' => $ujian->id,
             'pengerjaanId' => $pengerjaanAktif->id,
-            'namaMataKuliah' => $ujian->mataKuliah->nama_mata_kuliah ?? 'N/A',
+            'namaMataKuliah' => $ujian->mataKuliah->nama ?? 'N/A',
             'judulUjian' => $ujian->judul_ujian,
-            'durasiTotalDetik' => $sisaWaktuDetikFinal, // Ini SISA WAKTU EFEKTIF
-            'soalList' => $soalListFormatted,
+            'durasiTotalDetik' => $sisaWaktuDetikFinal,
+            /**
+             * PERBAIKAN UTAMA:
+             * Menggunakan `?? []` untuk memastikan `soalList` selalu berupa array.
+             * Jika `$soalListFormatted` karena suatu hal bernilai null, frontend akan menerima `[]` (array kosong).
+             * Ini akan mencegah error "format tidak benar" dan membuat frontend lebih stabil.
+             */
+            'soalList' => $soalListFormatted ?? [],
         ]);
     }
 }

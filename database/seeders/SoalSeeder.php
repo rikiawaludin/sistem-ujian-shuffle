@@ -8,163 +8,118 @@ use App\Models\User;
 
 class SoalSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
     public function run(): void
     {
-        $dosenWeb = User::where('email', 'siti.dosen@example.com')->first();
-        $dosenMat = User::where('email', 'budi.dosen@example.com')->first(); // Asumsi Dosen Budi mengajar Kalkulus/SDA
+        // Ambil satu user dosen secara acak untuk menjadi pembuat soal
+        $dosen = User::where('is_dosen', true)->first();
 
-        if (!$dosenWeb || !$dosenMat) {
-            $this->command->error('Dosen tidak ditemukan. Pastikan UserSeeder dijalankan terlebih dahulu.');
+        if (!$dosen) {
+            $this->command->error('Tidak ada user dengan peran Dosen ditemukan. Jalankan UserSeeder terlebih dahulu.');
             return;
         }
 
-        // Soal untuk Mata Kuliah Pemrograman Web Lanjut (atau umum)
-        // Soal 1 (PG) - Kategori: Framework PHP
-        Soal::updateOrCreate(
-            ['pertanyaan' => 'Framework PHP populer yang menggunakan pola desain MVC adalah...'],
-            [
-                'tipe_soal' => 'pilihan_ganda',
-                'opsi_jawaban' => json_encode([
-                    ['id' => 'A', 'teks' => 'React'],
-                    ['id' => 'B', 'teks' => 'Laravel'],
-                    ['id' => 'C', 'teks' => 'jQuery'],
-                    ['id' => 'D', 'teks' => 'Node.js'],
-                ]),
-                'kunci_jawaban' => json_encode(['B']),
-                'penjelasan' => 'Laravel adalah framework PHP yang sangat populer dan mengikuti pola MVC.',
-                'level_kesulitan' => 'sedang',
-                'kategori_soal' => 'Framework PHP',
-                'dosen_pembuat_id' => $dosenWeb->id,
-            ]
-        );
+        // ===================================================================
+        // SOAL UNTUK MATA KULIAH: KECERDASAN BUATAN (AI)
+        // ===================================================================
 
-        // Soal 2 (PG) - Kategori: Konsep HTTP
+        // Soal 1 (Pilihan Ganda)
         Soal::updateOrCreate(
-            ['pertanyaan' => 'Manakah dari berikut ini yang BUKAN merupakan HTTP Method?'],
+            ['pertanyaan' => 'Siapakah yang dianggap sebagai "Bapak Kecerdasan Buatan"?'],
             [
-                'tipe_soal' => 'pilihan_ganda',
-                'opsi_jawaban' => json_encode([
-                    ['id' => 'A', 'teks' => 'GET'],
-                    ['id' => 'B', 'teks' => 'POST'],
-                    ['id' => 'C', 'teks' => 'UPDATE'],
-                    ['id' => 'D', 'teks' => 'DELETE'],
-                ]),
-                'kunci_jawaban' => json_encode(['C']),
-                'penjelasan' => 'Metode HTTP standar adalah GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, dll. UPDATE bukan standar.',
+                'tipe_soal'       => 'pilihan_ganda',
+                'opsi_jawaban'    => [
+                    ['id' => 'A', 'teks' => 'Alan Turing'],
+                    ['id' => 'B', 'teks' => 'John McCarthy'],
+                    ['id' => 'C', 'teks' => 'Geoffrey Hinton'],
+                    ['id' => 'D', 'teks' => 'Bill Gates'],
+                ],
+                'kunci_jawaban'   => ['B'],
+                'penjelasan'      => 'John McCarthy adalah ilmuwan komputer yang pertama kali menciptakan istilah "Artificial Intelligence" pada tahun 1956.',
                 'level_kesulitan' => 'mudah',
-                'kategori_soal' => 'Konsep HTTP',
-                'dosen_pembuat_id' => $dosenWeb->id,
+                'kategori_soal'   => 'Sejarah AI',
+                'dosen_pembuat_id'=> $dosen->id,
             ]
         );
 
-        // Soal 3 (Esai) - Kategori: API
+        // Soal 2 (Benar/Salah)
         Soal::updateOrCreate(
-            ['pertanyaan' => 'Jelaskan secara singkat apa itu REST API!'],
+            ['pertanyaan' => 'Algoritma A* (A-Star) selalu menemukan jalur terpendek jika heuristik yang digunakan bersifat admissible.'],
             [
-                'tipe_soal' => 'esai',
-                'kunci_jawaban' => json_encode('REST (Representational State Transfer) API adalah gaya arsitektur untuk merancang aplikasi jaringan. Ia menggunakan HTTP request untuk mengakses dan menggunakan data.'),
-                'penjelasan' => 'REST API biasanya stateless dan menggunakan metode HTTP standar.',
+                'tipe_soal'       => 'benar_salah',
+                'opsi_jawaban'    => [
+                    ['id' => 'Benar', 'teks' => 'Benar'],
+                    ['id' => 'Salah', 'teks' => 'Salah'],
+                ],
+                'kunci_jawaban'   => ['Benar'],
+                'penjelasan'      => 'Heuristik yang admissible (tidak pernah melebih-lebihkan biaya sebenarnya) menjamin bahwa A* akan menemukan solusi optimal.',
                 'level_kesulitan' => 'sedang',
-                'kategori_soal' => 'API',
-                'dosen_pembuat_id' => $dosenWeb->id,
+                'kategori_soal'   => 'Algoritma Pencarian',
+                'dosen_pembuat_id'=> $dosen->id,
             ]
         );
 
-        // Soal 4 (Benar/Salah) - Kategori: Dasar Web
+        // Soal 3 (Esai)
         Soal::updateOrCreate(
-            ['pertanyaan' => 'CSS adalah singkatan dari Cascading Style Sheets.'],
+            ['pertanyaan' => 'Jelaskan perbedaan mendasar antara supervised learning dan unsupervised learning!'],
             [
-                'tipe_soal' => 'benar_salah',
-                'opsi_jawaban' => json_encode([['id' => 'Benar', 'teks' => 'Benar'], ['id' => 'Salah', 'teks' => 'Salah']]),
-                'kunci_jawaban' => json_encode(['Benar']),
+                'tipe_soal'       => 'esai',
+                'kunci_jawaban'   => 'Supervised learning menggunakan data berlabel (input dan output yang diketahui) untuk melatih model, sedangkan unsupervised learning menggunakan data tanpa label untuk menemukan pola atau struktur tersembunyi.',
+                'penjelasan'      => 'Perbedaan kuncinya terletak pada ada atau tidaknya label pada data training.',
+                'level_kesulitan' => 'sedang',
+                'kategori_soal'   => 'Machine Learning',
+                'dosen_pembuat_id'=> $dosen->id,
+            ]
+        );
+
+        // ===================================================================
+        // SOAL UNTUK MATA KULIAH: TEORI BAHASA & OTOMATA
+        // ===================================================================
+
+        // Soal 4 (Pilihan Ganda)
+        Soal::updateOrCreate(
+            ['pertanyaan' => 'Mesin automata yang digunakan untuk mengenali bahasa reguler adalah...'],
+            [
+                'tipe_soal'       => 'pilihan_ganda',
+                'opsi_jawaban'    => [
+                    ['id' => 'A', 'teks' => 'Pushdown Automata (PDA)'],
+                    ['id' => 'B', 'teks' => 'Mesin Turing'],
+                    ['id' => 'C', 'teks' => 'Finite Automata (FA)'],
+                    ['id' => 'D', 'teks' => 'Linear Bounded Automata (LBA)'],
+                ],
+                'kunci_jawaban'   => ['C'],
+                'penjelasan'      => 'Finite Automata (baik DFA maupun NFA) adalah model komputasi yang tepat untuk mengenali bahasa dalam kelas bahasa reguler.',
                 'level_kesulitan' => 'mudah',
-                'kategori_soal' => 'Dasar Web',
-                'dosen_pembuat_id' => $dosenWeb->id,
+                'kategori_soal'   => 'Finite Automata',
+                'dosen_pembuat_id'=> $dosen->id,
             ]
         );
-        
-        // Soal 5 (Pilihan Ganda) - Kategori: React State Management
+
+        // ===================================================================
+        // SOAL UNTUK MATA KULIAH: BASIS DATA
+        // ===================================================================
+
+        // Soal 5 (Benar/Salah)
         Soal::updateOrCreate(
-            ['pertanyaan' => 'Manakah yang digunakan untuk mengelola state dalam aplikasi React skala besar?'],
+            ['pertanyaan' => 'Perintah "DROP TABLE" dan "TRUNCATE TABLE" memiliki fungsi yang sama persis dalam SQL.'],
             [
-                'tipe_soal' => 'pilihan_ganda',
-                'opsi_jawaban' => json_encode([
-                    ['id' => 'A', 'teks' => 'useState Hook saja'],
-                    ['id' => 'B', 'teks' => 'Redux atau Zustand'],
-                    ['id' => 'C', 'teks' => 'HTML Local Storage'],
-                    ['id' => 'D', 'teks' => 'CSS Variables'],
-                ]),
-                'kunci_jawaban' => json_encode(['B']),
-                'penjelasan' => 'Redux, Zustand, atau Context API yang lebih canggih sering digunakan untuk manajemen state global di aplikasi React besar.',
+                'tipe_soal'       => 'benar_salah',
+                'opsi_jawaban'    => [
+                    ['id' => 'Benar', 'teks' => 'Benar'],
+                    ['id' => 'Salah', 'teks' => 'Salah'],
+                ],
+                'kunci_jawaban'   => ['Salah'],
+                'penjelasan'      => 'DROP TABLE menghapus seluruh struktur dan data tabel, sedangkan TRUNCATE TABLE hanya menghapus semua data (rows) tetapi struktur tabelnya tetap ada.',
                 'level_kesulitan' => 'sedang',
-                'kategori_soal' => 'React State Management',
-                'dosen_pembuat_id' => $dosenWeb->id,
+                'kategori_soal'   => 'SQL DDL',
+                'dosen_pembuat_id'=> $dosen->id,
             ]
         );
 
-        // Tambahan Soal untuk Mata Kuliah lain yang dicari di JawabanPesertaDetailSeeder
-        // Soal untuk Kalkulus Lanjutan (kategori: Turunan)
-        Soal::updateOrCreate(
-            ['pertanyaan' => 'Hitung turunan pertama dari fungsi f(x) = 3x^2 + 2x - 5.'],
-            [
-                'tipe_soal' => 'esai',
-                'kunci_jawaban' => json_encode('6x + 2'),
-                'penjelasan' => 'Menggunakan aturan turunan daya dan konstanta.',
-                'level_kesulitan' => 'mudah',
-                'kategori_soal' => 'Turunan', // Kategori ini dicari di JawabanPesertaDetailSeeder
-                'dosen_pembuat_id' => $dosenMat->id,
-            ]
-        );
-
-        // Soal untuk PBO (kategori: Konsep Dasar OOP)
-        Soal::updateOrCreate(
-            ['pertanyaan' => 'Prinsip OOP yang memungkinkan objek yang berbeda merespons metode yang sama dengan cara yang berbeda disebut...'],
-            [
-                'tipe_soal' => 'pilihan_ganda',
-                'opsi_jawaban' => json_encode([
-                    ['id' => 'A', 'teks' => 'Enkapsulasi'],
-                    ['id' => 'B', 'teks' => 'Inheritansi'],
-                    ['id' => 'C', 'teks' => 'Polimorfisme'], // Benar
-                    ['id' => 'D', 'teks' => 'Abstraksi'],
-                ]),
-                'kunci_jawaban' => json_encode(['C']),
-                'penjelasan' => 'Polimorfisme memungkinkan satu antarmuka untuk berbagai implementasi.',
-                'level_kesulitan' => 'sedang',
-                'kategori_soal' => 'Konsep Dasar OOP', // Kategori ini dicari
-                'dosen_pembuat_id' => $dosenWeb->id, // Dosen Siti mengajar PBO
-            ]
-        );
-
-        // Soal untuk PBO (kategori: Enkapsulasi OOP)
-        Soal::updateOrCreate(
-            ['pertanyaan' => 'Jelaskan konsep enkapsulasi dalam Pemrograman Berorientasi Objek.'],
-            [
-                'tipe_soal' => 'esai',
-                'kunci_jawaban' => json_encode('Enkapsulasi adalah pembungkusan data dan metode yang beroperasi pada data tersebut dalam satu unit. Ini menyembunyikan detail implementasi dan mencegah akses langsung ke data.'),
-                'penjelasan' => 'Salah satu pilar OOP untuk keamanan dan pemeliharaan kode.',
-                'level_kesulitan' => 'sedang',
-                'kategori_soal' => 'Enkapsulasi OOP', // Kategori ini dicari
-                'dosen_pembuat_id' => $dosenWeb->id, // Dosen Siti mengajar PBO
-            ]
-        );
-
-        // Soal untuk Struktur Data (kategori: Struktur Data)
-        Soal::updateOrCreate(
-            ['pertanyaan' => 'Manakah struktur data yang menggunakan prinsip LIFO (Last-In, First-Out)?'],
-            [
-                'tipe_soal' => 'pilihan_ganda', // Mengubah menjadi pilihan ganda agar bisa diisi di JawabanPesertaDetailSeeder
-                'opsi_jawaban' => json_encode([
-                    ['id' => 'A', 'teks' => 'Queue'],
-                    ['id' => 'B', 'teks' => 'Stack'], // Benar
-                    ['id' => 'C', 'teks' => 'Linked List'],
-                    ['id' => 'D', 'teks' => 'Tree'],
-                ]),
-                'kunci_jawaban' => json_encode(['B']),
-                'penjelasan' => 'Stack mengikuti prinsip LIFO, di mana elemen terakhir yang ditambahkan adalah yang pertama dihapus.',
-                'level_kesulitan' => 'mudah',
-                'kategori_soal' => 'Struktur Data', // Kategori ini dicari
-                'dosen_pembuat_id' => $dosenMat->id,
-            ]
-        );
+        $this->command->info('Seeder Soal telah selesai dijalankan.');
     }
 }

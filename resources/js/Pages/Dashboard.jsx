@@ -53,7 +53,7 @@ export default function Dashboard() {
     if (apiBaseUrl.endsWith('/')) cleanApiBaseUrl = apiBaseUrl.slice(0, -1);
     const apiUrl = `${cleanApiBaseUrl}/ujian/mata-kuliah/mahasiswa`;
     console.log(`Dashboard.jsx: Fetching (axios) from API URL: ${apiUrl}`);
-    
+
     try {
       const response = await axios.get(apiUrl, {
         headers: { 'Authorization': `Bearer ${sessionToken}`, 'Accept': 'application/json' }
@@ -100,26 +100,26 @@ export default function Dashboard() {
 
         let dosenNamaDisplay = "Dosen akan segera ditentukan";
         if (dosenApi.nm_dosen && String(dosenApi.nm_dosen).trim() !== "") {
-            dosenNamaDisplay = `${String(dosenApi.nm_dosen).trim()}${dosenApi.gelar ? ', ' + String(dosenApi.gelar).trim() : ''}`;
+          dosenNamaDisplay = `${String(dosenApi.nm_dosen).trim()}${dosenApi.gelar ? ', ' + String(dosenApi.gelar).trim() : ''}`;
         } else if (mkLokal && mkLokal.dosen_lokal && mkLokal.dosen_lokal.nama) {
-            dosenNamaDisplay = mkLokal.dosen_lokal.nama;
+          dosenNamaDisplay = mkLokal.dosen_lokal.nama;
         }
-        
+
         return {
-            id: matkulApi.mk_id,
-            external_id_kelas: dataKelasApi.kelas_kuliah_id,
-            nama: matkulApi.nm_mk,
-            kode_mk: matkulApi.kd_mk,
-            dosen: { 
-                nama: dosenNamaDisplay, 
-                external_id: dosenApi.dosen_id 
-            },
-            deskripsi_singkat: mkLokal?.deskripsi_lokal || matkulApi.nm_mk,
-            img: mkLokal?.img_lokal || '/public/images/placeholder-matakuliah.jpg',
-            jumlah_ujian_tersedia: mkLokal?.jumlah_ujian_tersedia_lokal || 0,
-            semester: matkulApi.semester,
-            tahun_ajaran_kelas: dataKelasApi.tahun_id,
-            id_matakuliah_lokal: mkLokal?.id_lokal || null 
+          id: matkulApi.mk_id,
+          external_id_kelas: dataKelasApi.kelas_kuliah_id,
+          nama: matkulApi.nm_mk,
+          kode_mk: matkulApi.kd_mk,
+          dosen: {
+            nama: dosenNamaDisplay,
+            external_id: dosenApi.dosen_id
+          },
+          deskripsi_singkat: mkLokal?.deskripsi_lokal || matkulApi.nm_mk,
+          img: mkLokal?.img_lokal || '/public/images/placeholder-matakuliah.jpg',
+          jumlah_ujian_tersedia: mkLokal?.jumlah_ujian_tersedia_lokal || 0,
+          semester: matkulApi.semester,
+          tahun_ajaran_kelas: dataKelasApi.tahun_id,
+          id_matakuliah_lokal: mkLokal?.id_lokal || null
         };
       })
       .filter(mk => selectedSemester === 'semua' || String(mk.semester) === String(selectedSemester));
@@ -132,14 +132,14 @@ export default function Dashboard() {
   return (
     <AuthenticatedLayout user={auth.user} title="Dashboard Ujian">
       <Head title="Dashboard" />
-      
+
       {/* Top Content: Greeting */}
       <div className="mb-8 px-4 md:px-0">
         <Typography variant="h3" color="blue-gray" className="font-bold">
-            Selamat Datang, {auth.user.name.split(' ')[0]}!
+          Selamat Datang, {auth.user.name.split(' ')[0]}!
         </Typography>
         <Typography color="gray" className="mt-1 font-normal">
-            Berikut adalah ringkasan aktivitas ujian Anda.
+          Berikut adalah ringkasan aktivitas ujian Anda.
         </Typography>
       </div>
 
@@ -151,7 +151,7 @@ export default function Dashboard() {
       </div>
 
       <hr className="my-10 border-blue-gray-100" />
-      
+
       {/* --- BAGIAN MATA KULIAH --- */}
       <div id="mata-kuliah-section" className="mb-12 px-4 md:px-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -160,15 +160,15 @@ export default function Dashboard() {
           </Typography>
           <div className="w-full sm:w-auto sm:min-w-[200px] md:min-w-[250px]">
             <Select
-                label="Pilih Semester"
-                value={selectedSemester}
-                onChange={(value) => handleSemesterChange(value)}
-                animate={{ mount: { y: 0 }, unmount: { y: 25 } }}
+              label="Pilih Semester"
+              value={selectedSemester}
+              onChange={(value) => handleSemesterChange(value)}
+              animate={{ mount: { y: 0 }, unmount: { y: 25 } }}
             >
-                <Option value="semua">Semua Semester</Option>
-                {semesterOptions.map(smt => (
-                    <Option key={`smt-opt-${smt}`} value={String(smt)}>Semester {smt}</Option>
-                ))}
+              <Option value="semua">Semua Semester</Option>
+              {semesterOptions.map(smt => (
+                <Option key={`smt-opt-${smt}`} value={String(smt)}>Semester {smt}</Option>
+              ))}
             </Select>
           </div>
         </div>
@@ -198,25 +198,45 @@ export default function Dashboard() {
 
       {/* --- BAGIAN HISTORI UJIAN --- */}
       <div id="histori-ujian-section" className="mb-12 px-4 md:px-0">
-        <Typography variant="h4" color="blue-gray" className="font-semibold mb-6">
-            Riwayat Ujian Anda
-        </Typography>
-        
+        <div className="flex justify-between items-center mb-6">
+          <Typography variant="h4" color="blue-gray" className="font-semibold">
+            Aktivitas Ujian Terakhir
+          </Typography>
+          {/* Tombol ini hanya muncul jika ada lebih dari 4 riwayat */}
+          {historiUjianList.length > 4 && (
+            <Link href={route('ujian.riwayat')}>
+              <Button variant="text" size="sm" className="flex items-center gap-2">
+                Lihat Semua
+              </Button>
+            </Link>
+          )}
+        </div>
+
         {historiUjianList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {historiUjianList.map((histori) => (
-              <HistoriUjianRingkasanCard key={histori.id_pengerjaan} histori={histori} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* Tampilkan hanya 4 ujian terakhir di dashboard */}
+              {historiUjianList.slice(0, 4).map((histori) => (
+                <HistoriUjianRingkasanCard key={histori.id_pengerjaan} histori={histori} />
+              ))}
+            </div>
+            {/* Tombol di bawah jika jumlahnya 1-4 */}
+            {historiUjianList.length <= 4 && (
+              <div className="mt-8 flex justify-center">
+                <Link href={route('ujian.riwayat')}>
+                  <Button variant="outlined" color="blue-gray">
+                    Lihat Semua Riwayat Ujian
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </>
         ) : (
-          // Hanya tampilkan pesan jika tidak ada histori, dan mata kuliah sudah selesai loading (untuk menghindari pesan ganda)
-          !isLoadingKelasKuliah && (
-            <Card className="p-8 text-center shadow-md border border-blue-gray-50">
-                <Typography color="blue-gray" className="opacity-80">
-                    Anda belum memiliki riwayat pengerjaan ujian.
-                </Typography>
-            </Card>
-          )
+          <Card className="p-8 text-center shadow-md border border-blue-gray-50">
+            <Typography color="blue-gray" className="opacity-80">
+              Anda belum memiliki riwayat pengerjaan ujian.
+            </Typography>
+          </Card>
         )}
       </div>
 

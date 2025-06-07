@@ -18,9 +18,13 @@ import NavigasiBawah from '@/Pages/Ujian/PengerjaanComponents/NavigasiBawah';
 import DialogKonfirmasiSelesai from '@/Pages/Ujian/PengerjaanComponents/DialogKonfirmasiSelesai';
 
 export default function PengerjaanUjianPage() {
-  const { props } = usePage();
-  const idUjianDariProps = props.idUjianAktif;
-  const authUser = props.auth.user;
+  const {
+    auth,
+    idUjianAktif: idUjianDariProps,
+    sessionToken,
+    apiBaseUrl,
+  } = usePage().props;
+  const authUser = auth.user;
 
   const [detailUjian, setDetailUjian] = useState(null); // Akan berisi { id, pengerjaanId, namaMataKuliah, judulUjian, soalList }
   const [pengerjaanId, setPengerjaanId] = useState(null);
@@ -33,7 +37,7 @@ export default function PengerjaanUjianPage() {
   const [navigasiSoalOpen, setNavigasiSoalOpen] = useState(false);
   const [openDialogSelesai, setOpenDialogSelesai] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const autoSubmitTriggered = useRef(false); // Menggunakan useRef untuk flag auto-submit
 
   const getLocalStorageKey = useCallback((type) => {
@@ -70,7 +74,7 @@ export default function PengerjaanUjianPage() {
               });
               setPengerjaanId(dataUjianApi.pengerjaanId);
               setSisaWaktuDetik(dataUjianApi.durasiTotalDetik || 0);
-              
+
               const initialAnswers = {};
               const initialRagu = {};
               if (Array.isArray(dataUjianApi.soalList)) {
@@ -90,18 +94,18 @@ export default function PengerjaanUjianPage() {
               if (jawabanKey) {
                 const savedJawaban = localStorage.getItem(jawabanKey);
                 if (savedJawaban) {
-                    try { restoredJawaban = JSON.parse(savedJawaban); } 
-                    catch (e) { console.error('Gagal parse jawaban dari localStorage', e); }
+                  try { restoredJawaban = JSON.parse(savedJawaban); }
+                  catch (e) { console.error('Gagal parse jawaban dari localStorage', e); }
                 }
               }
               if (raguKey) {
                 const savedRagu = localStorage.getItem(raguKey);
                 if (savedRagu) {
-                    try { restoredRagu = JSON.parse(savedRagu); }
-                    catch (e) { console.error('Gagal parse status ragu dari localStorage', e); }
+                  try { restoredRagu = JSON.parse(savedRagu); }
+                  catch (e) { console.error('Gagal parse status ragu dari localStorage', e); }
                 }
               }
-              
+
               setJawabanUser(restoredJawaban);
               setStatusRaguRagu(restoredRagu);
               setIsLoadingSoal(false);
@@ -116,9 +120,9 @@ export default function PengerjaanUjianPage() {
               setIsLoadingSoal(false);
             });
         }).catch(csrfError => {
-            console.error("Gagal mengambil CSRF cookie:", csrfError);
-            setErrorSoal("Gagal memulai sesi ujian dengan aman. Silakan coba lagi.");
-            setIsLoadingSoal(false);
+          console.error("Gagal mengambil CSRF cookie:", csrfError);
+          setErrorSoal("Gagal memulai sesi ujian dengan aman. Silakan coba lagi.");
+          setIsLoadingSoal(false);
         });
     } else {
       if (!idUjianDariProps) setErrorSoal("ID Ujian tidak valid atau tidak ditemukan.");
@@ -132,23 +136,23 @@ export default function PengerjaanUjianPage() {
     const jawabanKey = getLocalStorageKey('jawaban'); // getLocalStorageKey sekarang bergantung pada pengerjaanId state
     const raguKey = getLocalStorageKey('ragu');
     if (!isLoadingSoal && detailUjian && pengerjaanId && jawabanKey && raguKey) {
-        try {
-            localStorage.setItem(jawabanKey, JSON.stringify(jawabanUser));
-            localStorage.setItem(raguKey, JSON.stringify(statusRaguRagu));
-        } catch (e) { console.error("Gagal simpan ke localStorage:", e); }
+      try {
+        localStorage.setItem(jawabanKey, JSON.stringify(jawabanUser));
+        localStorage.setItem(raguKey, JSON.stringify(statusRaguRagu));
+      } catch (e) { console.error("Gagal simpan ke localStorage:", e); }
     }
   }, [jawabanUser, statusRaguRagu, isLoadingSoal, detailUjian, pengerjaanId, getLocalStorageKey]);
 
   // Callback untuk submit ujian
   const handleSelesaiUjianCallback = useCallback(() => {
     if (isSubmitting || autoSubmitTriggered.current) {
-        console.log("Submit dicegah: isSubmitting atau autoSubmitTriggered sudah true.");
-        return;
+      console.log("Submit dicegah: isSubmitting atau autoSubmitTriggered sudah true.");
+      return;
     }
-    
+
     setIsSubmitting(true);
     if (sisaWaktuDetik <= 0) { // Jika submit dipicu oleh waktu habis atau bersamaan
-        autoSubmitTriggered.current = true;
+      autoSubmitTriggered.current = true;
     }
     setOpenDialogSelesai(false);
 
@@ -178,18 +182,18 @@ export default function PengerjaanUjianPage() {
           if (errors && errors.submit_error) { errorMsg = errors.submit_error; }
           else if (errors && typeof errors === 'object') { errorMsg = Object.values(errors).join("\n"); }
           else if (typeof errors === 'string') { errorMsg = errors; }
-          alert(errorMsg); 
+          alert(errorMsg);
           setIsSubmitting(false);
           autoSubmitTriggered.current = false; // Reset flag jika submit gagal agar bisa coba lagi
         },
         onFinish: () => {
-            // Jika tidak ada redirect dari server, setIsSubmitting(false) bisa ditaruh di sini.
-            // Tapi karena ada redirect, halaman akan berganti.
-            // Jika ada error dan tidak redirect, onError sudah menangani setIsSubmitting.
+          // Jika tidak ada redirect dari server, setIsSubmitting(false) bisa ditaruh di sini.
+          // Tapi karena ada redirect, halaman akan berganti.
+          // Jika ada error dan tidak redirect, onError sudah menangani setIsSubmitting.
         }
       });
     } else {
-      console.error("Tidak bisa submit, data ujian/user/pengerjaan tidak lengkap", {detailUjian, authUser, pengerjaanId});
+      console.error("Tidak bisa submit, data ujian/user/pengerjaan tidak lengkap", { detailUjian, authUser, pengerjaanId });
       alert("Terjadi kesalahan data. Tidak bisa submit.");
       setIsSubmitting(false);
       autoSubmitTriggered.current = false;
@@ -201,22 +205,22 @@ export default function PengerjaanUjianPage() {
     if (!detailUjian || isLoadingSoal || isSubmitting || autoSubmitTriggered.current) {
       return; // Jangan jalankan timer jika loading, submitting, atau sudah auto-submit
     }
-    
+
     // Jika waktu sudah habis saat effect ini pertama kali jalan (setelah loading selesai)
     if (sisaWaktuDetik <= 0) {
       if (detailUjian.soalList && detailUjian.soalList.length > 0 && !openDialogSelesai) {
         console.log("[TIMER EFFECT] Waktu sudah habis saat inisialisasi effect. Memanggil submit.");
         handleSelesaiUjianCallback();
       }
-      return; 
+      return;
     }
-    
+
     // Jika waktu masih ada, set interval
     const timerId = setInterval(() => {
       setSisaWaktuDetik(prevSisaWaktu => {
         const nextSisaWaktu = Math.max(0, prevSisaWaktu - 1);
         // console.log(`[setInterval TICK] Prev: ${prevSisaWaktu}, Next: ${nextSisaWaktu}`);
-        
+
         // Pengecekan waktu habis di dalam tick interval
         if (nextSisaWaktu <= 0 && !autoSubmitTriggered.current && !isSubmitting && !openDialogSelesai) {
           if (detailUjian && detailUjian.soalList && detailUjian.soalList.length > 0) {
@@ -242,15 +246,15 @@ export default function PengerjaanUjianPage() {
   const soalSekarang = detailUjian?.soalList?.[soalSekarangIndex];
 
   const handlePilihJawaban = (idSoal, jawaban) => { setJawabanUser(prev => ({ ...prev, [idSoal]: jawaban })); };
-  const handleTandaiRaguRagu = () => { if(soalSekarang) setStatusRaguRagu(prev => ({ ...prev, [soalSekarang.id]: !prev[soalSekarang.id] })); };
+  const handleTandaiRaguRagu = () => { if (soalSekarang) setStatusRaguRagu(prev => ({ ...prev, [soalSekarang.id]: !prev[soalSekarang.id] })); };
   const handleSoalSebelumnya = () => { setSoalSekarangIndex(prev => Math.max(0, prev - 1)); };
-  const handleSoalBerikutnya = () => { if(detailUjian && detailUjian.soalList) setSoalSekarangIndex(prev => Math.min(detailUjian.soalList.length - 1, prev + 1)); };
-  
+  const handleSoalBerikutnya = () => { if (detailUjian && detailUjian.soalList) setSoalSekarangIndex(prev => Math.min(detailUjian.soalList.length - 1, prev + 1)); };
+
   const progresPersen = detailUjian?.soalList?.length > 0 ? ((soalSekarangIndex + 1) / detailUjian.soalList.length) * 100 : 0;
-  const soalListUntukNavigasi = detailUjian?.soalList?.map((soal, index) => ({ 
-      id: soal.id, 
-      nomor: soal.nomor || (index + 1) 
-    })) || [];
+  const soalListUntukNavigasi = detailUjian?.soalList?.map((soal, index) => ({
+    id: soal.id,
+    nomor: soal.nomor || (index + 1)
+  })) || [];
 
   // Return untuk Loading, Error, atau Ujian Tidak Tersedia (tetap sama)
   if (isLoadingSoal) {
@@ -309,13 +313,13 @@ export default function PengerjaanUjianPage() {
           />
         </main>
         <NavigasiSoalSidebar
-            soalList={soalListUntukNavigasi}
-            soalSekarangIndex={soalSekarangIndex}
-            setSoalSekarangIndex={setSoalSekarangIndex}
-            jawabanUser={jawabanUser}
-            statusRaguRagu={statusRaguRagu}
-            isOpen={navigasiSoalOpen}
-            toggleSidebar={() => setNavigasiSoalOpen(prev => !prev)}
+          soalList={soalListUntukNavigasi}
+          soalSekarangIndex={soalSekarangIndex}
+          setSoalSekarangIndex={setSoalSekarangIndex}
+          jawabanUser={jawabanUser}
+          statusRaguRagu={statusRaguRagu}
+          isOpen={navigasiSoalOpen}
+          toggleSidebar={() => setNavigasiSoalOpen(prev => !prev)}
         />
       </div>
       <DialogKonfirmasiSelesai

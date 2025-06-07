@@ -47,7 +47,7 @@ Route::middleware('auth.token')->group(function () {
     });
 });
 
-Route::middleware('auth.token', 'auth.admin')->group(function () {
+Route::middleware('auth.token')->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
     Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
     Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');

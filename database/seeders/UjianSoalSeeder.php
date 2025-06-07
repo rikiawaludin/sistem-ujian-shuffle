@@ -3,9 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use App\Models\Ujian; // Impor model Ujian
-use App\Models\Soal;  // Impor model Soal
+use App\Models\Ujian;
+use App\Models\Soal;
 
 class UjianSoalSeeder extends Seeder
 {
@@ -16,122 +15,86 @@ class UjianSoalSeeder extends Seeder
      */
     public function run()
     {
-        // Ambil ujian yang relevan
-        $ujianWebLanjut = Ujian::where('judul_ujian', 'Ujian Komprehensif Web Lanjut')->first();
-        $ujianKalkulus = Ujian::where('judul_ujian', 'UTS Kalkulus Lanjutan')->first();
-        $ujianPBO = Ujian::where('judul_ujian', 'Kuis 1 Pemrograman Berorientasi Objek')->first();
-        $ujianSDA = Ujian::where('judul_ujian', 'UAS Struktur Data')->first();
+        // Langkah 1: Definisikan hubungan antara Ujian dan Soal
+        // menggunakan judul dan pertanyaan yang persis dari seeder lain.
+        $ujianDanSoalnya = [
+            'Kuis 1: Pengenalan AI & Agent Cerdas' => [
+                [
+                    'pertanyaan' => 'Siapakah yang dianggap sebagai "Bapak Kecerdasan Buatan"?',
+                    'nomor' => 1, 'bobot' => 50
+                ],
+                [
+                    'pertanyaan' => 'Algoritma A* (A-Star) selalu menemukan jalur terpendek jika heuristik yang digunakan bersifat admissible.',
+                    'nomor' => 2, 'bobot' => 50
+                ],
+            ],
+            'UTS Kecerdasan Buatan' => [
+                [
+                    'pertanyaan' => 'Siapakah yang dianggap sebagai "Bapak Kecerdasan Buatan"?',
+                    'nomor' => 1, 'bobot' => 30
+                ],
+                [
+                    'pertanyaan' => 'Algoritma A* (A-Star) selalu menemukan jalur terpendek jika heuristik yang digunakan bersifat admissible.',
+                    'nomor' => 2, 'bobot' => 30
+                ],
+                [
+                    'pertanyaan' => 'Jelaskan perbedaan mendasar antara supervised learning dan unsupervised learning!',
+                    'nomor' => 3, 'bobot' => 40
+                ],
+            ],
+            'UAS Teori Bahasa dan Otomata' => [
+                [
+                    'pertanyaan' => 'Mesin automata yang digunakan untuk mengenali bahasa reguler adalah...',
+                    'nomor' => 1, 'bobot' => 100
+                ],
+            ],
+            'Kuis Tambahan Basis Data' => [
+                // Ujian ini di UjianSeeder statusnya 'draft', jadi mungkin tidak perlu soal.
+                // Tapi kita tetap bisa menghubungkannya untuk kelengkapan data.
+                [
+                    'pertanyaan' => 'Perintah "DROP TABLE" dan "TRUNCATE TABLE" memiliki fungsi yang sama persis dalam SQL.',
+                    'nomor' => 1, 'bobot' => 100
+                ],
+            ],
+        ];
 
+        // Langkah 2: Ambil semua data relevan sekali saja untuk efisiensi
+        $semuaUjian = Ujian::all()->keyBy('judul_ujian');
+        $semuaSoal = Soal::all()->keyBy('pertanyaan');
 
-        // Ambil soal-soal yang relevan berdasarkan kategori atau pertanyaan
-        $soalFrameworkPHP = Soal::where('kategori_soal', 'Framework PHP')->first();
-        $soalKonsepHTTP = Soal::where('kategori_soal', 'Konsep HTTP')->first();
-        $soalAPIRest = Soal::where('kategori_soal', 'API')->first();
-        $soalDasarWeb = Soal::where('kategori_soal', 'Dasar Web')->first();
-        $soalReactState = Soal::where('kategori_soal', 'React State Management')->first();
-        $soalTurunan = Soal::where('kategori_soal', 'Turunan')->first();
-        $soalKonsepOOP = Soal::where('kategori_soal', 'Konsep Dasar OOP')->first();
-        $soalEnkapsulasi = Soal::where('kategori_soal', 'Enkapsulasi OOP')->first();
-        $soalStrukturData = Soal::where('kategori_soal', 'Struktur Data')->first();
+        // Kosongkan tabel pivot untuk memastikan data bersih setiap kali seeder dijalankan
+        \Illuminate\Support\Facades\DB::table('ujian_soal')->truncate();
 
+        $this->command->info('Memulai proses menghubungkan Ujian dengan Soal...');
 
-        $dataToInsert = [];
+        // Langkah 3: Loop dan hubungkan data menggunakan Eloquent
+        foreach ($ujianDanSoalnya as $judulUjian => $daftarSoal) {
+            $ujian = $semuaUjian->get($judulUjian);
 
-        // Hubungkan soal-soal Web Lanjut ke Ujian Komprehensif Web Lanjut
-        if ($ujianWebLanjut && $soalFrameworkPHP) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianWebLanjut->id,
-                'soal_id' => $soalFrameworkPHP->id,
-                'nomor_urut_di_ujian' => 1,
-                'bobot_nilai_soal' => 10,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
-        if ($ujianWebLanjut && $soalKonsepHTTP) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianWebLanjut->id,
-                'soal_id' => $soalKonsepHTTP->id,
-                'nomor_urut_di_ujian' => 2,
-                'bobot_nilai_soal' => 10,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
-        if ($ujianWebLanjut && $soalAPIRest) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianWebLanjut->id,
-                'soal_id' => $soalAPIRest->id,
-                'nomor_urut_di_ujian' => 3,
-                'bobot_nilai_soal' => 15,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
-        if ($ujianWebLanjut && $soalDasarWeb) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianWebLanjut->id,
-                'soal_id' => $soalDasarWeb->id,
-                'nomor_urut_di_ujian' => 4,
-                'bobot_nilai_soal' => 10,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
-        if ($ujianWebLanjut && $soalReactState) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianWebLanjut->id,
-                'soal_id' => $soalReactState->id,
-                'nomor_urut_di_ujian' => 5,
-                'bobot_nilai_soal' => 10,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
+            if (!$ujian) {
+                $this->command->warn("Ujian '{$judulUjian}' tidak ditemukan, dilewati.");
+                continue;
+            }
 
-        // Hubungkan soal Turunan ke UTS Kalkulus Lanjutan
-        if ($ujianKalkulus && $soalTurunan) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianKalkulus->id,
-                'soal_id' => $soalTurunan->id,
-                'nomor_urut_di_ujian' => 1,
-                'bobot_nilai_soal' => 100, // Misal ini satu-satunya soal
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
+            foreach ($daftarSoal as $detailSoal) {
+                $soal = $semuaSoal->get($detailSoal['pertanyaan']);
 
-        // Hubungkan soal OOP ke Kuis 1 PBO
-        if ($ujianPBO && $soalKonsepOOP) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianPBO->id,
-                'soal_id' => $soalKonsepOOP->id,
-                'nomor_urut_di_ujian' => 1,
-                'bobot_nilai_soal' => 50,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
-        if ($ujianPBO && $soalEnkapsulasi) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianPBO->id,
-                'soal_id' => $soalEnkapsulasi->id,
-                'nomor_urut_di_ujian' => 2,
-                'bobot_nilai_soal' => 50,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
+                if (!$soal) {
+                    $this->command->warn("Soal dengan pertanyaan '{$detailSoal['pertanyaan']}' tidak ditemukan, dilewati.");
+                    continue;
+                }
+
+                // Gunakan attach() untuk menyisipkan ke tabel pivot
+                $ujian->soal()->attach($soal->id, [
+                    'nomor_urut_di_ujian' => $detailSoal['nomor'],
+                    'bobot_nilai_soal' => $detailSoal['bobot'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+             $this->command->line(" -> Soal-soal untuk '{$judulUjian}' berhasil dihubungkan.");
         }
 
-        // Hubungkan soal Struktur Data ke UAS Struktur Data
-        if ($ujianSDA && $soalStrukturData) {
-            $dataToInsert[] = [
-                'ujian_id' => $ujianSDA->id,
-                'soal_id' => $soalStrukturData->id,
-                'nomor_urut_di_ujian' => 1,
-                'bobot_nilai_soal' => 100,
-                'created_at' => now(), 'updated_at' => now(),
-            ];
-        }
-
-        // Hanya insert jika ada data
-        if (!empty($dataToInsert)) {
-            DB::table('ujian_soal')->insert($dataToInsert);
-            $this->command->info('Tabel ujian_soal berhasil diisi.');
-        } else {
-            $this->command->warn('Tidak ada data untuk dimasukkan ke ujian_soal. Pastikan Ujian dan Soal yang dicari ada.');
-        }
+        $this->command->info('Seeder UjianSoal telah selesai dijalankan dengan data yang sesuai.');
     }
 }

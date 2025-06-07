@@ -4,42 +4,92 @@ namespace App\Http\Controllers;
 
 use App\Models\MataKuliah;
 use App\Models\PengerjaanUjian;
-use App\Models\BankSoal;
+use App\Models\Soal;
 use App\Models\Ujian;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
+use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class ListUjianController extends Controller
 {
+
+    private function getUserAuthToken(Request $request): ?string
+    {
+        $sessionToken = $request->session()->get('token');
+        if ($sessionToken) {
+            return $sessionToken;
+        }
+        Log::warning('ListUjianController: Token sesi "token" tidak ditemukan.');
+        return null;
+    }
+
     /**
      * Menampilkan daftar ujian untuk mata kuliah tertentu.
      */
     public function daftarPerMataKuliah($id_mata_kuliah)
     {
+        // =================================================================
+        // AWAL PERBAIKAN
+        // =================================================================
+        $userAccount = Session::get('account');
+        $userProfile = Session::get('profile');
+        $activeRoleArray = Session::get('role');
+        $authProp = ['user' => null];
+
+        if ($userAccount && isset($userAccount['id'])) {
+            $localUser = User::where('external_id', $userAccount['id'])->first();
+            
+            if ($localUser) {
+                // JEMBATAN PENTING: Loginkan pengguna ke sistem Auth Laravel
+                // agar request API berikutnya dikenali.
+                Auth::login($localUser);
+
+                $authProp['user'] = [
+                    'id' => $localUser->id,
+                    'external_id' => $userAccount['id'],
+                    'name' => $userProfile['nama'] ?? $userAccount['email'] ?? 'Pengguna',
+                    'email' => $userAccount['email'] ?? null,
+                    'image' => $userAccount['image'] ?? null,
+                    'roles' => $activeRoleArray ?? [],
+                    'is_mhs' => $userAccount['is_mhs'] ?? false,
+                    'nim' => $userProfile['nim'] ?? null,
+                    'nama_jurusan' => $userProfile['nama_jurusan'] ?? null,
+                    'kd_user' => $userAccount['kd_user'] ?? null,
+                ];
+            }
+        }
+        
+        // Memastikan pengguna benar-benar terotentikasi sebelum melanjutkan
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Sesi Anda tidak valid. Silakan login kembali.');
+        }
+        // =================================================================
+        // AKHIR PERBAIKAN
+        // =================================================================
+
         $mataKuliah = MataKuliah::findOrFail($id_mata_kuliah);
 
-        // Ambil semua ujian terkait dengan mata kuliah, hitung soalnya dengan efisien
         $ujianTersedia = Ujian::where('mata_kuliah_id', $id_mata_kuliah)
-                            ->where('status_publikasi', 'published') // Hanya tampilkan yang sudah dipublikasi
-                            ->withCount('soal') // Efisien, menghasilkan 'soal_count'
+                            ->where('status_publikasi', 'published')
+                            ->withCount('soal')
                             ->get();
 
         $now = Carbon::now();
-
-        // Proses setiap ujian untuk menentukan statusnya bagi user saat ini
-        $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now) {
-            
-            // Cari pengerjaan terakhir oleh user untuk ujian ini
+        
+        // Mengambil ID pengguna yang sudah terotentikasi untuk query pengerjaan ujian
+        $userId = Auth::id(); 
+        $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now, $userId) {
             $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujian->id)
-                                    ->where('user_id', Auth::id())
-                                    ->latest('waktu_mulai') // Ambil yang paling baru
+                                    ->where('user_id', $userId) // Menggunakan $userId yang sudah pasti ada
+                                    ->latest('waktu_mulai')
                                     ->first();
 
             $statusUjian = "Tidak Tersedia";
 
-            // Logika penentuan status yang lebih akurat
             if ($now->between($ujian->tanggal_mulai, $ujian->tanggal_selesai)) {
                 if (!$pengerjaanTerakhir) {
                     $statusUjian = "Belum Dikerjakan";
@@ -63,7 +113,7 @@ class ListUjianController extends Controller
                 'nama' => $ujian->judul_ujian,
                 'deskripsi' => $ujian->deskripsi,
                 'durasi' => $ujian->durasi . " Menit",
-                'jumlahSoal' => $ujian->soal_count, // Hasil dari withCount('soal')
+                'jumlahSoal' => $ujian->soal_count,
                 'kkm' => $ujian->kkm,
                 'batasWaktuPengerjaan' => $ujian->tanggal_selesai ? Carbon::parse($ujian->tanggal_selesai)->format('d F Y, H:i') : 'Fleksibel',
                 'status' => $statusUjian,
@@ -73,21 +123,63 @@ class ListUjianController extends Controller
         });
 
         return Inertia::render('Ujian/DaftarUjianPage', [
+            'auth' => $authProp,
             'mataKuliah' => [
                 'id' => $mataKuliah->id,
-                'nama' => $mataKuliah->nama, // Pastikan model MataKuliah menggunakan 'nama'
+                'nama' => $mataKuliah->nama,
             ],
             'daftarUjian' => $daftarUjian
         ]);
     }
 
+
     /**
      * Menampilkan halaman pengerjaan ujian.
      */
-    public function kerjakanUjian($id_ujian)
+    public function kerjakanUjian(Request $request, $id_ujian)
     {
+        // =================================================================
+        // AWAL PERBAIKAN
+        // =================================================================
+        $userAccount = Session::get('account');
+        $userProfile = Session::get('profile');
+        $activeRoleArray = Session::get('role');
+        $authProp = ['user' => null];
+
+        if ($userAccount && isset($userAccount['id'])) {
+            $localUser = User::where('external_id', $userAccount['id'])->first();
+            
+            if ($localUser) {
+                // JEMBATAN PENTING: Loginkan pengguna ke sistem Auth Laravel
+                Auth::login($localUser);
+
+                $authProp['user'] = [
+                    'id' => $localUser->id,
+                    'external_id' => $userAccount['id'],
+                    'name' => $userProfile['nama'] ?? 'Pengguna',
+                    'email' => $userAccount['email'] ?? null,
+                    'image' => $userAccount['image'] ?? null,
+                    'roles' => $activeRoleArray ?? [],
+                ];
+            }
+        }
+
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Sesi Anda tidak valid. Silakan login kembali.');
+        }
+        // =================================================================
+        // AKHIR PERBAIKAN
+        // =================================================================
+
+        $sessionToken = $this->getUserAuthToken($request);
         $ujian = Ujian::select('id', 'judul_ujian')->findOrFail((int)$id_ujian);
-        return Inertia::render('Ujian/PengerjaanUjianPage', ['idUjianAktif' => $ujian->id]);
+        
+        return Inertia::render('Ujian/PengerjaanUjianPage', [
+            'auth' => $authProp,
+            'idUjianAktif' => $ujian->id,
+            'sessionToken' => $sessionToken,
+            'apiBaseUrl' => config('myconfig.api.base_url', env('API_BASE_URL')),
+        ]);
     }
 
     /**
@@ -95,7 +187,7 @@ class ListUjianController extends Controller
      */
     public function konfirmasiSelesaiUjian($id_ujian)
     {
-        $ujian = Ujian::with('mataKuliah:id,nama') // Menggunakan 'nama'
+        $ujian = Ujian::with('mataKuliah:id,nama')
                     ->select('id', 'judul_ujian', 'mata_kuliah_id')
                     ->findOrFail((int)$id_ujian);
         return Inertia::render('Ujian/KonfirmasiSelesaiUjianPage', [
@@ -109,9 +201,10 @@ class ListUjianController extends Controller
      */
     public function detailHasilUjian($id_attempt)
     {
+        // Metode ini sudah benar karena mengandalkan Auth::id() yang kini akan valid.
         $attempt = PengerjaanUjian::with([
             'ujian:id,judul_ujian,kkm,mata_kuliah_id,durasi',
-            'ujian.mataKuliah:id,nama', // Menggunakan 'nama'
+            'ujian.mataKuliah:id,nama',
             'ujian.soal',
             'detailJawaban.soal'
         ])
@@ -170,7 +263,7 @@ class ListUjianController extends Controller
 
         $hasilUjianData = [
             'idAttempt' => $attempt->id,
-            'namaMataKuliah' => $mataKuliahDetail->nama ?? 'N/A', // Menggunakan 'nama'
+            'namaMataKuliah' => $mataKuliahDetail->nama ?? 'N/A',
             'judulUjian' => $ujianDetail->judul_ujian ?? 'N/A',
             'ujian' => [ 'id' => $ujianDetail->id, 'mata_kuliah_id' => $ujianDetail->mata_kuliah_id ],
             'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y, H:i') : 'N/A',
@@ -192,10 +285,11 @@ class ListUjianController extends Controller
      */
     public function riwayatUjian()
     {
+        // Metode ini sudah benar karena mengandalkan Auth::check() yang kini akan valid.
         $semuaHistoriUjian = [];
         if (Auth::check()) {
             $pengerjaanUjian = PengerjaanUjian::where('user_id', Auth::id())
-                ->with(['ujian:id,judul_ujian,kkm,mata_kuliah_id', 'ujian.mataKuliah:id,nama']) // Menggunakan 'nama'
+                ->with(['ujian:id,judul_ujian,kkm,mata_kuliah_id', 'ujian.mataKuliah:id,nama'])
                 ->orderBy('waktu_selesai', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -213,7 +307,7 @@ class ListUjianController extends Controller
                 return [
                     'id_pengerjaan' => $attempt->id,
                     'namaUjian' => $ujian->judul_ujian ?? 'Ujian Tidak Ditemukan',
-                    'namaMataKuliah' => $mataKuliah->nama ?? 'Mata Kuliah Tidak Ditemukan', // Menggunakan 'nama'
+                    'namaMataKuliah' => $mataKuliah->nama ?? 'Mata Kuliah Tidak Ditemukan',
                     'tanggalPengerjaan' => $attempt->waktu_selesai ? $attempt->waktu_selesai->format('d M Y') : 'N/A',
                     'skor' => $attempt->skor_total,
                     'kkm' => $kkmUjian,
