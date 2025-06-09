@@ -7,6 +7,7 @@ use App\Http\Controllers\ListUjianController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\PengerjaanUjianController; // <-- IMPORT BARU
 use App\Http\Controllers\Admin\SyncController;
+use App\Http\Controllers\Dosen\BankSoalController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -47,7 +48,7 @@ Route::middleware('auth.token')->group(function () {
     });
 });
 
-Route::middleware('auth.token')->group(function () {
+Route::middleware('auth.token', 'auth.admin')->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
     Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
     Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');
@@ -55,6 +56,14 @@ Route::middleware('auth.token')->group(function () {
     Route::post('/sync/prodi', [SyncController::class, 'SyncProdi'])->name('admin.sync.prodi'); 
     Route::post('/sync/admin', [SyncController::class, 'SyncAdmin'])->name('admin.sync.admin'); 
 
+});
+
+Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
+    Route::resource('dosen/bank-soal', BankSoalController::class)
+        ->names('dosen.bank-soal');
+    
+    // Jika ada rute lain khusus dosen di masa depan (misal: analisis ujian),
+    // letakkan juga di dalam grup ini.
 });
 
 require __DIR__.'/auth.php';
