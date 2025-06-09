@@ -15,7 +15,13 @@ export default function Index() {
     };
 
     const columns = useMemo(() => [
-        { header: 'Pertanyaan', accessorKey: 'pertanyaan', cell: ({ row }) => (<p className="font-normal line-clamp-2">{row.original.pertanyaan}</p>) },
+        { header: 'Pertanyaan', accessorKey: 'pertanyaan', cell: ({ row }) => (
+                // Gunakan div dengan dangerouslySetInnerHTML untuk merender HTML
+                <div
+                    className="font-normal text-sm text-blue-gray-800 line-clamp-3"
+                    dangerouslySetInnerHTML={{ __html: row.original.pertanyaan }}
+                />
+            ) },
         { header: 'Tipe', accessorKey: 'tipe_soal', cell: info => <span className="capitalize">{info.getValue().replace('_', ' ')}</span> },
         { header: 'Kategori', accessorKey: 'kategori_soal' },
         { header: 'Aksi', id: 'aksi', cell: ({ row }) => (

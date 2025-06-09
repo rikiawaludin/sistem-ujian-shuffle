@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Dosen;
 use App\Http\Controllers\Controller;
 use App\Models\Soal;
 use App\Models\User;
+use App\Models\MataKuliah;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Http; // <-- Impor HTTP Client
+use Illuminate\Support\Facades\Log; // <-- Impor Log untuk debugging
 use Inertia\Inertia;
 
 class BankSoalController extends Controller
@@ -40,6 +43,48 @@ class BankSoalController extends Controller
         ];
     }
 
+    /**
+     * Helper baru untuk mengambil mata kuliah yang diajar dosen dari API.
+     */
+    private function getDosenMataKuliahOptions(Request $request): array
+    {
+        $token = $request->session()->get('token');
+        $pathApi = 'ujian/mata-kuliah/dosen'; // <-- CONTOH PATH YANG BENAR
+        $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
+
+        if (!$token) {
+            Log::warning('[BankSoalController] Tidak ada token sesi untuk memanggil API mata kuliah.');
+            return [];
+        }
+
+        try {
+            $response = Http::withToken($token)->timeout(15)->get($apiUrl);
+
+            // dd($response->json());
+
+            if ($response->failed()) {
+                Log::error('[BankSoalController] Gagal mengambil data MK dari API.', ['status' => $response->status()]);
+                return [];
+            }
+            
+            $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
+            
+            // Ambil hanya external_id dari hasil API
+            $externalIds = collect($mataKuliahFromApi)->pluck('matakuliah.mk_id')->filter()->unique()->all();
+
+            // Cocokkan dengan data lokal untuk mendapatkan nama yang benar dan ID lokal
+            $mataKuliahLokal = MataKuliah::whereIn('external_id', $externalIds)->get(['id', 'nama']);
+
+            return $mataKuliahLokal->map(function ($mk) {
+                return ['value' => $mk->nama, 'label' => $mk->nama];
+            })->all();
+
+        } catch (\Exception $e) {
+            Log::error('[BankSoalController] Exception saat mengambil data MK dari API: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     public function index()
     {
         $authProps = $this->getAuthProps();
@@ -61,14 +106,15 @@ class BankSoalController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         return Inertia::render('Dosen/BankSoal/Form', [
             'auth' => $this->getAuthProps(),
+            'mataKuliahOptions' => $this->getDosenMataKuliahOptions($request), // <-- Kirim data MK
         ]);
     }
 
-    public function edit(Soal $bank_soal)
+    public function edit(Request $request, Soal $bank_soal)
     {
         $authProps = $this->getAuthProps();
         
@@ -80,6 +126,7 @@ class BankSoalController extends Controller
         return Inertia::render('Dosen/BankSoal/Form', [
             'soal' => $bank_soal,
             'auth' => $authProps,
+            'mataKuliahOptions' => $this->getDosenMataKuliahOptions($request),
         ]);
     }
 
@@ -102,9 +149,26 @@ class BankSoalController extends Controller
     public function update(Request $request, Soal $bank_soal)
     {
         $this->getAuthProps();
+
+        // dd($request->all());
+
         if ($bank_soal->dosen_pembuat_id !== Auth::id()) {
             abort(403);
         }
+
+        // Validasi input. Aturan 'string' tidak akan menghapus tag HTML.
+        $validatedData = $request->validate([
+            'pertanyaan' => 'required|string',
+            'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
+            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah',
+            'kunci_jawaban' => 'nullable', // Kunci bisa null/kosong, terutama untuk esai
+            'penjelasan' => 'nullable|string',
+            'kategori_soal' => 'nullable|string|max:100',
+        ]);
+
+        // Lakukan update pada model dengan data yang sudah tervalidasi
+        $bank_soal->update($validatedData);
+
         // ... (logika validasi dan update)
         return redirect()->route('dosen.bank-soal.index')->with('success', 'Soal berhasil diperbarui.');
     }
