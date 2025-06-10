@@ -78,7 +78,7 @@ class SyncMahasiswaJob implements ShouldQueue
                         $dataToUpsert[] = [
                             'external_id' => $mhsData['id'],
                             'is_mahasiswa' => true,
-                            // 'name' dan 'email' DIHAPUS dari array ini karena kolomnya belum ada di DB
+                            'email' => $mhsData['email'],
                             'is_dosen' => false,
                             'is_prodi' => false,
                             'is_admin' => false,
@@ -99,7 +99,7 @@ class SyncMahasiswaJob implements ShouldQueue
                                     // Jika array ketiga kosong, hanya record baru yang akan diinsert,
                                     // record yang sudah ada tidak akan diupdate (kecuali timestamp jika model menggunakannya).
                                     // Untuk memastikan record yang ada diupdate timestamp-nya:
-                                    ['is_dosen', 'is_prodi', 'is_admin', 'updated_at']
+                                    ['email', 'is_dosen', 'is_prodi', 'is_admin', 'updated_at']
                                 );
                                 $processedCount += $affectedRows;
                             } catch (\Illuminate\Database\QueryException $e) {

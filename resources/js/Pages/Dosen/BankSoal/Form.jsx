@@ -7,7 +7,7 @@ import { Editor } from '@tinymce/tinymce-react';
 // Impor komponen partial yang baru dibuat
 import PilihanGandaForm from '@/Pages/Dosen/Partials/PilihanGandaForm';
 
-export default function Form({ soal, mataKuliahOptions  }) {
+export default function Form({ soal, mataKuliahOptions }) {
     const isEditMode = !!soal;
     const { data, setData, post, put, errors, processing } = useForm({
         pertanyaan: soal?.pertanyaan || '',
@@ -69,19 +69,19 @@ export default function Form({ soal, mataKuliahOptions  }) {
                         </div>
                         <div>
                             <Select
-                                label="Kategori (Mata Kuliah)"
-                                value={data.kategori_soal}
-                                onChange={(value) => setData('kategori_soal', value)}
-                                error={!!errors.kategori_soal}
+                                label="Mata Kuliah"
+                                value={String(data.mata_kuliah_id)}
+                                onChange={val => setData('mata_kuliah_id', val)}
+                                error={!!errors.mata_kuliah_id}
                                 disabled={!mataKuliahOptions || mataKuliahOptions.length === 0}
                             >
-                                {mataKuliahOptions && mataKuliahOptions.map((mk) => (
-                                    <Option key={mk.value} value={mk.value}>
-                                        {mk.label}
+                                {(mataKuliahOptions || []).map(option => (
+                                    <Option key={option.value} value={String(option.value)}>
+                                        {option.label}
                                     </Option>
                                 ))}
                             </Select>
-                            {!mataKuliahOptions || mataKuliahOptions.length === 0 && (
+                            {(!mataKuliahOptions || mataKuliahOptions.length === 0) && (
                                 <Typography variant="small" color="gray" className="mt-1">
                                     Tidak ada mata kuliah yang bisa dipilih.
                                 </Typography>

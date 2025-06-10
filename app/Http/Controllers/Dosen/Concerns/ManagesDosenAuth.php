@@ -79,4 +79,48 @@ trait ManagesDosenAuth
             return [];
         }
     }
+
+    private function getMahasiswaAktifMap(Request $request): array
+    {
+        $token = $request->session()->get('token');
+        // Gunakan endpoint yang sama dengan dashboard mahasiswa, karena berisi data mahasiswa per kelas
+        $pathApi = 'ujian/mata-kuliah/mahasiswa';
+        $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
+
+        if (!$token) {
+            Log::warning('[Trait ManagesDosenAuth] Tidak ada token sesi untuk memanggil API mahasiswa.');
+            return [];
+        }
+
+        try {
+            $response = Http::withToken($token)->timeout(15)->get($apiUrl);
+            if ($response->failed()) {
+                Log::error('[Trait ManagesDosenAuth] Gagal mengambil data mahasiswa dari API.', ['status' => $response->status(), 'url' => $apiUrl]);
+                return [];
+            }
+            
+            $kelasKuliahFromApi = $response->json('data.kelas_kuliah', []);
+            $mahasiswaMap = [];
+
+            foreach ($kelasKuliahFromApi as $kelas) {
+                // Asumsi di dalam setiap kelas ada data mahasiswa
+                if (isset($kelas['mahasiswa']) && is_array($kelas['mahasiswa'])) {
+                    foreach ($kelas['mahasiswa'] as $mahasiswa) {
+                        if (isset($mahasiswa['mhs_id']) && !isset($mahasiswaMap[$mahasiswa['mhs_id']])) {
+                            $mahasiswaMap[$mahasiswa['mhs_id']] = [
+                                'nama' => $mahasiswa['nm_mhs'] ?? 'Nama Tidak Ditemukan',
+                                'nim' => $mahasiswa['nim'] ?? 'N/A',
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            return $mahasiswaMap;
+
+        } catch (\Exception $e) {
+            Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data mahasiswa dari API: ' . $e->getMessage());
+            return [];
+        }
+    }
 }

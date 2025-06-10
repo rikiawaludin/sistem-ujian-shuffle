@@ -9,6 +9,7 @@ use App\Http\Controllers\PengerjaanUjianController; // <-- IMPORT BARU
 use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Dosen\BankSoalController;
 use App\Http\Controllers\Dosen\UjianController;
+use App\Http\Controllers\Dosen\DosenDashboardController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -49,7 +50,7 @@ Route::middleware('auth.token')->group(function () {
     });
 });
 
-Route::middleware('auth.token', 'auth.admin')->group(function () {
+Route::middleware('auth.token')->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
     Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
     Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');
@@ -62,7 +63,6 @@ Route::middleware('auth.token', 'auth.admin')->group(function () {
 Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
 
     Route::get('dosen/dashboard', [DosenDashboardController::class, 'index'])->name('dosen.dashboard');
-    Route::get('dosen/pengerjaan/{pengerjaan}/hasil', [DosenDashboardController::class, 'showHasilMahasiswa'])->name('dosen.pengerjaan.hasil');
 
     Route::resource('dosen/bank-soal', BankSoalController::class)
         ->names('dosen.bank-soal');
