@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Soal;
 use App\Models\User;
 use App\Models\MataKuliah;
+use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -15,75 +16,8 @@ use Inertia\Inertia;
 
 class BankSoalController extends Controller
 {
-    /**
-     * Helper function untuk mengambil data otentikasi dari sesi dan meloginkan user.
-     * Ini penting agar Auth::id() berfungsi dengan benar.
-     */
-    private function getAuthProps(): array
-    {
-        $userAccount = Session::get('account');
-        if (!$userAccount || !isset($userAccount['id'])) {
-            return ['user' => null];
-        }
 
-        $localUser = User::where('external_id', $userAccount['id'])->first();
-        if ($localUser) {
-            // Ini adalah langkah krusial agar Auth::id() berfungsi di dalam request ini
-            Auth::login($localUser);
-        }
-
-        return [
-            'user' => [
-                'id' => $localUser->id ?? null,
-                'name' => Session::get('profile')['nama'] ?? 'Pengguna Dosen',
-                'email' => $userAccount['email'] ?? null,
-                'image' => $userAccount['image'] ?? null,
-                'is_dosen' => $userAccount['is_dosen'] ?? false,
-            ],
-        ];
-    }
-
-    /**
-     * Helper baru untuk mengambil mata kuliah yang diajar dosen dari API.
-     */
-    private function getDosenMataKuliahOptions(Request $request): array
-    {
-        $token = $request->session()->get('token');
-        $pathApi = 'ujian/mata-kuliah/dosen'; // <-- CONTOH PATH YANG BENAR
-        $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
-
-        if (!$token) {
-            Log::warning('[BankSoalController] Tidak ada token sesi untuk memanggil API mata kuliah.');
-            return [];
-        }
-
-        try {
-            $response = Http::withToken($token)->timeout(15)->get($apiUrl);
-
-            // dd($response->json());
-
-            if ($response->failed()) {
-                Log::error('[BankSoalController] Gagal mengambil data MK dari API.', ['status' => $response->status()]);
-                return [];
-            }
-            
-            $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
-            
-            // Ambil hanya external_id dari hasil API
-            $externalIds = collect($mataKuliahFromApi)->pluck('matakuliah.mk_id')->filter()->unique()->all();
-
-            // Cocokkan dengan data lokal untuk mendapatkan nama yang benar dan ID lokal
-            $mataKuliahLokal = MataKuliah::whereIn('external_id', $externalIds)->get(['id', 'nama']);
-
-            return $mataKuliahLokal->map(function ($mk) {
-                return ['value' => $mk->nama, 'label' => $mk->nama];
-            })->all();
-
-        } catch (\Exception $e) {
-            Log::error('[BankSoalController] Exception saat mengambil data MK dari API: ' . $e->getMessage());
-            return [];
-        }
-    }
+    use ManagesDosenAuth;
 
     public function index()
     {

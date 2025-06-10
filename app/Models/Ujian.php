@@ -13,6 +13,7 @@ class Ujian extends Model
 
     protected $fillable = [
         'mata_kuliah_id',
+        'dosen_pembuat_id',
         'judul_ujian',
         'deskripsi',
         'durasi', // dalam menit atau detik, pastikan konsisten

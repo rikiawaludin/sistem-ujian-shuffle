@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\PengerjaanUjianController; // <-- IMPORT BARU
 use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Dosen\BankSoalController;
+use App\Http\Controllers\Dosen\UjianController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -59,11 +60,15 @@ Route::middleware('auth.token', 'auth.admin')->group(function () {
 });
 
 Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
+
+    Route::get('dosen/dashboard', [DosenDashboardController::class, 'index'])->name('dosen.dashboard');
+    Route::get('dosen/pengerjaan/{pengerjaan}/hasil', [DosenDashboardController::class, 'showHasilMahasiswa'])->name('dosen.pengerjaan.hasil');
+
     Route::resource('dosen/bank-soal', BankSoalController::class)
         ->names('dosen.bank-soal');
     
-    // Jika ada rute lain khusus dosen di masa depan (misal: analisis ujian),
-    // letakkan juga di dalam grup ini.
+    Route::resource('dosen/ujian', UjianController::class)
+        ->names('dosen.ujian');
 });
 
 require __DIR__.'/auth.php';

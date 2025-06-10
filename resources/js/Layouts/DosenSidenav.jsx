@@ -1,19 +1,21 @@
 import React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { Typography, Button } from "@material-tailwind/react";
-import { BookOpenIcon, PresentationChartBarIcon } from "@heroicons/react/24/solid";
+import { BookOpenIcon, DocumentTextIcon } from "@heroicons/react/24/solid";
 
 // Definisikan rute khusus untuk navigasi dosen
 const dosenRoutes = [
-    // {
-    //     name: "Dashboard Dosen",
-    //     path: route('dosen.dashboard'), // Ganti dengan nama rute dashboard dosen Anda jika ada
-    //     icon: <PresentationChartBarIcon className="w-5 h-5 mr-3" />
-    // },
     {
         name: "Bank Soal",
-        path: route('dosen.bank-soal.index'),
+        pathName: 'dosen.bank-soal.index', // Pastikan ini sesuai dengan nama baru
+        pathPattern: 'dosen.bank-soal.*',
         icon: <BookOpenIcon className="w-5 h-5 mr-3" />
+    },
+    {
+        name: "Manajemen Ujian",
+        pathName: 'dosen.ujian.index', // Rute baru untuk daftar ujian
+        pathPattern: 'dosen.ujian.*',
+        icon: <DocumentTextIcon className="w-5 h-5 mr-3" /> // Contoh ikon baru
     }
 ];
 
@@ -28,10 +30,13 @@ export default function DosenSidenav() {
                 </Link>
             </div>
             <div className="flex flex-col gap-2">
-                {dosenRoutes.map(({ name, path, icon }) => {
-                    const isActive = route().current(path.split('/').pop() + '.*');
+                {dosenRoutes.map(({ name, pathName, pathPattern, icon }) => {
+                    // Gunakan pathPattern untuk mengecek link aktif
+                    const isActive = route().current(pathPattern);
+
                     return (
-                        <Link key={name} href={path}>
+                        // Gunakan route(pathName) untuk membuat URL
+                        <Link key={name} href={route(pathName)}>
                             <Button
                                 variant={isActive ? "gradient" : "text"}
                                 color={isActive ? "blue" : "blue-gray"}
