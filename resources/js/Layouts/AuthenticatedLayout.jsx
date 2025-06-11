@@ -34,7 +34,7 @@ export default function AuthenticatedLayout({ children, title }) {
         // TAMPILAN UNTUK PENGGUNA LAIN (MAHASISWA)
         <>
           <AppNavbar />
-          <div className="max-w-screen-xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-screen-2xl mx-auto py-6 px-2">
             <main className="mt-2">
               {children}
             </main>

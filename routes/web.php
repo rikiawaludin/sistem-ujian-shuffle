@@ -51,14 +51,24 @@ Route::middleware('auth.token')->group(function () {
 });
 
 Route::middleware('auth.token')->group(function () {
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
-    Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('admin.sync.mahasiswa'); // <--- UBAH DI SINI
-    Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('admin.sync.matakuliah');
-    Route::post('/sync/dosen', [SyncController::class, 'SyncDosen'])->name('admin.sync.dosen'); 
-    Route::post('/sync/prodi', [SyncController::class, 'SyncProdi'])->name('admin.sync.prodi'); 
-    Route::post('/sync/admin', [SyncController::class, 'SyncAdmin'])->name('admin.sync.admin'); 
+ 
+    Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function () {
+        
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+        // Rute untuk sinkronisasi
+        Route::post('/sync/mahasiswa', [SyncController::class, 'syncMahasiswa'])->name('sync.mahasiswa');
+        Route::post('/sync/matakuliah', [SyncController::class, 'syncMataKuliah'])->name('sync.matakuliah');
+        Route::post('/sync/dosen', [SyncController::class, 'SyncDosen'])->name('sync.dosen');
+        Route::post('/sync/prodi', [SyncController::class, 'SyncProdi'])->name('sync.prodi');
+        Route::post('/sync/admin', [SyncController::class, 'SyncAdmin'])->name('sync.admin');
+
+
+    });
+
 
 });
+
 
 Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
 

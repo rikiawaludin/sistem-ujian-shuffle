@@ -100,7 +100,7 @@ export function AppNavbar() {
     <MaterialTailwindNavbar
       className="sticky top-0 z-50 h-max max-w-full rounded-none px-4 py-2 lg:px-8 lg:py-3 border-b border-blue-gray-100"
     >
-      <div className="max-w-screen-xl mx-auto"> {/* Container untuk membatasi lebar konten navbar */}
+      <div className="max-w-screen-2xl mx-auto"> {/* Container untuk membatasi lebar konten navbar */}
         <div className="flex items-center w-full"> {/* Kontainer flex utama untuk item-item navbar */}
           <div className="flex-shrink-0">
             <Link

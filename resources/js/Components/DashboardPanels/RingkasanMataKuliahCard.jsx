@@ -1,90 +1,69 @@
 import React from 'react';
-import { Card, CardHeader, CardBody, CardFooter, Typography, Button } from "@material-tailwind/react";
+import { Card, CardHeader, CardBody, CardFooter, Typography, Button, Tooltip, Avatar } from "@material-tailwind/react";
 import { Link } from '@inertiajs/react';
-import { DocumentTextIcon, UserGroupIcon, AcademicCapIcon, TagIcon, LockClosedIcon } from "@heroicons/react/24/solid";
+import defaultMatkulImage from '/public/images/placeholder-matakuliah.jpg'; // Menggunakan path absolut dari root
+import defaultAvatar from '/public/images/default-avatar.png'; // Avatar default
 
 export default function RingkasanMataKuliahCard({ mataKuliah }) {
-  const dosenDefault = {
-    nama: mataKuliah.dosen?.nama || "Belum ada dosen",
-  };
-
+  // Cek apakah data mata kuliah ini sudah ada di sistem ujian lokal
   const hasLocalData = !!mataKuliah.id_matakuliah_lokal;
 
   return (
-    <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 border border-blue-gray-50 overflow-hidden flex flex-col h-full">
+    <Card color="transparent" shadow={false} className="flex flex-col h-full">
       <CardHeader
         floated={false}
-        shadow={false}
-        color="transparent"
-        className="m-0 rounded-none h-40 sm:h-48"
+        color="gray"
+        className="mx-0 mt-0 mb-4 h-64 xl:h-40"
       >
         <img
-          src={mataKuliah.img || "/public/images/placeholder-matakuliah.jpg"}
-          alt={mataKuliah.nama || "Gambar Mata Kuliah"}
+          src={defaultMatkulImage}
+          alt={mataKuliah.nama}
           className="h-full w-full object-cover"
         />
       </CardHeader>
-      <CardBody className="flex-grow p-4">
-        <Typography variant="small" color="blue" className="font-semibold opacity-75 mb-1 flex items-center">
-            <AcademicCapIcon className="h-4 w-4 mr-1" /> Mata Kuliah
+      <CardBody className="py-0 px-1 flex-grow">
+        <Typography
+          variant="small"
+          className="font-normal text-blue-gray-500"
+        >
+          {/* Tag diganti dengan Semester */}
+          {mataKuliah.semester ? `Semester ${mataKuliah.semester}` : 'Semester Umum'}
         </Typography>
-        <Typography variant="h5" color="blue-gray" className="mb-1 font-semibold leading-tight">
+        <Typography
+          variant="h5"
+          color="blue-gray"
+          className="mt-1 mb-2 font-bold" // Diberi font-bold agar lebih menonjol
+        >
+          {/* Title diganti dengan Nama Mata Kuliah */}
           {mataKuliah.nama}
         </Typography>
-        
-        {(mataKuliah.semester || mataKuliah.tahun_ajaran) && (
-            <div className="flex items-center text-xs text-blue-gray-600 mb-2">
-                <TagIcon className="h-3.5 w-3.5 mr-1 opacity-70" />
-                {mataKuliah.semester && <span>Semester {mataKuliah.semester}</span>}
-                {mataKuliah.semester && mataKuliah.tahun_ajaran && <span className="mx-1 text-blue-gray-300">|</span>}
-                {mataKuliah.tahun_ajaran && <span>{mataKuliah.tahun_ajaran}</span>}
-            </div>
-        )}
-
-        <Typography variant="small" className="font-normal text-blue-gray-500 mb-3 h-10 overflow-hidden text-ellipsis" title={mataKuliah.deskripsi_singkat || "Tidak ada deskripsi."}>
-          {mataKuliah.deskripsi_singkat && mataKuliah.deskripsi_singkat.length > 65
-            ? mataKuliah.deskripsi_singkat.substring(0, 62) + "..."
-            : mataKuliah.deskripsi_singkat || "Tidak ada deskripsi."}
+        <Typography
+          variant="small"
+          className="font-normal text-blue-gray-500"
+        >
+          {/* Description diganti dengan Nama Dosen */}
+          {mataKuliah.dosen?.nama || 'Dosen Belum Ditentukan'}
         </Typography>
-        <div className="flex items-center text-xs text-blue-gray-700 mb-1">
-          <DocumentTextIcon className="h-4 w-4 mr-1 opacity-70" />
-          <span>{mataKuliah.jumlah_ujian_tersedia || 0} Ujian Tersedia</span>
-        </div>
-        <div className="flex items-center text-xs text-blue-gray-700">
-          <UserGroupIcon className="h-4 w-4 mr-1 opacity-70" />
-          <span>Dosen: {dosenDefault.nama}</span>
-        </div>
       </CardBody>
-      <CardFooter className="pt-2 p-4">
-        {hasLocalData ? (
-            <Link href={route('ujian.daftarPerMataKuliah', { id_mata_kuliah: mataKuliah.id_matakuliah_lokal })}>
-              <Button 
-                size="sm" 
-                variant="gradient" 
-                color="blue" 
-                fullWidth
-                className="flex items-center justify-center gap-2"
-              >
-                Lihat Detail Ujian
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                </svg>
-              </Button>
-            </Link>
-        ) : (
-            <Button 
-              size="sm" 
-              variant="outlined" 
-              color="blue-gray" 
-              fullWidth
-              disabled
-              className="flex items-center justify-center gap-2"
-              title="Data mata kuliah ini belum tersedia di sistem ujian"
-            >
-              <LockClosedIcon className="w-4 h-4" />
-              Detail Tidak Tersedia
-            </Button>
-        )}
+      <CardFooter className="mt-6 flex items-center justify-between py-0 px-1">
+        {/* Tombol "View Project" diubah menjadi "Lihat Detail" */}
+        <Link href={hasLocalData ? route('ujian.daftarPerMataKuliah', { id_mata_kuliah: mataKuliah.id_matakuliah_lokal }) : '#'}>
+          <Button variant="outlined" size="sm" disabled={!hasLocalData}>
+            {hasLocalData ? 'Lihat Detail' : 'Tidak Tersedia'}
+          </Button>
+        </Link>
+        {/* Members diganti dengan Avatar Dosen */}
+        <div>
+          <Tooltip content={mataKuliah.dosen?.nama || 'Dosen'}>
+            <Avatar
+              src={defaultAvatar}
+              alt={mataKuliah.dosen?.nama}
+              size="xs"
+              variant="circular"
+              className="cursor-pointer border-2 border-white"
+            />
+          </Tooltip>
+        </div>
       </CardFooter>
     </Card>
   );
