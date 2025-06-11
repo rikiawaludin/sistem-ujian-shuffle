@@ -16,11 +16,11 @@ export default function DetailHasilUjianPage() {
       router.get(route('ujian.daftarPerMataKuliah', { id_mata_kuliah: hasilUjian.ujian.mata_kuliah_id }));
     } else if (route().has('ujian.riwayat')) {
       router.get(route('ujian.riwayat'));
-    } else if (route().has('dashboard')) {
-      router.get(route('dashboard'));
+    } else if (route().has('home')) {
+      router.get(route('home'));
     } else {
       // Fallback jika tidak ada histori atau rute lain, bisa ke halaman utama
-      router.get(route('dashboard')); // Atau '/' jika dashboard tidak selalu ada/dikenal
+      router.get(route('home')); // Atau '/' jika home tidak selalu ada/dikenal
     }
   };
 
@@ -35,8 +35,8 @@ export default function DetailHasilUjianPage() {
           <Card className="p-8 text-center shadow-md">
             <Typography variant="h4" color="red" className="mb-4">Error Memuat Detail Ujian</Typography>
             <Typography color="blue-gray" className="mb-6">Maaf, detail hasil ujian tidak dapat ditemukan atau tidak lengkap.</Typography>
-            <Button onClick={() => router.get(route('dashboard'))} color="blue">
-              Kembali ke Dashboard
+            <Button onClick={() => router.get(route('home'))} color="blue">
+              Kembali ke Home
             </Button>
           </Card>
         </div>

@@ -267,14 +267,14 @@ export default function PengerjaanUjianPage() {
   if (errorSoal) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-blue-gray-50 p-6 text-center">
-        <Head title="Error Memuat Ujian" /><XCircleIcon className="h-16 w-16 text-red-500 mb-4" /><Typography variant="h5" color="red">Gagal Memuat Soal</Typography><Typography color="blue-gray" className="mt-2 mb-6">{errorSoal}</Typography><Link href={route('dashboard')}><MaterialButton color="blue">Kembali ke Dashboard</MaterialButton></Link>
+        <Head title="Error Memuat Ujian" /><XCircleIcon className="h-16 w-16 text-red-500 mb-4" /><Typography variant="h5" color="red">Gagal Memuat Soal</Typography><Typography color="blue-gray" className="mt-2 mb-6">{errorSoal}</Typography><Link href={route('home')}><MaterialButton color="blue">Kembali ke Home</MaterialButton></Link>
       </div>
     );
   }
   if (!detailUjian || !soalSekarang || !detailUjian.soalList || detailUjian.soalList.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-blue-gray-50 p-6 text-center">
-        <Head title="Ujian Tidak Tersedia" /><InformationCircleIcon className="h-16 w-16 text-amber-500 mb-4" /><Typography variant="h5" color="blue-gray">Ujian Tidak Tersedia</Typography><Typography color="blue-gray" className="mt-2 mb-6">Detail ujian tidak ditemukan atau tidak ada soal yang dapat dimuat saat ini.</Typography><Link href={route('dashboard')}><MaterialButton color="blue">Kembali ke Dashboard</MaterialButton></Link>
+        <Head title="Ujian Tidak Tersedia" /><InformationCircleIcon className="h-16 w-16 text-amber-500 mb-4" /><Typography variant="h5" color="blue-gray">Ujian Tidak Tersedia</Typography><Typography color="blue-gray" className="mt-2 mb-6">Detail ujian tidak ditemukan atau tidak ada soal yang dapat dimuat saat ini.</Typography><Link href={route('home')}><MaterialButton color="blue">Kembali ke Home</MaterialButton></Link>
       </div>
     );
   }

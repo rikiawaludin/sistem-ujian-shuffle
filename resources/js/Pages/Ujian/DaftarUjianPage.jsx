@@ -1,8 +1,8 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Typography, IconButton, Card } from "@material-tailwind/react";
-import { ArrowLeftIcon } from "@heroicons/react/24/solid";
-import { usePage, Head } from '@inertiajs/react';
+import { ArrowLeftIcon, AcademicCapIcon } from "@heroicons/react/24/solid";
+import { usePage, Head, router  } from '@inertiajs/react';
 import KartuUjian from './DaftarUjianComponents/KartuUjian';
 
 export default function DaftarUjianPage() {
@@ -10,7 +10,7 @@ export default function DaftarUjianPage() {
   const { auth, mataKuliah, daftarUjian } = usePage().props;
   
   const handleKembali = () => {
-    window.history.back();
+    router.get(route('home'));
   };
 
   const ujianList = Array.isArray(daftarUjian) ? daftarUjian : [];
@@ -35,9 +35,12 @@ export default function DaftarUjianPage() {
           >
             <ArrowLeftIcon strokeWidth={2.5} className="h-5 w-5" />
           </IconButton>
-          <Typography variant="h4" color="blue-gray" className="flex-wrap font-semibold">
-            Ujian untuk: <span className="font-bold">{mataKuliah ? mataKuliah.nama : "Mata Kuliah Tidak Ditemukan"}</span>
-          </Typography>
+          <div className="flex items-center gap-3">
+            <AcademicCapIcon className="h-8 w-8 text-blue-gray-700" />
+            <Typography variant="h4" color="blue-gray" className="flex-wrap font-semibold">
+              <span className="font-bold">{mataKuliah ? mataKuliah.nama : "Mata Kuliah Tidak Ditemukan"}</span>
+            </Typography>
+          </div>
         </div>
       </div>
 

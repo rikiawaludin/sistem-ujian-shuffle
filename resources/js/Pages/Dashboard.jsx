@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Typography, Card, CardBody, Select, Option, Spinner, Alert } from "@material-tailwind/react";
 import { usePage, Head, router } from '@inertiajs/react';
+import { ArchiveBoxIcon, PlayCircleIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
+
 import axios from 'axios'; // Menggunakan axios
 import 'swiper/css';
 
@@ -9,6 +11,7 @@ import PanelRiwayatUjian from '@/Components/DashboardPanels/PanelRiwayatUjian';
 import PanelUjianAktif from '@/Components/DashboardPanels/PanelUjianAktif';
 import PanelUjianMendatang from '@/Components/DashboardPanels/PanelUjianMendatang';
 import RingkasanMataKuliahCard from '@/Components/DashboardPanels/RingkasanMataKuliahCard';
+import InfoPanelCard from '@/Components/DashboardPanels/InfoPanelCard';
 import HistoriUjianRingkasanCard from '@/Components/DashboardPanels/HistoriUjianRingkasanCard';
 import { InformationCircleIcon } from '@heroicons/react/24/solid';
 
@@ -17,6 +20,7 @@ export default function Dashboard() {
     auth,
     daftarMataKuliahLokal, // Ini adalah objek/map dari MK lokal, key-nya adalah external_id
     historiUjian,
+    daftarUjian,
     availableSemesters,
     filters,
     apiBaseUrl,
@@ -77,7 +81,7 @@ export default function Dashboard() {
   }, [fetchKelasKuliahMahasiswa]);
 
   const handleSemesterChange = (value) => {
-    router.get(route('dashboard'), {
+    router.get(route('home'), {
       semester: value,
       tahun_ajaran: selectedTahunAjaran
     }, { preserveState: true, preserveScroll: true, replace: true });
@@ -129,75 +133,100 @@ export default function Dashboard() {
   const historiUjianList = Array.isArray(historiUjian) ? historiUjian : [];
   const semesterOptions = Array.isArray(availableSemesters) ? availableSemesters : [];
 
+  // Data untuk panel ringkasan, kita hitung di sini
+  const summaryData = useMemo(() => {
+    const riwayatCount = Array.isArray(historiUjian) ? historiUjian.length : 0;
+    const aktifCount = Array.isArray(daftarUjian) ? daftarUjian.filter(u => u.status === 'Sedang Dikerjakan').length : 0;
+    const mendatangCount = Array.isArray(daftarUjian) ? daftarUjian.filter(u => u.status === 'Belum Dikerjakan' || u.status === 'Akan Datang').length : 0;
+
+    return [
+      { icon: <ArchiveBoxIcon className="w-6 h-6" />, title: "Ujian Selesai", count: riwayatCount },
+      { icon: <PlayCircleIcon className="w-6 h-6" />, title: "Ujian Aktif", count: aktifCount },
+      { icon: <CalendarDaysIcon className="w-6 h-6" />, title: "Ujian Mendatang", count: mendatangCount },
+    ];
+  }, [historiUjian, daftarUjian]);
+
   return (
     <AuthenticatedLayout user={auth.user} title="Dashboard Ujian">
-      <Head title="Dashboard" />
+      <Head title="Home" />
 
-      {/* ========================================================== */}
-      {/* BAGIAN 1: GREETING & PANEL RINGKASAN (TAMPILAN STANDAR)   */}
-      {/* ========================================================== */}
-      <div className="px-4 md:px-0">
-        {/* Top Content: Greeting */}
-        <div className="mb-12">
-          <Typography variant="h3" color="blue-gray" className="font-bold">
-            Selamat Datang, {auth.user.name ? auth.user.name.split(' ')[0] : 'Mahasiswa'}!
-          </Typography>
-          <Typography color="gray" className="mt-1 font-normal">
-            Berikut adalah ringkasan aktivitas ujian Anda.
-          </Typography>
-        </div>
-
-        {/* Panel Ringkasan */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <PanelRiwayatUjian historiUjian={historiUjianList} />
-          <PanelUjianAktif />
-          <PanelUjianMendatang />
+      {/* Header dengan Background */}
+      <div className="relative flex h-[320px] content-center items-center justify-center pt-16 pb-32">
+        <div className="absolute top-0 h-full w-full bg-[url('/images/background-dashboard.jpg')] bg-cover bg-center" />
+        <div className="absolute top-0 h-full w-full bg-black/60 bg-cover bg-center" />
+        <div className="max-w-8xl container relative mx-auto">
+          <div className="flex flex-wrap items-center">
+            <div className="ml-auto mr-auto w-full px-4 text-center lg:w-8/12">
+              <Typography variant="h1" color="white" className="mb-6 font-black">
+                Selamat Datang, {auth.user.name ? auth.user.name.split(' ')[0] : 'Mahasiswa'}!
+              </Typography>
+              <Typography variant="lead" color="white" className="opacity-80">
+                Ini adalah pusat kendali untuk semua aktivitas ujian Anda. Kelola dan lihat kemajuan Anda di sini.
+              </Typography>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Bagian Konten dengan Card yang menimpa background */}
+      <section className="-mt-32 bg-gray-50 px-4 pb-20 pt-4">
+        <div className="container mx-auto">
+          {/* Tiga Panel Ringkasan menggunakan komponen baru */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {summaryData.map(({ icon, title, count }) => (
+              <InfoPanelCard key={title} icon={icon} title={title} count={count} />
+            ))}
+          </div>
+
+          {/* Bagian Mata Kuliah */}
+          <div className="mt-12">
+            {/* Latar belakang biru */}
+            <div className="relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 bg-cover bg-center">
+              <div className="absolute inset-0 h-full w-full bg-black/50" />
+            </div>
+
+            {/* Card yang menimpa latar belakang */}
+            <Card className="mx-3 -mt-32 mb-6 lg:mx-4 border border-blue-gray-100">
+              <CardBody className="p-4 sm:p-6">
+                <div id="mata-kuliah-section" className="px-4 pb-4">
+                  <Typography variant="h6" color="blue-gray" className="mb-2">
+                    Mata Kuliah Anda
+                  </Typography>
+                  <Typography variant="small" className="font-normal text-blue-gray-500">
+                    Pilih mata kuliah untuk memulai ujian atau melihat riwayat.
+                  </Typography>
+
+                  {/* Loading/Error/Content State untuk Mata Kuliah */}
+                  {isLoadingKelasKuliah ? (
+                    <div className="flex justify-center py-12"><Spinner className="h-10 w-10" /></div>
+                  ) : errorKelasKuliah ? (
+                    <Card className="mt-6 p-8 text-center"><Typography color="red">{errorKelasKuliah}</Typography></Card>
+                  ) : mataKuliahTampilList.length > 0 ? (
+                    // Menggunakan struktur grid dari referensi
+                    <div className="mt-6 grid grid-cols-1 gap-12 md:grid-cols-2 xl:grid-cols-4">
+                      {mataKuliahTampilList.map((mk) => (
+                        // Kita panggil komponen RingkasanMataKuliahCard yang sudah kita buat
+                        // karena gayanya sudah sangat mirip dengan referensi
+                        <RingkasanMataKuliahCard key={mk.id_matakuliah_lokal || mk.id} mataKuliah={mk} />
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="mt-6 p-8 text-center">
+                      <Typography>Tidak ada mata kuliah yang terdaftar untuk Anda.</Typography>
+                    </Card>
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+
+        </div>
+      </section>
 
       {/* ========================================================== */}
       {/* BAGIAN 2: MATA KULIAH (DENGAN STYLE BARU)               */}
       {/* ========================================================== */}
-      <div className="mt-12">
-        {/* Latar belakang biru */}
-        <div className="relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 bg-cover bg-center">
-          <div className="absolute inset-0 h-full w-full bg-black/50" />
-        </div>
 
-        {/* Card yang menimpa latar belakang */}
-        <Card className="mx-3 -mt-32 mb-6 lg:mx-4 border border-blue-gray-100">
-          <CardBody className="p-4 sm:p-6">
-            <div id="mata-kuliah-section" className="px-4 pb-4">
-                <Typography variant="h6" color="blue-gray" className="mb-2">
-                    Mata Kuliah Anda
-                </Typography>
-                <Typography variant="small" className="font-normal text-blue-gray-500">
-                    Pilih mata kuliah untuk memulai ujian atau melihat riwayat.
-                </Typography>
-
-                {/* Loading/Error/Content State untuk Mata Kuliah */}
-                {isLoadingKelasKuliah ? (
-                    <div className="flex justify-center py-12"><Spinner className="h-10 w-10" /></div>
-                ) : errorKelasKuliah ? (
-                    <Card className="mt-6 p-8 text-center"><Typography color="red">{errorKelasKuliah}</Typography></Card>
-                ) : mataKuliahTampilList.length > 0 ? (
-                    // Menggunakan struktur grid dari referensi
-                    <div className="mt-6 grid grid-cols-1 gap-12 md:grid-cols-2 xl:grid-cols-4">
-                        {mataKuliahTampilList.map((mk) => (
-                            // Kita panggil komponen RingkasanMataKuliahCard yang sudah kita buat
-                            // karena gayanya sudah sangat mirip dengan referensi
-                            <RingkasanMataKuliahCard key={mk.id_matakuliah_lokal || mk.id} mataKuliah={mk} />
-                        ))}
-                    </div>
-                ) : (
-                    <Card className="mt-6 p-8 text-center">
-                        <Typography>Tidak ada mata kuliah yang terdaftar untuk Anda.</Typography>
-                    </Card>
-                )}
-            </div>
-          </CardBody>
-        </Card>
-      </div>
 
     </AuthenticatedLayout>
   );

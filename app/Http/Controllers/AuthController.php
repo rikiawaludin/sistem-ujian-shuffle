@@ -55,10 +55,10 @@ class AuthController extends Controller {
             Session::put('user_image', $user['account']['image']);
             Session::put('user_email', $user['account']['email']);
 
-            return redirect()->route('dashboard');
+            return redirect()->route('home');
         } else {
             if (Session::has('role') and Session::has('token')) {
-                return redirect()->route('dashboard');
+                return redirect()->route('home');
             }
 
             return self::redirectToVerifyPage();

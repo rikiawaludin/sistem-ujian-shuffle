@@ -104,7 +104,7 @@ export function AppNavbar() {
         <div className="flex items-center w-full"> {/* Kontainer flex utama untuk item-item navbar */}
           <div className="flex-shrink-0">
             <Link
-              href={route('dashboard')} // Logo mengarah ke dashboard utama
+              href={route('home')} // Logo mengarah ke dashboard utama
               // Jika ingin logo juga smooth scroll ke atas di halaman dashboard yang sama:
               // href="#dashboard-top-content" // Pastikan ID ini ada di Dashboard.jsx
               // onClick={(e) => handleNavClick(e, "#dashboard-top-content")}

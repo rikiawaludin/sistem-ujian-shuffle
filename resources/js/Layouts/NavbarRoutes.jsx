@@ -11,12 +11,12 @@ export const navMenuItems = [
   },
   {
     name: "Mata Kuliah",
-    path: "/dashboard#mata-kuliah-section", // Sesuaikan dengan path Anda
+    path: "/home#mata-kuliah-section", // Sesuaikan dengan path Anda
     // icon: <UserCircleIcon className={iconStyle} />, // Opsional
   },
   {
     name: "Riwayat Ujian",
-    path: "/dashboard#histori-ujian-section", // Sesuaikan dengan path Anda
+    path: "/home#histori-ujian-section", // Sesuaikan dengan path Anda
     // icon: <UserCircleIcon className={iconStyle} />, // Opsional
   },
   {

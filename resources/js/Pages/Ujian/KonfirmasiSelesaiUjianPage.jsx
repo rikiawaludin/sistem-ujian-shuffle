@@ -37,9 +37,9 @@ export default function KonfirmasiSelesaiUjianPage() {
               .
             </Typography>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link href={route('dashboard')} className="w-full sm:w-auto">
+              <Link href={route('home')} className="w-full sm:w-auto">
                 <Button color="blue" variant="gradient" fullWidth className="sm:w-auto">
-                  Kembali ke Dashboard
+                  Kembali ke Home
                 </Button>
               </Link>
               {route().has('matakuliah.index') && (

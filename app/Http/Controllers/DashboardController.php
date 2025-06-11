@@ -6,11 +6,12 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\MataKuliah;
-// use App\Models\PengerjaanUjian; // Komentari jika tidak digunakan langsung di method index
+use App\Models\PengerjaanUjian; // <-- Impor model ini
+use App\Models\Ujian;            // <-- Impor model ini
+use Illuminate\Support\Facades\Auth;  // <-- Impor Auth
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
-// use Illuminate\Support\Carbon; // Komentari jika tidak digunakan
-// use Illuminate\Support\Collection; // Komentari jika tidak digunakan secara eksplisit untuk collection baru
+use Carbon\Carbon;                // <-- Impor Carbon
 
 class DashboardController extends Controller
 {
@@ -24,33 +25,22 @@ class DashboardController extends Controller
         return null;
     }
 
-    public function user_account(): ?array
-    {
-        return Session::get('account');
-    }
-
-    public function user_profile(): ?array
-    {
-        return Session::get('profile');
-    }
-
     public function index(Request $request)
     {
-        $userAccount = $this->user_account();
-        $userProfile = $this->user_profile();
+        $userAccount = Session::get('account');
+        $userProfile = Session::get('profile');
         $activeRoleArray = Session::get('role');
         $sessionToken = $this->getUserAuthToken($request);
-
         $authProp = ['user' => null];
         $localUser = null;
 
         if ($userAccount && isset($userAccount['id'])) {
             $externalId = $userAccount['id'];
-            $localUser = User::where('external_id', (string) $externalId)
-                               ->where('is_mahasiswa', true)
-                               ->first();
+            $localUser = User::where('external_id', (string) $externalId)->first();
 
             if ($localUser) {
+                // Login-kan user agar Auth::id() berfungsi
+                Auth::login($localUser);
                 $authProp['user'] = [
                     'id' => $localUser->id,
                     'external_id' => $externalId,
@@ -59,62 +49,80 @@ class DashboardController extends Controller
                     'image' => $userAccount['image'] ?? null,
                     'roles' => $activeRoleArray ?? [],
                     'is_mhs' => $userAccount['is_mhs'] ?? false,
+                    'is_dosen' => $userAccount['is_dosen'] ?? false, // Tambahkan untuk konsistensi
+                    'is_admin' => $userAccount['is_admin'] ?? false, // Tambahkan untuk konsistensi
                     'nim' => $userProfile['nim'] ?? null,
-                    'nama_jurusan' => $userProfile['nama_jurusan'] ?? null,
-                    'kd_user' => $userAccount['kd_user'] ?? null,
                 ];
             } else {
-                Log::warning('DashboardController: Pengguna dengan external_id sesi ' . $externalId . ' tidak ditemukan sebagai mahasiswa di DB lokal.');
-                 $authProp['user'] = [
-                    'external_id' => $externalId,
-                    'name' => $userAccount['email'] ?? 'Pengguna (Data Lokal Tidak Sinkron)',
-                    'email' => $userAccount['email'] ?? null,
-                    'image' => $userAccount['image'] ?? null,
-                    'roles' => $activeRoleArray ?? [],
-                    'is_mhs' => $userAccount['is_mhs'] ?? false,
-                ];
+                Log::warning('DashboardController: Pengguna dengan external_id sesi ' . $externalId . ' tidak ditemukan di DB lokal.');
             }
-        } else {
-            Log::warning('DashboardController: user_account dari sesi tidak ada atau tidak memiliki ID.');
+        }
+        
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Sesi tidak valid, silakan login ulang.');
         }
 
-        $daftarMataKuliahLokalMap = collect([]);
-        try {
-            // Ambil semua mata kuliah dari DB lokal yang mungkin relevan
-            // HAPUS ATAU KOMENTARI withCount
-            $daftarMataKuliahLokal = MataKuliah::get(); // Langsung get() tanpa withCount
+        // --- AWAL PERBAIKAN LOGIKA PENGAMBILAN DATA ---
 
-            $daftarMataKuliahLokalMap = $daftarMataKuliahLokal->mapWithKeys(function ($mk) {
-                return [$mk->external_id => [ //
-                    'id_lokal' => $mk->id, //
-                    'nama_lokal' => $mk->nama, //
-                    'kode_lokal' => $mk->kode, //
-                    'img_lokal' => $mk->icon_url ? asset('storage/' . trim($mk->icon_url, '/')) : asset('/images/placeholder-matakuliah.png'), //
-                    'jumlah_ujian_tersedia_lokal' => 0, // Berikan nilai default karena withCount dihapus
-                    // Anda bisa tambahkan field lain dari DB lokal jika perlu untuk enrichment
-                ]];
-            });
-        } catch (\Exception $e) {
-            // Jika error terjadi di sini, $daftarMataKuliahLokalMap akan tetap kosong
-            Log::error('DashboardController: Error saat mengambil data mata kuliah lokal: ' . $e->getMessage());
-        }
+        // 1. Ambil Histori Ujian (yang sudah selesai)
+        $pengerjaanSelesai = PengerjaanUjian::where('user_id', Auth::id())
+            ->whereIn('status_pengerjaan', ['selesai', 'selesai_waktu_habis'])
+            ->with(['ujian:id,judul_ujian,kkm', 'ujian.mataKuliah:id,nama'])
+            ->orderBy('waktu_selesai', 'desc')
+            ->limit(4) // Ambil 4 teratas untuk ditampilkan di dashboard
+            ->get();
+            
+        $historiUjian = $pengerjaanSelesai->map(function ($attempt) {
+            return [
+                'id_pengerjaan' => $attempt->id,
+                'namaUjian' => $attempt->ujian->judul_ujian ?? 'N/A',
+                'namaMataKuliah' => $attempt->ujian->mataKuliah->nama ?? 'N/A',
+                'skor' => $attempt->skor_total,
+                'kkm' => $attempt->ujian->kkm ?? 0,
+            ];
+        });
 
-        $historiUjianUntukDashboard = [];
-        if ($localUser) {
-            // Logika histori ujian (sesuaikan)
-        }
+        // 2. Ambil Daftar Ujian (yang belum/sedang dikerjakan atau akan datang)
+        $now = Carbon::now();
+        $ujianTersedia = Ujian::where('status_publikasi', 'published')
+                            ->where('tanggal_selesai', '>=', $now)
+                            ->get();
 
-        // $availableSemestersFromLocal = MataKuliah::distinct()->orderBy('semester', 'asc')->pluck('semester');
+        $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now) {
+            $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujian->id)
+                                    ->where('user_id', Auth::id())
+                                    ->latest('waktu_mulai')
+                                    ->first();
+            $statusUjian = "Tidak Tersedia";
+            if ($now->between($ujian->tanggal_mulai, $ujian->tanggal_selesai)) {
+                if (!$pengerjaanTerakhir) { $statusUjian = "Belum Dikerjakan"; } 
+                elseif ($pengerjaanTerakhir->status_pengerjaan === 'sedang_dikerjakan') { $statusUjian = "Sedang Dikerjakan"; }
+            } elseif ($now->lt($ujian->tanggal_mulai)) {
+                $statusUjian = "Akan Datang";
+            }
+            return ['status' => $statusUjian];
+        });
+
+        // --- AKHIR PERBAIKAN LOGIKA ---
+
+        $daftarMataKuliahLokalMap = MataKuliah::get()->mapWithKeys(function ($mk) {
+            return [$mk->external_id => [
+                'id_lokal' => $mk->id,
+                'nama_lokal' => $mk->nama,
+                'kode_lokal' => $mk->kode,
+                'img_lokal' => $mk->icon_url ? asset('storage/' . trim($mk->icon_url, '/')) : null,
+            ]];
+        });
+        
+        // $availableSemesters = MataKuliah::distinct()->orderBy('semester', 'asc')->pluck('semester');
 
         return Inertia::render('Dashboard', [
             'auth' => $authProp,
-            'daftarMataKuliahLokal' => $daftarMataKuliahLokalMap, // Kirim data MK lokal (sebagai map)
-            'historiUjian' => $historiUjianUntukDashboard,
-            // 'availableSemesters' => $availableSemestersFromLocal->all(),
-            'filters' => [
-                'semester' => $request->query('semester', 'semua'),
-                'tahun_ajaran' => $request->query('tahun_ajaran', null)
-            ],
+            'daftarMataKuliahLokal' => $daftarMataKuliahLokalMap,
+            'historiUjian' => $historiUjian,
+            'daftarUjian' => $daftarUjian,   // <-- KIRIM PROP YANG SEBELUMNYA HILANG
+            // 'availableSemesters' => $availableSemesters->all(),
+            'filters' => $request->only(['semester', 'tahun_ajaran']),
             'apiBaseUrl' => config('myconfig.api.base_url', env('API_BASE_URL')),
             'sessionToken' => $sessionToken,
         ]);
