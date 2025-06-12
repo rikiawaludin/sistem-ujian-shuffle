@@ -5,8 +5,8 @@
 
 export const navMenuItems = [
   {
-    name: "Mulai Ujian",
-    path: "/ujian/mulai", // Sesuaikan dengan path Anda
+    name: "Home",
+    path: "/home#home-section", // Sesuaikan dengan path Anda
     // icon: <DocumentTextIcon className={iconStyle} />, // Opsional
   },
   {

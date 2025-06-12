@@ -29,7 +29,7 @@ export default function DosenSidenav() {
     return (
         <aside className="bg-white shadow-lg w-64 h-screen fixed top-0 left-0 z-40 p-4">
             <div className="mb-8 text-center">
-                <Link href={route('dashboard')}>
+                <Link href={route('home')}>
                     <Typography variant="h5" color="blue-gray">
                         Panel Dosen
                     </Typography>

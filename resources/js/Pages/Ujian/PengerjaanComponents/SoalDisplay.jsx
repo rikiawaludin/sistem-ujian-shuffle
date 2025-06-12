@@ -10,9 +10,9 @@ export default function SoalDisplay({ soal, jawabanUserSoalIni, statusRaguSoalIn
   if (!soal) {
     // Bisa return fallback UI atau null jika memang soal belum ada
     return (
-        <Card className="p-6 mb-6 shadow-md border border-blue-gray-100">
-            <Typography color="blue-gray">Memuat soal...</Typography>
-        </Card>
+      <Card className="p-6 mb-6 shadow-md border border-blue-gray-100">
+        <Typography color="blue-gray">Memuat soal...</Typography>
+      </Card>
     );
   }
 
@@ -22,12 +22,13 @@ export default function SoalDisplay({ soal, jawabanUserSoalIni, statusRaguSoalIn
         <Typography variant="h6" color="blue-gray" className="mb-1">
           Soal No. {nomorTampil}
         </Typography>
-        {statusRaguSoalIni && <Chip value="Ragu-ragu" color="amber" size="sm" icon={<FlagIcon className="h-3 w-3"/>} />}
+        {statusRaguSoalIni && <Chip value="Ragu-ragu" color="amber" size="sm" icon={<FlagIcon className="h-3 w-3" />} />}
       </div>
       <hr className="my-3 border-blue-gray-100" />
-      <Typography variant="paragraph" className="mb-6 whitespace-pre-line leading-relaxed">
-        {soal.pertanyaan}
-      </Typography>
+      <div
+        className="mb-6 prose max-w-none text-blue-gray-800"
+        dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+      />
 
       {soal.tipe === "pilihan_ganda" && (
         <OpsiPilihanGanda
@@ -54,7 +55,7 @@ export default function SoalDisplay({ soal, jawabanUserSoalIni, statusRaguSoalIn
           onPilihJawaban={onPilihJawaban}
         />
       )}
-      
+
       {/* TODO: Tambahkan blok kondisional untuk tipe soal lain seperti "menjodohkan" jika ada.
         Misalnya:
         {soal.tipe === "menjodohkan" && (

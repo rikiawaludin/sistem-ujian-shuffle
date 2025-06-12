@@ -76,6 +76,7 @@ class ListUjianController extends Controller
         $ujianTersedia = Ujian::where('mata_kuliah_id', $id_mata_kuliah)
                             ->where('status_publikasi', 'published')
                             ->withCount('soal')
+                            // ->orderBy('tanggal_mulai', 'desc')
                             ->get();
 
         $now = Carbon::now();
@@ -119,7 +120,31 @@ class ListUjianController extends Controller
                 'status' => $statusUjian,
                 'skor' => $pengerjaanTerakhir->skor_total ?? null,
                 'id_pengerjaan_terakhir' => $pengerjaanTerakhir->id ?? null,
+                'tanggal_mulai_raw' => $ujian->tanggal_mulai,
             ];
+        });
+
+        $statusOrder = [
+            "Sedang Dikerjakan" => 1, // Prioritas tertinggi
+            "Belum Dikerjakan" => 2, // Prioritas kedua
+            "Akan Datang"      => 3, // Dan seterusnya
+            "Selesai"          => 4,
+            "Waktu Habis"      => 5,
+            "Tidak Tersedia"   => 6,
+        ];
+
+        $sortedDaftarUjian = $daftarUjian->sort(function ($a, $b) use ($statusOrder) {
+            // Ambil nilai prioritas untuk dibandingkan
+            $priorityA = $statusOrder[$a['status']] ?? 99;
+            $priorityB = $statusOrder[$b['status']] ?? 99;
+
+            // 1. Jika prioritas statusnya berbeda, urutkan berdasarkan status
+            if ($priorityA !== $priorityB) {
+                return $priorityA <=> $priorityB; // `a` banding `b` untuk urutan ascending (1, 2, 3, ...)
+            }
+
+            // 2. Jika prioritas statusnya SAMA, urutkan berdasarkan tanggal (terbaru di atas)
+            return $b['tanggal_mulai_raw'] <=> $a['tanggal_mulai_raw'];
         });
 
         return Inertia::render('Ujian/DaftarUjianPage', [
@@ -128,7 +153,7 @@ class ListUjianController extends Controller
                 'id' => $mataKuliah->id,
                 'nama' => $mataKuliah->nama,
             ],
-            'daftarUjian' => $daftarUjian
+            'daftarUjian' => $sortedDaftarUjian->values()->all(),
         ]);
     }
 

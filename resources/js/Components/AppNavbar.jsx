@@ -38,15 +38,18 @@ export function AppNavbar() {
 
   // Fungsi untuk menangani klik pada item navigasi (termasuk smooth scroll)
   const handleNavClick = (e, path) => {
-    if (path.startsWith('#')) {
-      e.preventDefault(); // Mencegah default anchor jump
-      const targetId = path.substring(1);
-      const targetElement = document.getElementById(targetId);
+    const [pathWithoutAnchor, anchor] = path.split('#');
+
+    // Cek apakah kita sudah di halaman yang sama dengan tujuan link
+    // (mengabaikan anchor)
+    if (currentUrl.startsWith(pathWithoutAnchor) && anchor) {
+      e.preventDefault(); // Hentikan navigasi Inertia
+      const targetElement = document.getElementById(anchor);
       if (targetElement) {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-    // Untuk navigasi Inertia atau anchor, tutup MobileNav/Collapse jika terbuka
+    // Jika tidak, biarkan <Link> dari Inertia melakukan tugasnya (pindah halaman)
     setOpenNav(false);
   };
 
@@ -89,10 +92,10 @@ export function AppNavbar() {
   const handleProfile = () => {
     // Pastikan rute 'profile.show' ada atau ganti dengan nama rute profil yang benar
     if (route().has('profile.show')) {
-        router.get(route('profile.show'));
+      router.get(route('profile.show'));
     } else {
-        console.warn("Rute 'profile.show' tidak ditemukan. Silakan periksa konfigurasi Ziggy atau nama rute Anda.");
-        // Alternatif: router.get('/user/profile'); // jika path manual
+      console.warn("Rute 'profile.show' tidak ditemukan. Silakan periksa konfigurasi Ziggy atau nama rute Anda.");
+      // Alternatif: router.get('/user/profile'); // jika path manual
     }
   };
 
@@ -145,7 +148,7 @@ export function AppNavbar() {
                       </Typography>
                     </MenuItem>
                     <MenuItem className="flex items-center gap-2" onClick={handleProfile}>
-                       <UserCircleIcon strokeWidth={2} className="h-4 w-4" />
+                      <UserCircleIcon strokeWidth={2} className="h-4 w-4" />
                       <Typography variant="small" color="blue-gray" className="font-normal">
                         Profil Saya
                       </Typography>

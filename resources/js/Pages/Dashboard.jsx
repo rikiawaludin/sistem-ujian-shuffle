@@ -151,7 +151,7 @@ export default function Dashboard() {
       <Head title="Home" />
 
       {/* Header dengan Background */}
-      <div className="relative flex h-[320px] content-center items-center justify-center pt-16 pb-32">
+      <div id="home-section" className="relative flex h-[320px] content-center items-center justify-center pt-16 pb-32">
         <div className="absolute top-0 h-full w-full bg-[url('/images/background-dashboard.jpg')] bg-cover bg-center" />
         <div className="absolute top-0 h-full w-full bg-black/60 bg-cover bg-center" />
         <div className="max-w-8xl container relative mx-auto">
@@ -161,7 +161,7 @@ export default function Dashboard() {
                 Selamat Datang, {auth.user.name ? auth.user.name.split(' ')[0] : 'Mahasiswa'}!
               </Typography>
               <Typography variant="lead" color="white" className="opacity-80">
-                Ini adalah pusat kendali untuk semua aktivitas ujian Anda. Kelola dan lihat kemajuan Anda di sini.
+                Ini adalah semua aktivitas ujian Anda. Lihat kemajuan Anda di sini.
               </Typography>
             </div>
           </div>
@@ -179,7 +179,7 @@ export default function Dashboard() {
           </div>
 
           {/* Bagian Mata Kuliah */}
-          <div className="mt-12">
+          <div id="mata-kuliah-section" className="mt-12">
             {/* Latar belakang biru */}
             <div className="relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 bg-cover bg-center">
               <div className="absolute inset-0 h-full w-full bg-black/50" />

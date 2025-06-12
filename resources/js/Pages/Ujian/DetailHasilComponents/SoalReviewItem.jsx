@@ -11,7 +11,7 @@ const parseJsonSafe = (jsonString, defaultValue = null) => {
     // Jika sudah objek/array (mungkin casting backend berhasil sebagian), kembalikan apa adanya
     // atau jika memang diharapkan string tapi bukan, return default.
     // Untuk kasus ini, kita asumsikan jika bukan string, itu sudah tipe yang benar atau null.
-    return jsonString; 
+    return jsonString;
   }
   try {
     return JSON.parse(jsonString);
@@ -56,17 +56,18 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
             Soal No. {soal.nomorSoal || nomorUrut}
           </Typography>
           {/* Indikator Status Jawaban Pengguna di atas soal */}
-          {soal.tipeSoal !== "esai" && soal.isBenar === true && <Chip color="green" value="Jawaban Anda Benar" size="sm" icon={<CheckIcon className="h-4 w-4 stroke-white stroke-2"/>} className="text-white"/>}
-          {soal.tipeSoal !== "esai" && soal.isBenar === false && <Chip color="red" value="Jawaban Anda Salah" size="sm" icon={<XMarkIcon className="h-4 w-4 stroke-white stroke-2"/>} className="text-white"/>}
+          {soal.tipeSoal !== "esai" && soal.isBenar === true && <Chip color="green" value="Jawaban Anda Benar" size="sm" icon={<CheckIcon className="h-4 w-4 stroke-white stroke-2" />} className="text-white" />}
+          {soal.tipeSoal !== "esai" && soal.isBenar === false && <Chip color="red" value="Jawaban Anda Salah" size="sm" icon={<XMarkIcon className="h-4 w-4 stroke-white stroke-2" />} className="text-white" />}
           {soal.tipeSoal !== "esai" && soal.isBenar === null && (jawabanPenggunaNormalized === null || jawabanPenggunaNormalized === "") && <Chip color="blue-gray" value="Tidak Dijawab" size="sm" />}
-          
+
           {soal.tipeSoal === "esai" && soal.isBenar === null && <Chip color="amber" value="Perlu Penilaian" size="sm" />}
-          {soal.tipeSoal === "esai" && soal.isBenar === true && <Chip color="green" value="Dinilai Benar" size="sm" icon={<CheckIcon className="h-4 w-4 stroke-white stroke-2"/>} className="text-white"/>}
-          {soal.tipeSoal === "esai" && soal.isBenar === false && <Chip color="red" value="Dinilai Salah" size="sm" icon={<XMarkIcon className="h-4 w-4 stroke-white stroke-2"/>} className="text-white"/>}
+          {soal.tipeSoal === "esai" && soal.isBenar === true && <Chip color="green" value="Dinilai Benar" size="sm" icon={<CheckIcon className="h-4 w-4 stroke-white stroke-2" />} className="text-white" />}
+          {soal.tipeSoal === "esai" && soal.isBenar === false && <Chip color="red" value="Dinilai Salah" size="sm" icon={<XMarkIcon className="h-4 w-4 stroke-white stroke-2" />} className="text-white" />}
         </div>
-        <Typography variant="paragraph" color="blue-gray" className="mb-4 whitespace-pre-line leading-relaxed">
-          {soal.pertanyaan}
-        </Typography>
+        <div
+          className="mb-6 prose max-w-none text-blue-gray-800"
+          dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+        />
 
         {/* Opsi untuk Pilihan Ganda & Benar/Salah */}
         {(soal.tipeSoal === "pilihan_ganda" || soal.tipeSoal === "benar_salah") && Array.isArray(opsiJawabanArray) && opsiJawabanArray.length > 0 && (
@@ -89,28 +90,28 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
                 fontWeight = "font-semibold";
                 if (soal.isBenar === true) {
                   bgColor = "bg-green-50"; borderColor = "border-green-300"; textColor = "text-green-700";
-                  chipUntukOpsi = <Chip value="Pilihan Anda" size="sm" color="green" variant="ghost" className="!bg-opacity-60"/>;
+                  chipUntukOpsi = <Chip value="Pilihan Anda" size="sm" color="green" variant="ghost" className="!bg-opacity-60" />;
                 } else if (soal.isBenar === false) {
                   bgColor = "bg-red-50"; borderColor = "border-red-300"; textColor = "text-red-700";
-                  chipUntukOpsi = <Chip value="Pilihan Anda" size="sm" color="red" variant="ghost" className="!bg-opacity-60"/>;
+                  chipUntukOpsi = <Chip value="Pilihan Anda" size="sm" color="red" variant="ghost" className="!bg-opacity-60" />;
                 }
               }
-              
+
               if (isKunci && (!isJawabanUser || (isJawabanUser && soal.isBenar === false))) {
-                 bgColor = "bg-green-100"; borderColor = "border-green-500"; textColor = "text-green-800"; fontWeight = "font-bold"; 
-                 if (!isJawabanUser) { // Hanya tampilkan "Kunci Jawaban" jika ini bukan pilihan user yang salah
-                    chipUntukOpsi = <Chip value="Kunci Jawaban" size="sm" color="green" variant="filled" className="bg-green-600 text-white"/>;
-                 }
+                bgColor = "bg-green-100"; borderColor = "border-green-500"; textColor = "text-green-800"; fontWeight = "font-bold";
+                if (!isJawabanUser) { // Hanya tampilkan "Kunci Jawaban" jika ini bukan pilihan user yang salah
+                  chipUntukOpsi = <Chip value="Kunci Jawaban" size="sm" color="green" variant="filled" className="bg-green-600 text-white" />;
+                }
               }
 
               return (
-                <div 
+                <div
                   key={`${soal.idSoal}-opt-${index}`}
                   className={`p-3 rounded-lg text-sm border flex items-center justify-between gap-2 ${bgColor} ${borderColor} ${textColor} ${fontWeight}`}
                 >
                   <div className="flex items-start gap-2">
                     <span className={`font-medium mr-1`}>
-                      { (soal.tipeSoal === "pilihan_ganda") ? `${getOptionLetter(index)}.` : '' }
+                      {(soal.tipeSoal === "pilihan_ganda") ? `${getOptionLetter(index)}.` : ''}
                     </span>
                     <span className="flex-1">{opsiTeks}</span>
                   </div>
@@ -135,12 +136,12 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
             {/* kunciJawabanParsed untuk esai seharusnya string deskriptif */}
             {typeof kunciJawabanParsed === 'string' && kunciJawabanParsed.trim() !== "" && (
               <div className="mb-4">
-                  <Typography variant="small" className="font-semibold text-green-700 mb-1">Kriteria/Kunci Jawaban Esai:</Typography>
-                  <Card shadow={false} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <Typography variant="paragraph" className="text-sm text-green-800 whitespace-pre-line">
-                      {kunciJawabanParsed}
-                    </Typography>
-                  </Card>
+                <Typography variant="small" className="font-semibold text-green-700 mb-1">Kriteria/Kunci Jawaban Esai:</Typography>
+                <Card shadow={false} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <Typography variant="paragraph" className="text-sm text-green-800 whitespace-pre-line">
+                    {kunciJawabanParsed}
+                  </Typography>
+                </Card>
               </div>
             )}
           </>
@@ -150,12 +151,13 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
         {soal.penjelasan && ( /* soal.penjelasan tidak perlu di-parse jika sudah string biasa */
           <div className="mt-4 p-4 bg-sky-50 border border-sky-200 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <InformationCircleIcon className="h-5 w-5 text-sky-700"/>
+              <InformationCircleIcon className="h-5 w-5 text-sky-700" />
               <Typography variant="small" color="blue-gray" className="font-semibold">Penjelasan:</Typography>
             </div>
-            <Typography variant="small" color="blue-gray" className="font-normal whitespace-pre-line">
-              {soal.penjelasan}
-            </Typography>
+            <div
+              className="mb-6 prose max-w-none text-blue-gray-800"
+              dangerouslySetInnerHTML={{ __html: soal.penjelasan }}
+            />
           </div>
         )}
       </CardBody>
