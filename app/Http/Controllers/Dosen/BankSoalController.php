@@ -22,7 +22,7 @@ class BankSoalController extends Controller
 
     use ManagesDosenAuth;
 
-    public function index()
+    public function index(Request $request)
     {
         $authProps = $this->getAuthProps();
 
@@ -31,15 +31,25 @@ class BankSoalController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        // Ambil semua soal milik dosen yang login.
-        // Gunakan get() agar sesuai dengan komponen AdvancedTable di frontend.
-        $soalList = Soal::where('dosen_pembuat_id', Auth::id())
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+        // Gunakan query builder agar bisa menambahkan kondisi secara dinamis
+        $query = Soal::where('dosen_pembuat_id', Auth::id())->with('mataKuliah');
+
+        // === LOGIKA FILTER ===
+        // Jika ada request filter_mk dan nilainya tidak kosong
+        if ($request->filled('filter_mk')) {
+            $query->where('mata_kuliah_id', $request->filter_mk);
+        }
+
+        $soalList = $query->orderBy('created_at', 'desc')->get();
+
+        // Ambil daftar mata kuliah untuk dropdown filter
+        $mataKuliahOptions = $this->getDosenMataKuliahOptions($request);
 
         return Inertia::render('Dosen/BankSoal/Index', [
             'soalList' => $soalList,
-            'auth' => $authProps, // Kirim prop auth secara manual
+            'auth' => $authProps,
+            'mataKuliahOptions' => $mataKuliahOptions, // <-- Kirim opsi MK
+            'filters' => $request->only(['filter_mk']), // <-- Kirim filter yang sedang aktif
         ]);
     }
 
@@ -64,8 +74,16 @@ class BankSoalController extends Controller
         $bank_soal->load('opsiJawaban');
 
         // Ambil data soal untuk form, pastikan mengirimkan mata_kuliah_id
-        $soalData = $bank_soal->toArray();
-        $soalData['mata_kuliah_id'] = $bank_soal->mata_kuliah_id;
+        $soalData = [
+            'id' => $bank_soal->id,
+            'pertanyaan' => $bank_soal->pertanyaan,
+            'tipe_soal' => $bank_soal->tipe_soal,
+            'penjelasan' => $bank_soal->penjelasan,
+            'mata_kuliah_id' => $bank_soal->mata_kuliah_id,
+            'opsi_jawaban' => $bank_soal->opsiJawaban, // <-- Masukkan relasi secara eksplisit
+        ];
+
+        // dd($soalData);
 
         return Inertia::render('Dosen/BankSoal/Form', [
             'soal' => $soalData,
@@ -150,13 +168,14 @@ class BankSoalController extends Controller
             'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
             'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
             'penjelasan' => 'nullable|string',
-            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah|min:2',
+            'opsi_jawaban.*.id' => 'present|nullable',
             'opsi_jawaban.*.teks' => 'required_with:opsi_jawaban|string|max:1000',
             // Kita ubah validasi kunci jawaban
             'kunci_jawaban_id' => [
                 Rule::requiredIf(fn () => in_array($request->tipe_soal, ['pilihan_ganda', 'benar_salah'])),
                 'nullable',
-                'string',
+                // Ganti 'string' dengan aturan 'in' yang lebih cerdas
+                Rule::in(collect($request->input('opsi_jawaban', []))->pluck('id')),
             ],
         ]);
 

@@ -1,35 +1,41 @@
 import React, { useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { Button, Card, Input, Select, Option, Typography } from '@material-tailwind/react';
+import { Button, Card, Select, Option, Typography } from '@material-tailwind/react';
 import { Editor } from '@tinymce/tinymce-react';
-
-// Impor komponen partial yang baru dibuat
 import PilihanGandaForm from '@/Pages/Dosen/Partials/PilihanGandaForm';
 
 export default function Form({ soal, mataKuliahOptions }) {
     const isEditMode = !!soal;
 
+    const generateEmptyOptions = (count) => {
+        return Array.from({ length: count }, (_, i) => ({
+            id: `opt_${Date.now()}_${i}`,
+            teks: ''
+        }));
+    };
+    
     // Helper untuk mendapatkan ID kunci jawaban dari data soal (saat mode edit)
     const getInitialKunciJawabanId = () => {
         if (!isEditMode || !soal.opsi_jawaban) return null;
-        // Dari relasi, soal.opsi_jawaban adalah array objek OpsiJawaban
         const kunci = soal.opsi_jawaban.find(opt => opt.is_kunci_jawaban);
-        // Kita kembalikan ID dari opsi yang benar tersebut
         return kunci ? kunci.id : null;
     };
 
     // Helper untuk memformat opsi jawaban dari backend ke state frontend
     const formatOpsiUntukState = () => {
-        if (!isEditMode || !soal.opsi_jawaban) {
-            // Untuk mode 'create', mulai dengan satu opsi kosong
-            return [{ id: `opt_${Date.now()}`, teks: '' }];
+        // Jika mode edit, format data dari backend
+        if (isEditMode && soal.opsi_jawaban) {
+            return soal.opsi_jawaban.map(opt => ({
+                id: opt.id,
+                teks: opt.teks_opsi
+            }));
         }
-        // Untuk mode 'edit', format data dari relasi
-        return soal.opsi_jawaban.map(opt => ({ id: opt.id, teks: opt.teks_opsi }));
+        // Jika mode buat baru, defaultnya adalah 4 opsi kosong untuk 'pilihan_ganda'
+        return generateEmptyOptions(4);
     };
 
-    const { data, setData, post, put, errors, processing } = useForm({
+    const { data, setData, post, put, errors, processing, reset } = useForm({
         pertanyaan: soal?.pertanyaan || '',
         tipe_soal: soal?.tipe_soal || 'pilihan_ganda',
         mata_kuliah_id: soal?.mata_kuliah_id || (mataKuliahOptions?.[0]?.value || ''),
@@ -38,17 +44,40 @@ export default function Form({ soal, mataKuliahOptions }) {
         penjelasan: soal?.penjelasan || '',
     });
 
-    // Ketika tipe soal berubah, reset opsi jawaban
+    // useEffect ini HANYA untuk sinkronisasi data saat masuk mode EDIT.
     useEffect(() => {
-        if (data.tipe_soal === 'benar_salah') {
-            setData('opsi_jawaban', [
+        if (isEditMode && soal) {
+            reset({
+                pertanyaan: soal.pertanyaan,
+                tipe_soal: soal.tipe_soal,
+                mata_kuliah_id: soal.mata_kuliah_id,
+                opsi_jawaban: formatOpsiUntukState(),
+                kunci_jawaban_id: getInitialKunciJawabanId(),
+                penjelasan: soal.penjelasan,
+            });
+        }
+    }, [soal]);
+
+    // Handler baru saat tipe soal diubah oleh pengguna
+    const handleTipeSoalChange = (value) => {
+        let newOptions = [];
+        if (value === 'pilihan_ganda') {
+            newOptions = generateEmptyOptions(4);
+        } else if (value === 'benar_salah') {
+            newOptions = [
                 { id: 'Benar', teks: 'Benar' },
                 { id: 'Salah', teks: 'Salah' },
-            ]);
-        } else if (data.tipe_soal === 'pilihan_ganda' && !isEditMode) {
-            setData('opsi_jawaban', [{ id: `opt_${Date.now()}`, teks: '' }]);
+            ];
         }
-    }, [data.tipe_soal]);
+        // Untuk 'esai', newOptions akan menjadi array kosong
+
+        // Update tipe_soal dan opsi_jawaban secara bersamaan
+        setData(currentData => ({
+            ...currentData,
+            tipe_soal: value,
+            opsi_jawaban: newOptions,
+        }));
+    };
 
     const handleOptionsChange = (index, value) => {
         const newOptions = [...data.opsi_jawaban];
@@ -81,7 +110,8 @@ export default function Form({ soal, mataKuliahOptions }) {
                 <Card className="p-6 shadow-lg border border-blue-gray-50">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <Select label="Tipe Soal" value={data.tipe_soal} onChange={(value) => setData('tipe_soal', value)}>
+                            {/* Gunakan handler baru untuk onChange */}
+                            <Select label="Tipe Soal" value={data.tipe_soal} onChange={handleTipeSoalChange}>
                                 <Option value="pilihan_ganda">Pilihan Ganda</Option>
                                 <Option value="benar_salah">Benar/Salah</Option>
                                 <Option value="esai">Esai</Option>
@@ -89,18 +119,13 @@ export default function Form({ soal, mataKuliahOptions }) {
                         </div>
                         <div>
                             <Select
-                                label="Kategori (Mata Kuliah)"
-                                // 1. Ubah nilai number menjadi string saat diberikan ke komponen Select
+                                label="Mata Kuliah"
                                 value={String(data.mata_kuliah_id)}
-
-                                // 2. Ubah kembali value (yang kini string) menjadi number saat form diubah
                                 onChange={(value) => setData('mata_kuliah_id', Number(value))}
-
                                 error={!!errors.mata_kuliah_id}
                                 disabled={!mataKuliahOptions || mataKuliahOptions.length === 0}
                             >
                                 {(mataKuliahOptions || []).map(option => (
-                                    // 3. Ubah juga nilai number menjadi string untuk setiap Option
                                     <Option key={option.value} value={String(option.value)}>
                                         {option.label}
                                     </Option>
@@ -119,17 +144,17 @@ export default function Form({ soal, mataKuliahOptions }) {
                         <Editor apiKey='oatu6jzb2f3zggwf9ja9c5njnil27bsbiyvc3ow0j5ersbt4' value={data.pertanyaan} onEditorChange={(content) => setData('pertanyaan', content)} init={{ height: 300, menubar: false, plugins: 'lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount', toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help' }} />
                         {errors.pertanyaan && <Typography color="red" className="mt-1 text-sm">{errors.pertanyaan}</Typography>}
                     </div>
-
-                    {/* === BAGIAN INI JADI JAUH LEBIH BERSIH === */}
+                    
                     {(data.tipe_soal === 'pilihan_ganda' || data.tipe_soal === 'benar_salah') && (
                         <PilihanGandaForm
                             opsiJawaban={data.opsi_jawaban}
                             kunciJawabanId={data.kunci_jawaban_id}
                             errors={errors}
                             onOptionChange={handleOptionsChange}
-                            onKeyChange={(optionId) => setData('kunci_jawaban_id', optionId)} // <-- Kirim handler baru
+                            onKeyChange={(optionId) => setData('kunci_jawaban_id', optionId)}
                             onAddOption={addOption}
                             onRemoveOption={removeOption}
+                            canManageOptions={data.tipe_soal === 'pilihan_ganda'}
                         />
                     )}
 
