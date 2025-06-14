@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Ujian;
 use App\Models\PengerjaanUjian;
 use App\Models\JawabanPesertaDetail;
+use App\Models\OpsiJawaban;
 use App\Models\Soal;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -78,58 +79,47 @@ class PengerjaanUjianController extends Controller
             $pengerjaan->waktu_dihabiskan_detik = $waktuDihabiskanDetik;
             
             $totalSkor = 0;
+            $adaSoalEsai = false;
             $soalUjianRefs = $pengerjaan->ujian->soal()->withPivot('bobot_nilai_soal')->get()->keyBy('id');
+
+            // 1. Ambil semua Kunci Jawaban yang benar untuk soal-soal ini dalam satu query
+            $kunciJawabanMap = OpsiJawaban::whereIn('soal_id', $soalUjianRefs->pluck('id'))
+                                           ->where('is_kunci_jawaban', true)
+                                           ->pluck('id', 'soal_id'); // Hasil: [soal_id => id_opsi_jawaban_benar]
 
             foreach ($jawabanUserMap as $soalId => $jawabanDiterima) {
                 $soalRef = $soalUjianRefs->get((int)$soalId);
-                if (!$soalRef) {
-                    Log::warning("Soal ID {$soalId} tidak ditemukan saat submit Pengerjaan ID {$pengerjaan->id}. Skipping.");
-                    continue;
-                }
+                if (!$soalRef) continue;
 
                 $isBenar = null;
                 $skorPerSoal = 0;
-                $jawabanUntukDisimpan = null;
 
-                if (isset($jawabanDiterima) && $jawabanDiterima !== '') { // Hanya proses jika ada jawaban
+                // Hanya proses jika ada jawaban
+                if (isset($jawabanDiterima) && $jawabanDiterima !== '') {
                     if ($soalRef->tipe_soal === 'pilihan_ganda' || $soalRef->tipe_soal === 'benar_salah') {
-                        $jawabanUntukDisimpan = json_encode(strval($jawabanDiterima)); // Simpan sebagai string JSON tunggal
-                        
-                        if ($soalRef->kunci_jawaban) {
-                            $kunciObj = is_array($soalRef->kunci_jawaban) ? $soalRef->kunci_jawaban : json_decode($soalRef->kunci_jawaban, true);
-                            $kunciNilai = null;
-                            if(is_array($kunciObj) && count($kunciObj) > 0){ // Jika kunci adalah array ["A"] atau [{"id":"A"}]
-                                $kunciPertama = $kunciObj[0];
-                                $kunciNilai = is_object($kunciPertama) ? ($kunciPertama->id ?? $kunciPertama->teks) : $kunciPertama;
-                            } elseif (!is_array($kunciObj)) { // Jika kunci adalah string atau objek tunggal
-                               $kunciNilai = is_object($kunciObj) ? ($kunciObj->id ?? $kunciObj->teks) : $kunciObj;
-                            }
+                        // 2. Bandingkan jawaban user dengan kunci jawaban dari map
+                        $kunciJawabanId = $kunciJawabanMap->get((int)$soalId);
 
-                            if (strval($jawabanDiterima) === strval($kunciNilai)) {
-                                $isBenar = true;
-                                $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10; // Default bobot jika tidak ada
-                            } else {
-                                $isBenar = false;
-                            }
+                        if ($kunciJawabanId !== null && intval($jawabanDiterima) === $kunciJawabanId) {
+                            $isBenar = true;
+                            $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10;
+                        } else {
+                            $isBenar = false;
                         }
                     } elseif ($soalRef->tipe_soal === 'esai') {
-                        $jawabanUntukDisimpan = json_encode($jawabanDiterima); // Esai juga simpan sebagai string JSON
-                    } else if (is_array($jawabanDiterima)) {
-                        $jawabanUntukDisimpan = json_encode($jawabanDiterima);
-                    } else {
-                        $jawabanUntukDisimpan = json_encode(strval($jawabanDiterima));
+                        $adaSoalEsai = true;
+                        // Untuk esai, tidak ada penilaian otomatis
+                        $isBenar = null;
+                        $skorPerSoal = 0;
                     }
-                } else {
-                    // Jika jawaban kosong atau null, simpan null (atau string JSON "null")
-                    $jawabanUntukDisimpan = null; // Akan disimpan sebagai NULL di DB jika kolom nullable
-                                                // atau json_encode(null) akan jadi "null"
                 }
+                
                 $totalSkor += $skorPerSoal;
 
                 JawabanPesertaDetail::updateOrCreate(
                     ['pengerjaan_ujian_id' => $pengerjaan->id, 'soal_id' => (int)$soalId],
                     [
-                        'jawaban_user' => $jawabanUntukDisimpan,
+                        'jawaban_user' => json_encode($jawabanDiterima),
                         'is_benar' => $isBenar,
                         'skor_per_soal' => $skorPerSoal,
                         'is_ragu_ragu' => $statusRaguRaguMap[$soalId] ?? false,
@@ -137,22 +127,18 @@ class PengerjaanUjianController extends Controller
                 );
             }
 
-            $pengerjaan->skor_total = $totalSkor;
+            // Tentukan status akhir dan skor total
+            if ($adaSoalEsai) {
+                $pengerjaan->status_pengerjaan = 'menunggu_penilaian';
+                $pengerjaan->skor_total = $totalSkor; // Skor sementara
+            } else {
+                $pengerjaan->status_pengerjaan = 'selesai';
+                $pengerjaan->skor_total = $totalSkor; // Skor final
+            }
+
             $pengerjaan->save();
 
             DB::commit();
-
-            $sessionKeySoal = 'ujian_attempt_' . $pengerjaan->id . '_soal';
-            session()->forget($sessionKeySoal);
-            // Hapus juga session pengerjaan_ujian_aktif_id agar tidak terpakai lagi
-            if(session('pengerjaan_ujian_aktif_id') == $pengerjaan->id) {
-                session()->forget('pengerjaan_ujian_aktif_id');
-            }
-
-
-            Log::info("Ujian ID: {$ujianId} berhasil dikumpulkan oleh User ID: {$user->id}. Pengerjaan ID: {$pengerjaan->id}, Skor: {$totalSkor}");
-            return redirect()->route('ujian.selesai.konfirmasi', ['id_ujian' => $ujianId])
-                             ->with('success_message', 'Ujian berhasil dikumpulkan!');
 
         } catch (\Exception $e) {
             DB::rollBack();

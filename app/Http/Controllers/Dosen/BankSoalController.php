@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Soal;
 use App\Models\User;
 use App\Models\MataKuliah;
+use App\Models\OpsiJawaban;
 use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Http; // <-- Impor HTTP Client
 use Illuminate\Support\Facades\Log; // <-- Impor Log untuk debugging
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class BankSoalController extends Controller
@@ -57,8 +60,15 @@ class BankSoalController extends Controller
             abort(403, 'Anda tidak memiliki izin untuk mengedit soal ini.');
         }
 
+        // Eager load relasi opsi jawaban
+        $bank_soal->load('opsiJawaban');
+
+        // Ambil data soal untuk form, pastikan mengirimkan mata_kuliah_id
+        $soalData = $bank_soal->toArray();
+        $soalData['mata_kuliah_id'] = $bank_soal->mata_kuliah_id;
+
         return Inertia::render('Dosen/BankSoal/Form', [
-            'soal' => $bank_soal,
+            'soal' => $soalData,
             'auth' => $authProps,
             'mataKuliahOptions' => $this->getDosenMataKuliahOptions($request),
         ]);
@@ -66,17 +76,62 @@ class BankSoalController extends Controller
 
     public function store(Request $request)
     {
-        $this->getAuthProps(); // Panggil untuk memastikan Auth::id() valid
-        $validatedData = $request->validate([
+        $this->getAuthProps();
+        
+        $validated = $request->validate([
             'pertanyaan' => 'required|string',
             'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
-            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah',
-            'kunci_jawaban' => 'required_if:tipe_soal,pilihan_ganda,benar_salah',
+            'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
             'penjelasan' => 'nullable|string',
-            'kategori_soal' => 'nullable|string|max:100',
+            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah|min:2',
+            'opsi_jawaban.*.id' => 'present|string',
+            'opsi_jawaban.*.teks' => 'required|string|max:1000',
+            // Kita ubah validasi kunci jawaban
+            'kunci_jawaban_id' => [
+                Rule::requiredIf(fn () => in_array($request->tipe_soal, ['pilihan_ganda', 'benar_salah'])),
+                'nullable',
+                'string',
+            ],
         ]);
-        $validatedData['dosen_pembuat_id'] = Auth::id();
-        Soal::create($validatedData);
+
+        DB::beginTransaction();
+        try {
+            // 1. Buat Soal Utama
+            $soal = Soal::create([
+                'dosen_pembuat_id' => Auth::id(),
+                'pertanyaan' => $validated['pertanyaan'],
+                'tipe_soal' => $validated['tipe_soal'],
+                'mata_kuliah_id' => $validated['mata_kuliah_id'],
+                'penjelasan' => $validated['penjelasan'] ?? null,
+
+                // Tambahkan nilai default untuk kolom yang wajib diisi
+                'level_kesulitan' => 'mudah', // Atau nilai default lainnya
+                'pasangan' => null,
+                'gambar_url' => null,
+                'audio_url' => null,
+                'video_url' => null,
+            ]);
+
+            // 2. Simpan Opsi Jawaban jika ada
+            if (isset($validated['opsi_jawaban'])) {
+                foreach ($validated['opsi_jawaban'] as $opsi) {
+                    OpsiJawaban::create([
+                        'soal_id' => $soal->id,
+                        'teks_opsi' => $opsi['teks'],
+                        // Cek apakah ID sementara dari frontend sama dengan ID kunci jawaban
+                        'is_kunci_jawaban' => ($opsi['id'] === $validated['kunci_jawaban_id']),
+                    ]);
+                }
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Tulis log error untuk debugging
+            \Illuminate\Support\Facades\Log::error('Gagal menyimpan soal baru: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['db_error' => 'Gagal menyimpan soal. Silakan coba lagi.']);
+        }
+
         return redirect()->route('dosen.bank-soal.index')->with('success', 'Soal berhasil dibuat.');
     }
 
@@ -90,20 +145,52 @@ class BankSoalController extends Controller
             abort(403);
         }
 
-        // Validasi input. Aturan 'string' tidak akan menghapus tag HTML.
-        $validatedData = $request->validate([
+        $validated = $request->validate([
             'pertanyaan' => 'required|string',
             'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
-            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah',
-            'kunci_jawaban' => 'nullable', // Kunci bisa null/kosong, terutama untuk esai
+            'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
             'penjelasan' => 'nullable|string',
-            'kategori_soal' => 'nullable|string|max:100',
+            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah|min:2',
+            'opsi_jawaban.*.teks' => 'required_with:opsi_jawaban|string|max:1000',
+            // Kita ubah validasi kunci jawaban
+            'kunci_jawaban_id' => [
+                Rule::requiredIf(fn () => in_array($request->tipe_soal, ['pilihan_ganda', 'benar_salah'])),
+                'nullable',
+                'string',
+            ],
         ]);
 
-        // Lakukan update pada model dengan data yang sudah tervalidasi
-        $bank_soal->update($validatedData);
+        DB::beginTransaction();
+        try {
+            // 1. Update data soal utama
+            $bank_soal->update([
+                'pertanyaan' => $validated['pertanyaan'],
+                'tipe_soal' => $validated['tipe_soal'],
+                'mata_kuliah_id' => $validated['mata_kuliah_id'],
+                'penjelasan' => $validated['penjelasan'] ?? null,
+            ]);
 
-        // ... (logika validasi dan update)
+            // 2. Hapus semua opsi jawaban lama
+            $bank_soal->opsiJawaban()->delete();
+
+            // 3. Buat ulang opsi jawaban yang baru
+            if (isset($validated['opsi_jawaban'])) {
+                foreach ($validated['opsi_jawaban'] as $opsi) {
+                    OpsiJawaban::create([
+                        'soal_id' => $bank_soal->id,
+                        'teks_opsi' => $opsi['teks'],
+                        'is_kunci_jawaban' => ($opsi['id'] === $validated['kunci_jawaban_id']),
+                    ]);
+                }
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Gagal memperbarui soal ID ' . $bank_soal->id . ': ' . $e->getMessage());
+            return redirect()->back()->withErrors(['db_error' => 'Gagal memperbarui soal. Silakan coba lagi.']);
+        }
+
         return redirect()->route('dosen.bank-soal.index')->with('success', 'Soal berhasil diperbarui.');
     }
 

@@ -28,7 +28,12 @@ class UjianSoalController extends Controller
 
     public function getSoalUntukUjian(Request $request, $id_ujian)
     {
-        $ujian = Ujian::with(['mataKuliah', 'soal'])->findOrFail($id_ujian);
+        $ujian = Ujian::with([
+            'mataKuliah', 
+            // Ambil relasi 'soal', dan untuk setiap soal, ambil juga relasi 'opsiJawaban'-nya
+            'soal.opsiJawaban' 
+        ])->findOrFail($id_ujian);
+        
         $user = Auth::user();
         $now = Carbon::now();
 

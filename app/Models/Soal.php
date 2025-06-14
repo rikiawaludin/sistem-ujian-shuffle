@@ -14,12 +14,10 @@ class Soal extends Model
     protected $fillable = [
         'pertanyaan',
         'tipe_soal',
-        'opsi_jawaban', // Kolom ini yang kita fokuskan
-        'kunci_jawaban',
         'pasangan',
         'penjelasan',
         'level_kesulitan',
-        'kategori_soal',
+        'mata_kuliah_id',
         'gambar_url',
         'audio_url',
         'video_url',
@@ -27,12 +25,26 @@ class Soal extends Model
     ];
 
     protected $casts = [
-        'opsi_jawaban' => 'json', // <-- PASTIKAN INI BENAR DAN AKTIF
-        'kunci_jawaban' => 'json',
         'pasangan' => 'json',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Relasi ke semua opsi jawaban milik soal ini.
+     */
+    public function opsiJawaban()
+    {
+        return $this->hasMany(OpsiJawaban::class, 'soal_id');
+    }
+    
+    /**
+     * Relasi untuk mengambil satu opsi yang merupakan kunci jawaban.
+     */
+    public function kunciJawaban()
+    {
+        return $this->hasOne(OpsiJawaban::class, 'soal_id')->where('is_kunci_jawaban', true);
+    }
 
     // ... relasi Anda ...
     public function dosenPembuat()
@@ -50,5 +62,13 @@ class Soal extends Model
     public function jawabanPesertaDetail()
     {
         return $this->hasMany(JawabanPesertaDetail::class, 'soal_id');
+    }
+
+    /**
+     * Definisikan relasi ke MataKuliah.
+     */
+    public function mataKuliah()
+    {
+        return $this->belongsTo(MataKuliah::class, 'mata_kuliah_id');
     }
 }
