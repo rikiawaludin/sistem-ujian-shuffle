@@ -78,6 +78,7 @@ class BankSoalController extends Controller
             'id' => $bank_soal->id,
             'pertanyaan' => $bank_soal->pertanyaan,
             'tipe_soal' => $bank_soal->tipe_soal,
+            'level_kesulitan' => $bank_soal->level_kesulitan,
             'penjelasan' => $bank_soal->penjelasan,
             'mata_kuliah_id' => $bank_soal->mata_kuliah_id,
             'opsi_jawaban' => $bank_soal->opsiJawaban, // <-- Masukkan relasi secara eksplisit
@@ -100,6 +101,7 @@ class BankSoalController extends Controller
             'pertanyaan' => 'required|string',
             'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
             'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
+            'level_kesulitan' => 'required|in:mudah,sedang,sulit',
             'penjelasan' => 'nullable|string',
             'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah|min:2',
             'opsi_jawaban.*.id' => 'present|string',
@@ -120,10 +122,10 @@ class BankSoalController extends Controller
                 'pertanyaan' => $validated['pertanyaan'],
                 'tipe_soal' => $validated['tipe_soal'],
                 'mata_kuliah_id' => $validated['mata_kuliah_id'],
+                'level_kesulitan' => $validated['level_kesulitan'],
                 'penjelasan' => $validated['penjelasan'] ?? null,
 
                 // Tambahkan nilai default untuk kolom yang wajib diisi
-                'level_kesulitan' => 'mudah', // Atau nilai default lainnya
                 'pasangan' => null,
                 'gambar_url' => null,
                 'audio_url' => null,
@@ -167,6 +169,7 @@ class BankSoalController extends Controller
             'pertanyaan' => 'required|string',
             'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
             'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
+            'level_kesulitan' => 'required|in:mudah,sedang,sulit',
             'penjelasan' => 'nullable|string',
             'opsi_jawaban.*.id' => 'present|nullable',
             'opsi_jawaban.*.teks' => 'required_with:opsi_jawaban|string|max:1000',
@@ -186,6 +189,7 @@ class BankSoalController extends Controller
                 'pertanyaan' => $validated['pertanyaan'],
                 'tipe_soal' => $validated['tipe_soal'],
                 'mata_kuliah_id' => $validated['mata_kuliah_id'],
+                'level_kesulitan' => $validated['level_kesulitan'],
                 'penjelasan' => $validated['penjelasan'] ?? null,
             ]);
 

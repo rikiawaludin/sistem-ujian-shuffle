@@ -36,6 +36,11 @@ export default function Index() {
         },
         { header: 'Tipe', accessorKey: 'tipe_soal', cell: info => <span className="capitalize">{info.getValue().replace(/_/g, ' ')}</span> },
         {
+            header: 'Level',
+            accessorKey: 'level_kesulitan',
+            cell: info => <span className="capitalize">{info.getValue() || 'N/A'}</span>
+        },
+        {
             header: 'Mata Kuliah',
             accessorKey: 'mata_kuliah.nama',
             cell: ({ row }) => (

@@ -14,7 +14,7 @@ export default function Form({ soal, mataKuliahOptions }) {
             teks: ''
         }));
     };
-    
+
     // Helper untuk mendapatkan ID kunci jawaban dari data soal (saat mode edit)
     const getInitialKunciJawabanId = () => {
         if (!isEditMode || !soal.opsi_jawaban) return null;
@@ -38,6 +38,7 @@ export default function Form({ soal, mataKuliahOptions }) {
     const { data, setData, post, put, errors, processing, reset } = useForm({
         pertanyaan: soal?.pertanyaan || '',
         tipe_soal: soal?.tipe_soal || 'pilihan_ganda',
+        level_kesulitan: soal?.level_kesulitan || 'sedang',
         mata_kuliah_id: soal?.mata_kuliah_id || (mataKuliahOptions?.[0]?.value || ''),
         opsi_jawaban: formatOpsiUntukState(),
         kunci_jawaban_id: getInitialKunciJawabanId(),
@@ -50,6 +51,7 @@ export default function Form({ soal, mataKuliahOptions }) {
             reset({
                 pertanyaan: soal.pertanyaan,
                 tipe_soal: soal.tipe_soal,
+                level_kesulitan: soal.level_kesulitan,
                 mata_kuliah_id: soal.mata_kuliah_id,
                 opsi_jawaban: formatOpsiUntukState(),
                 kunci_jawaban_id: getInitialKunciJawabanId(),
@@ -108,13 +110,25 @@ export default function Form({ soal, mataKuliahOptions }) {
 
             <form onSubmit={submit}>
                 <Card className="p-6 shadow-lg border border-blue-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div>
                             {/* Gunakan handler baru untuk onChange */}
                             <Select label="Tipe Soal" value={data.tipe_soal} onChange={handleTipeSoalChange}>
                                 <Option value="pilihan_ganda">Pilihan Ganda</Option>
                                 <Option value="benar_salah">Benar/Salah</Option>
                                 <Option value="esai">Esai</Option>
+                            </Select>
+                        </div>
+                        <div>
+                            <Select
+                                label="Level Kesulitan"
+                                value={data.level_kesulitan}
+                                onChange={(value) => setData('level_kesulitan', value)}
+                                error={!!errors.level_kesulitan}
+                            >
+                                <Option value="mudah">Mudah</Option>
+                                <Option value="sedang">Sedang</Option>
+                                <Option value="sulit">Sulit</Option>
                             </Select>
                         </div>
                         <div>
@@ -144,7 +158,7 @@ export default function Form({ soal, mataKuliahOptions }) {
                         <Editor apiKey='oatu6jzb2f3zggwf9ja9c5njnil27bsbiyvc3ow0j5ersbt4' value={data.pertanyaan} onEditorChange={(content) => setData('pertanyaan', content)} init={{ height: 300, menubar: false, plugins: 'lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount', toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help' }} />
                         {errors.pertanyaan && <Typography color="red" className="mt-1 text-sm">{errors.pertanyaan}</Typography>}
                     </div>
-                    
+
                     {(data.tipe_soal === 'pilihan_ganda' || data.tipe_soal === 'benar_salah') && (
                         <PilihanGandaForm
                             opsiJawaban={data.opsi_jawaban}
