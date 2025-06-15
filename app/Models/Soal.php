@@ -17,6 +17,7 @@ class Soal extends Model
         'pasangan',
         'penjelasan',
         'level_kesulitan',
+        'bobot',
         'mata_kuliah_id',
         'gambar_url',
         'audio_url',

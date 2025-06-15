@@ -41,6 +41,13 @@ export default function Index() {
             cell: info => <span className="capitalize">{info.getValue() || 'N/A'}</span>
         },
         {
+            header: 'Bobot',
+            accessorKey: 'bobot',
+            cell: info => (
+                <span>{info.getValue() ?? 'N/A'}</span>
+            )
+        },
+        {
             header: 'Mata Kuliah',
             accessorKey: 'mata_kuliah.nama',
             cell: ({ row }) => (
