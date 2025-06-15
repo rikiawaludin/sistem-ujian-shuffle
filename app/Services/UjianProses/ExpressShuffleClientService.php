@@ -19,6 +19,35 @@ class ExpressShuffleClientService
         $this->timeout = (int)env('EXPRESS_SHUFFLE_TIMEOUT', 30); // Ambil timeout dari .env, default 30 detik
     }
 
+    public function pickAndShuffle(array $payload): ?array
+    {
+        Log::info('[ExpressClientService] Mengirim permintaan pick-and-shuffle ke Express.js', [
+            'url' => $this->serviceUrl,
+            'rules' => $payload['rules'] ?? 'N/A',
+        ]);
+
+        $response = Http::timeout($this->timeout)->post($this->serviceUrl, $payload);
+
+        if ($response->failed()) {
+            Log::error('[ExpressClientService] Gagal request pick-and-shuffle ke Express.js', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            throw new \RuntimeException('Gagal memproses soal melalui layanan eksternal.', $response->status());
+        }
+
+        $responseData = $response->json();
+
+        // Respons dari Express tetap sama, yaitu { shuffledSoalList: [...] }
+        if (!isset($responseData['shuffledSoalList']) || !is_array($responseData['shuffledSoalList'])) {
+            Log::error('[ExpressClientService] Format respons dari Express.js tidak valid', ['response_excerpt' => substr(json_encode($responseData), 0, 500)]);
+            throw new \RuntimeException('Format respons soal teracak tidak valid.');
+        }
+        
+        Log::info('[ExpressClientService] Berhasil mendapatkan respons pick-and-shuffle dari Express.js');
+        return $responseData['shuffledSoalList'];
+    }
+
     /**
      * Mengirim daftar soal ke layanan Express.js untuk diacak.
      *

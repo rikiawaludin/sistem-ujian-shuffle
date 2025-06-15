@@ -32,31 +32,22 @@ class PengerjaanUjianController extends Controller
         $jawabanUserMap = $request->input('jawaban');
         $statusRaguRaguMap = $request->input('statusRaguRagu');
 
-        $pengerjaan = null;
-        if ($pengerjaanIdDariRequest) {
-            $pengerjaan = PengerjaanUjian::where('id', $pengerjaanIdDariRequest)
-                            ->where('user_id', $user->id)
-                            ->where('ujian_id', $ujianId)
-                            ->first();
-        }
-        
-        if (!$pengerjaan) {
-             $pengerjaan = PengerjaanUjian::where('ujian_id', $ujianId)
-                            ->where('user_id', $user->id)
-                            ->where('status_pengerjaan', 'sedang_dikerjakan')
-                            ->orderBy('created_at', 'desc')
-                            ->first();
-        }
+        // Menggunakan pengerjaanIdDariRequest sebagai prioritas utama untuk mencari pengerjaan
+        $pengerjaan = PengerjaanUjian::where('id', $pengerjaanIdDariRequest)
+                        ->where('user_id', $user->id)
+                        ->where('ujian_id', $ujianId)
+                        ->first();
 
         if (!$pengerjaan) {
-            Log::error("Submit Ujian GAGAL: PengerjaanUjian tidak ditemukan. Ujian ID {$ujianId}, User ID {$user->id}.", $request->all());
+            Log::error("Submit Ujian GAGAL: PengerjaanUjian tidak ditemukan dengan ID {$pengerjaanIdDariRequest}. Ujian ID {$ujianId}, User ID {$user->id}.", $request->all());
             return back()->withErrors(['submit_error' => 'Sesi pengerjaan ujian tidak valid atau tidak ditemukan.']);
         }
         
         if ($pengerjaan->status_pengerjaan !== 'sedang_dikerjakan') {
             Log::warning("Submit Ujian DITOLAK: PengerjaanUjian ID {$pengerjaan->id} statusnya bukan 'sedang_dikerjakan' (status: {$pengerjaan->status_pengerjaan}). Mungkin sudah disubmit.", $request->all());
+            // Langsung arahkan ke halaman hasil jika sudah pernah disubmit
             return redirect()->route('ujian.hasil.detail', ['id_attempt' => $pengerjaan->id])
-                             ->with('info_message', 'Ujian ini sudah pernah dikumpulkan atau statusnya tidak valid untuk submit.');
+                             ->with('info_message', 'Ujian ini sudah pernah dikumpulkan.');
         }
 
         DB::beginTransaction();
@@ -66,26 +57,25 @@ class PengerjaanUjianController extends Controller
             $waktuDihabiskanDetik = $waktuSelesai->diffInSeconds($waktuMulaiCarbon);
             
             $durasiUjianDetik = $pengerjaan->ujian->durasi * 60;
-            if($waktuDihabiskanDetik > ($durasiUjianDetik + 120) ){ // Toleransi 2 menit untuk keterlambatan jaringan/proses
-                Log::warning("Submit Ujian: Pengerjaan ID {$pengerjaan->id} disubmit terlambat. Waktu dihabiskan: {$waktuDihabiskanDetik} vs Durasi: {$durasiUjianDetik}. Waktu selesai disesuaikan.");
-                $waktuDihabiskanDetik = $durasiUjianDetik; // Cap waktu dihabiskan ke durasi ujian
-                $waktuSelesai = $waktuMulaiCarbon->copy()->addSeconds($durasiUjianDetik); // Waktu selesai juga disesuaikan
-                $pengerjaan->status_pengerjaan = 'selesai_waktu_habis'; // Tandai waktu habis jika disubmit sangat terlambat
+            if ($waktuDihabiskanDetik > ($durasiUjianDetik + 120)) { // Toleransi 2 menit
+                $pengerjaan->status_pengerjaan = 'selesai_waktu_habis';
+                $waktuSelesai = $waktuMulaiCarbon->copy()->addSeconds($durasiUjianDetik);
+                $pengerjaan->waktu_dihabiskan_detik = $durasiUjianDetik;
             } else {
                 $pengerjaan->status_pengerjaan = 'selesai';
+                $pengerjaan->waktu_dihabiskan_detik = $waktuDihabiskanDetik;
             }
 
             $pengerjaan->waktu_selesai = $waktuSelesai;
-            $pengerjaan->waktu_dihabiskan_detik = $waktuDihabiskanDetik;
             
             $totalSkor = 0;
             $adaSoalEsai = false;
             $soalUjianRefs = $pengerjaan->ujian->soal()->withPivot('bobot_nilai_soal')->get()->keyBy('id');
 
-            // 1. Ambil semua Kunci Jawaban yang benar untuk soal-soal ini dalam satu query
+            // Ambil Kunci Jawaban dalam satu query
             $kunciJawabanMap = OpsiJawaban::whereIn('soal_id', $soalUjianRefs->pluck('id'))
                                            ->where('is_kunci_jawaban', true)
-                                           ->pluck('id', 'soal_id'); // Hasil: [soal_id => id_opsi_jawaban_benar]
+                                           ->pluck('id', 'soal_id');
 
             foreach ($jawabanUserMap as $soalId => $jawabanDiterima) {
                 $soalRef = $soalUjianRefs->get((int)$soalId);
@@ -94,13 +84,10 @@ class PengerjaanUjianController extends Controller
                 $isBenar = null;
                 $skorPerSoal = 0;
 
-                // Hanya proses jika ada jawaban
                 if (isset($jawabanDiterima) && $jawabanDiterima !== '') {
-                    if ($soalRef->tipe_soal === 'pilihan_ganda' || $soalRef->tipe_soal === 'benar_salah') {
-                        // 2. Bandingkan jawaban user dengan kunci jawaban dari map
+                    if (in_array($soalRef->tipe_soal, ['pilihan_ganda', 'benar_salah'])) {
                         $kunciJawabanId = $kunciJawabanMap->get((int)$soalId);
-
-                        if ($kunciJawabanId !== null && intval($jawabanDiterima) === $kunciJawabanId) {
+                        if ($kunciJawabanId !== null && (string)$jawabanDiterima === (string)$kunciJawabanId) {
                             $isBenar = true;
                             $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10;
                         } else {
@@ -108,8 +95,7 @@ class PengerjaanUjianController extends Controller
                         }
                     } elseif ($soalRef->tipe_soal === 'esai') {
                         $adaSoalEsai = true;
-                        // Untuk esai, tidak ada penilaian otomatis
-                        $isBenar = null;
+                        $isBenar = null; // Perlu dinilai manual
                         $skorPerSoal = 0;
                     }
                 }
@@ -129,24 +115,37 @@ class PengerjaanUjianController extends Controller
 
             // Tentukan status akhir dan skor total
             if ($adaSoalEsai) {
+                // Jika ada esai, skornya belum final
                 $pengerjaan->status_pengerjaan = 'menunggu_penilaian';
-                $pengerjaan->skor_total = $totalSkor; // Skor sementara
-            } else {
-                $pengerjaan->status_pengerjaan = 'selesai';
-                $pengerjaan->skor_total = $totalSkor; // Skor final
             }
+            $pengerjaan->skor_total = $totalSkor;
 
             $pengerjaan->save();
-
             DB::commit();
+
+            // =========================================================================
+            // AWAL PERBAIKAN UTAMA
+            // =========================================================================
+            
+            // 1. Hapus session soal setelah ujian berhasil disubmit
+            $sessionKey = 'ujian_attempt_' . $pengerjaan->id;
+            $request->session()->forget($sessionKey);
+            Log::info("Session '{$sessionKey}' telah dihapus setelah submit.");
+
+            // 2. Beri perintah redirect ke halaman konfirmasi selesai
+            // Ini akan memberitahu Inertia untuk pindah halaman, bukan me-refresh halaman lama.
+            return redirect()->route('ujian.selesai.konfirmasi', ['id_ujian' => $ujianId]);
+            
+            // =========================================================================
+            // AKHIR PERBAIKAN UTAMA
+            // =========================================================================
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Gagal submit ujian untuk Pengerjaan ID: " . ($pengerjaan->id ?? 'Tidak Diketahui') . " Ujian ID: {$ujianId}, User: {$user->id}", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString() // Lebih detail untuk debugging
+            Log::error("Gagal submit ujian untuk Pengerjaan ID: {$pengerjaan->id}. Error: {$e->getMessage()}", [
+                'trace' => $e->getTraceAsString()
             ]);
-            return back()->withErrors(['submit_error' => 'Gagal menyimpan jawaban ujian. Silakan coba lagi. (' . $e->getMessage() . ')']);
+            return back()->withErrors(['submit_error' => 'Gagal menyimpan jawaban ujian. Silakan coba lagi.']);
         }
     }
 }

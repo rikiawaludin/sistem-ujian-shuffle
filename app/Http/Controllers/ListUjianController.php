@@ -75,8 +75,7 @@ class ListUjianController extends Controller
 
         $ujianTersedia = Ujian::where('mata_kuliah_id', $id_mata_kuliah)
                             ->where('status_publikasi', 'published')
-                            ->withCount('soal')
-                            // ->orderBy('tanggal_mulai', 'desc')
+                            ->withSum('aturan', 'jumlah_soal') 
                             ->get();
 
         $now = Carbon::now();
@@ -114,7 +113,7 @@ class ListUjianController extends Controller
                 'nama' => $ujian->judul_ujian,
                 'deskripsi' => $ujian->deskripsi,
                 'durasi' => $ujian->durasi . " Menit",
-                'jumlahSoal' => $ujian->soal_count,
+                'jumlahSoal' => $ujian->aturan_sum_jumlah_soal ?? 0,
                 'kkm' => $ujian->kkm,
                 'batasWaktuPengerjaan' => $ujian->tanggal_selesai ? Carbon::parse($ujian->tanggal_selesai)->format('d F Y, H:i') : 'Fleksibel',
                 'status' => $statusUjian,
@@ -230,8 +229,8 @@ class ListUjianController extends Controller
         $attempt = PengerjaanUjian::with([
             'ujian:id,judul_ujian,kkm,mata_kuliah_id,durasi',
             'ujian.mataKuliah:id,nama',
-            'ujian.soal',
-            'detailJawaban.soal'
+            'ujian.soal.opsiJawaban',
+            'detailJawaban'
         ])
         ->where('user_id', Auth::id())
         ->findOrFail((int)$id_attempt);
@@ -252,29 +251,29 @@ class ListUjianController extends Controller
 
         $detailSoalJawaban = collect($ujianDetail->soal)->map(function($soalMasterUjian, $index) use ($jawabanUserPerSoalMap) {
             $jawabanDataAttempt = $jawabanUserPerSoalMap->get($soalMasterUjian->id);
-            $nomorUrut = $soalMasterUjian->pivot->nomor_urut_di_ujian ?? ($index + 1);
-            $opsiJawabanFinal = $soalMasterUjian->opsi_jawaban; 
-            $kunciJawabanFinal = $soalMasterUjian->kunci_jawaban;
             
-            if (($soalMasterUjian->tipe_soal === 'pilihan_ganda' || $soalMasterUjian->tipe_soal === 'benar_salah') && is_array($kunciJawabanFinal) && count($kunciJawabanFinal) === 1) {
-                $firstKey = $kunciJawabanFinal[0];
-                $kunciJawabanFinal = is_object($firstKey) && isset($firstKey->id) ? (string)$firstKey->id : $firstKey;
+            // 1. Decode jawaban user dari format JSON
+            $jawabanPenggunaDecoded = null;
+            if ($jawabanDataAttempt && $jawabanDataAttempt->jawaban_user) {
+                $decoded = json_decode($jawabanDataAttempt->jawaban_user, true);
+                // Jika hasil decode tidak null, gunakan itu. Ini menangani kasus "null" atau string kosong.
+                $jawabanPenggunaDecoded = ($decoded !== null && $decoded !== '') ? $decoded : null;
             }
 
-            $jawabanPenggunaFinal = $jawabanDataAttempt->jawaban_user ?? null;
-            if (($soalMasterUjian->tipe_soal === 'pilihan_ganda' || $soalMasterUjian->tipe_soal === 'benar_salah') && is_array($jawabanPenggunaFinal) && count($jawabanPenggunaFinal) === 1) {
-                 $firstAnswer = $jawabanPenggunaFinal[0];
-                 $jawabanPenggunaFinal = is_object($firstAnswer) && isset($firstAnswer->id) ? (string)$firstAnswer->id : $firstAnswer;
+            // 2. Untuk soal PG/BS, jika jawaban berupa array dengan satu elemen, ambil elemen tersebut.
+            if (is_array($jawabanPenggunaDecoded) && count($jawabanPenggunaDecoded) === 1) {
+                $jawabanPenggunaFinal = $jawabanPenggunaDecoded[0];
+            } else {
+                $jawabanPenggunaFinal = $jawabanPenggunaDecoded;
             }
 
             return [
                 'idSoal' => $soalMasterUjian->id,
-                'nomorSoal' => $nomorUrut,
+                'nomorSoal' => $soalMasterUjian->pivot->nomor_urut_di_ujian ?? ($index + 1),
                 'pertanyaan' => $soalMasterUjian->pertanyaan,
                 'tipeSoal' => $soalMasterUjian->tipe_soal,
-                'opsiJawaban' => $opsiJawabanFinal,
-                'jawabanPengguna' => $jawabanPenggunaFinal,
-                'kunciJawaban' => $kunciJawabanFinal,
+                'opsiJawaban' => $soalMasterUjian->opsiJawaban, // Ini sekarang sudah berisi data lengkap
+                'jawabanPengguna' => $jawabanPenggunaFinal, // Menggunakan jawaban yang sudah di-decode
                 'isBenar' => $jawabanDataAttempt->is_benar ?? null,
                 'penjelasan' => $soalMasterUjian->penjelasan,
             ];

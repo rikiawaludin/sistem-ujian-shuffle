@@ -69,9 +69,10 @@ export default function KartuUjian({ ujian }) {
                     <Chip value={statusInfo.chip.label} color={statusInfo.chip.color} size="sm" className="capitalize" />
                 </div>
 
-                {ujian.deskripsi && (
-                    <Typography className="text-sm text-gray-600 mb-4">{ujian.deskripsi}</Typography>
-                )}
+                <div
+                    className="mb-6 prose max-w-none text-blue-gray-800"
+                    dangerouslySetInnerHTML={{ __html: ujian.deskripsi }}
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-700 mb-5 border-t pt-4">
                     <div className="flex items-center space-x-2">
