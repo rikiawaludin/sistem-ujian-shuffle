@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { Button, Card, Input, Select, Option, Textarea, Checkbox, Typography } from '@material-tailwind/react';
@@ -15,8 +15,24 @@ export default function Form({ ujian, mataKuliahOptions }) {
         tanggal_mulai: ujian?.tanggal_mulai?.substring(0, 16) || '',
         tanggal_selesai: ujian?.tanggal_selesai?.substring(0, 16) || '',
         acak_soal: ujian?.acak_soal ?? true,
+        acak_opsi: ujian?.acak_opsi ?? true,
         tampilkan_hasil: ujian?.tampilkan_hasil ?? true,
     });
+
+    // === EFEK BARU UNTUK MENGHITUNG DURASI OTOMATIS ===
+    useEffect(() => {
+        if (data.tanggal_mulai && data.tanggal_selesai) {
+            const start = new Date(data.tanggal_mulai);
+            const end = new Date(data.tanggal_selesai);
+            const diffMs = end - start;
+
+            // Pastikan waktu selesai setelah waktu mulai
+            if (diffMs > 0) {
+                const diffMins = Math.round(diffMs / 60000);
+                setData('durasi', diffMins);
+            }
+        }
+    }, [data.tanggal_mulai, data.tanggal_selesai]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -98,6 +114,7 @@ export default function Form({ ujian, mataKuliahOptions }) {
                             value={data.durasi}
                             onChange={e => setData('durasi', e.target.value)}
                             error={!!errors.durasi}
+                            readOnly
                         />
                         <Input
                             type="number"
@@ -106,10 +123,19 @@ export default function Form({ ujian, mataKuliahOptions }) {
                             onChange={e => setData('kkm', e.target.value)}
                             error={!!errors.kkm}
                         />
+
+                    </div>
+                    <br />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Checkbox
                             label="Acak Soal?"
                             checked={data.acak_soal}
                             onChange={e => setData('acak_soal', e.target.checked)}
+                        />
+                        <Checkbox
+                            label="Acak Opsi Jawaban?" // <-- CHECKBOX BARU
+                            checked={data.acak_opsi}
+                            onChange={e => setData('acak_opsi', e.target.checked)}
                         />
                         <Checkbox
                             label="Tampilkan Hasil ke Siswa?"

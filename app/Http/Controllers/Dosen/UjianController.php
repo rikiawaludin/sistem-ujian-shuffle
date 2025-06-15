@@ -71,6 +71,7 @@ class UjianController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'acak_soal' => 'required|boolean',
+            'acak_opsi' => 'required|boolean',
             'tampilkan_hasil' => 'required|boolean',
         ]);
         
@@ -85,29 +86,55 @@ class UjianController extends Controller
     /**
      * Menampilkan halaman "Perakit Soal" (Soal Picker).
      */
-    public function edit(Request $request, Ujian $ujian)
+     public function edit(Request $request, Ujian $ujian)
     {
         $authProps = $this->getAuthProps();
         if ($ujian->dosen_pembuat_id !== ($authProps['user']['id'] ?? null)) {
             abort(403);
         }
 
-        // Logika untuk mengambil soal terpilih dan bank soal tidak berubah
+        // Mengambil soal yang sudah terpilih untuk ujian ini (logika ini tetap sama)
         $ujian->load(['soal' => fn($q) => $q->select('bank_soal.id', 'pertanyaan', 'tipe_soal')]);
-        $soalTerpilih = $ujian->soal->mapWithKeys(fn($s) => [$s->id => ['id' => $s->id, 'pertanyaan' => $s->pertanyaan, 'tipe_soal' => $s->tipe_soal, 'bobot_nilai_soal' => $s->pivot->bobot_nilai_soal]]);
-        $queryBankSoal = \App\Models\Soal::where('dosen_pembuat_id', Auth::id())->select('id', 'pertanyaan', 'tipe_soal', 'kategori_soal')->orderBy('kategori_soal');
-        if ($request->filled('kategori')) {
-            $queryBankSoal->where('kategori_soal', $request->kategori);
-        }
-        $bankSoal = $queryBankSoal->get();
-        $kategoriOptions = \App\Models\Soal::where('dosen_pembuat_id', Auth::id())->distinct()->pluck('kategori_soal');
+        $soalTerpilih = $ujian->soal->mapWithKeys(fn($s) => [
+            $s->id => [
+                'id' => $s->id, 
+                'pertanyaan' => $s->pertanyaan, 
+                'tipe_soal' => $s->tipe_soal, 
+                'bobot_nilai_soal' => $s->pivot->bobot_nilai_soal
+            ]
+        ]);
 
+        // === LOGIKA BARU UNTUK FILTER DAN BANK SOAL ===
+
+        // 1. Ambil opsi filter dari Mata Kuliah yang pernah digunakan oleh dosen di bank soal.
+        $usedMataKuliahIds = \App\Models\Soal::where('dosen_pembuat_id', Auth::id())
+                                ->whereNotNull('mata_kuliah_id')
+                                ->distinct()
+                                ->pluck('mata_kuliah_id');
+        
+        $mataKuliahFilterOptions = \App\Models\MataKuliah::whereIn('id', $usedMataKuliahIds)
+                                    ->orderBy('nama')
+                                    ->get(['id', 'nama']);
+
+        // 2. Siapkan query untuk mengambil semua soal dari bank soal milik dosen.
+        $queryBankSoal = \App\Models\Soal::where('dosen_pembuat_id', Auth::id())
+                                ->with('mataKuliah:id,nama') // Eager load relasi MataKuliah
+                                ->orderBy('created_at', 'desc');
+
+        // 3. Terapkan filter jika ada request dari frontend.
+        //    Gunakan 'mata_kuliah' sebagai nama parameter, bukan 'kategori'.
+        if ($request->filled('mata_kuliah')) {
+            $queryBankSoal->where('mata_kuliah_id', $request->mata_kuliah);
+        }
+
+        $bankSoal = $queryBankSoal->get();
+        
         return inertia('Dosen/Ujian/Edit', [
             'ujian' => $ujian,
             'soalTerpilih' => $soalTerpilih,
             'bankSoal' => $bankSoal,
-            'kategoriOptions' => $kategoriOptions,
-            'filters' => $request->only(['kategori']),
+            'mataKuliahFilterOptions' => $mataKuliahFilterOptions, // <-- Kirim opsi filter baru
+            'filters' => $request->only(['mata_kuliah']), // <-- Kirim filter aktif baru
             'auth' => $authProps,
         ]);
     }
@@ -141,6 +168,7 @@ class UjianController extends Controller
                 'tanggal_mulai' => 'required|date',
                 'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
                 'acak_soal' => 'required|boolean',
+                'acak_opsi' => 'required|boolean',
                 'tampilkan_hasil' => 'required|boolean',
             ]);
             $ujian->update($validated);
