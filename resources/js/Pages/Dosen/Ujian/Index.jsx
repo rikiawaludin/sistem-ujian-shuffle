@@ -11,7 +11,7 @@ export default function Index() {
         { header: 'Judul Ujian', accessorKey: 'judul_ujian' },
         { header: 'Mata Kuliah', cell: ({row}) => row.original.mata_kuliah?.nama || 'N/A' },
         { header: 'Durasi', cell: ({row}) => `${row.original.durasi} menit` },
-        { header: 'Jumlah Soal', cell: ({row}) => `${row.original.soal_count || 0} Soal` }, // Perlu 'withCount' di controller
+        { header: 'Jumlah Soal', cell: ({row}) => `${row.original.aturan_sum_jumlah_soal || 0} Soal` },
         { header: 'Aksi', id: 'aksi', cell: ({ row }) => (
             <Link href={route('dosen.ujian.edit', row.original.id)}>
                 <Button size="sm" variant="outlined">Atur Soal</Button>

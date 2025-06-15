@@ -37,6 +37,14 @@ class Ujian extends Model
     ];
 
     /**
+     * Aturan pemilihan soal untuk ujian ini.
+     */
+    public function aturan()
+    {
+        return $this->hasMany(UjianAturan::class, 'ujian_id');
+    }
+
+    /**
      * Mata kuliah pemilik ujian ini.
      */
     public function mataKuliah()

@@ -28,10 +28,16 @@
         "@mui/icons-material": "^7.1.0",
         "@mui/material": "^7.1.0",
         "@mui/x-data-grid": "^8.5.0",
+        "@radix-ui/react-slot": "^1.2.3",
         "@tanstack/react-table": "^8.21.3",
         "@tinymce/tinymce-react": "^6.2.1",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
         "flowbite": "^3.1.2",
+        "lucide-react": "^0.515.0",
         "react-select": "^5.10.1",
-        "swiper": "^11.2.7"
+        "swiper": "^11.2.7",
+        "tailwind-merge": "^3.3.1",
+        "tailwindcss-animate": "^1.0.7"
     }
 }
