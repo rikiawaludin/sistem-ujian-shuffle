@@ -1,47 +1,65 @@
-import React, { useMemo } from 'react';
+// File: resources/js/Pages/Dosen/Dashboard/Index.jsx
+
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Button, Card, Typography } from '@material-tailwind/react';
-import AdvancedTable from '@/Components/Tables/AdvancedTable';
+import { Head, usePage } from '@inertiajs/react';
+import { Typography } from '@material-tailwind/react'; // Anda bisa menggantinya jika tidak memakai Material Tailwind
+import { SubjectCard } from '@/Components/Dosen/Dashboard/SubjectCard';
+import { StudentsDialog } from '@/Components/Dosen/Dashboard/StudentsDialog';
 
 export default function Index() {
-    const { auth, pengerjaanList } = usePage().props;
+    // Ambil `dashboardData` dari props yang dikirim oleh controller
+    const { auth, dashboardData } = usePage().props;
 
-    const columns = useMemo(() => [
-        { header: 'Email Mahasiswa', accessorKey: 'user.email' },
-        { header: 'Judul Ujian', accessorKey: 'ujian.judul_ujian' },
-        { 
-            header: 'Mata Kuliah', 
-            // TanStack Table bisa mengakses data nested dengan dot notation
-            accessorKey: 'ujian.mata_kuliah.nama',
-            // Fallback jika mata kuliah tidak ada
-            cell: info => info.getValue() || 'N/A'
-        },
-        { header: 'Skor', accessorKey: 'skor_total' },
-        { 
-            header: 'Waktu Selesai', 
-            accessorKey: 'waktu_selesai',
-            cell: info => new Date(info.getValue()).toLocaleString('id-ID')
+    // State untuk mengontrol dialog mahasiswa
+    const [selectedSubject, setSelectedSubject] = useState(null);
+
+    const handleShowStudents = (subject) => {
+        setSelectedSubject(subject);
+    };
+
+    const handleDialogStateChange = (open) => {
+        if (!open) {
+            setSelectedSubject(null);
         }
-    ], []);
+    };
 
     return (
         <AuthenticatedLayout user={auth.user} title="Dashboard Dosen">
             <Head title="Dashboard Dosen" />
 
-            <div className="mb-6">
-                <Typography variant="h4" color="blue-gray">Dashboard Pelaporan</Typography>
-                <Typography color="gray" className="mt-1 font-normal">
-                    Berikut adalah daftar semua pengerjaan ujian yang telah diselesaikan oleh mahasiswa.
-                </Typography>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Dashboard Pelaporan</h1>
+                <p className="text-muted-foreground mt-1">
+                    Selamat datang! Berikut adalah ringkasan performa ujian dari mata kuliah yang Anda ampu.
+                </p>
             </div>
 
-            <Card className="p-4 shadow-lg border border-blue-gray-50">
-                <AdvancedTable
-                    columns={columns}
-                    data={pengerjaanList.data}
-                />
-            </Card>
+            <main>
+                {dashboardData && dashboardData.length > 0 ? (
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {dashboardData.map((subject) => (
+                            <SubjectCard
+                                key={subject.id}
+                                subject={subject}
+                                onShowStudents={handleShowStudents}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <Typography color="gray" className="font-normal">
+                            Belum ada data pengerjaan ujian yang dapat ditampilkan.
+                        </Typography>
+                    </div>
+                )}
+            </main>
+
+            <StudentsDialog
+                subject={selectedSubject}
+                open={!!selectedSubject}
+                onOpenChange={handleDialogStateChange}
+            />
         </AuthenticatedLayout>
     );
 }

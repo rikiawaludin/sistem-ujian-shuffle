@@ -123,4 +123,46 @@ trait ManagesDosenAuth
             return [];
         }
     }
+
+    private function getSemesterMap(Request $request): array
+    {
+        $token = $request->session()->get('token');
+        $pathApi = 'ujian/mata-kuliah/dosen'; // Path API yang sama
+        $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
+
+        if (!$token) {
+            Log::warning('[Trait ManagesDosenAuth] Tidak ada token sesi untuk memanggil API semester.');
+            return [];
+        }
+
+        try {
+            $response = Http::withToken($token)->timeout(15)->get($apiUrl);
+
+            if ($response->failed()) {
+                Log::error('[Trait ManagesDosenAuth] Gagal mengambil data semester dari API.', ['status' => $response->status(), 'url' => $apiUrl]);
+                return [];
+            }
+            
+            $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
+            $semesterMap = [];
+
+            foreach ($mataKuliahFromApi as $kelas) {
+                // Pastikan data yang dibutuhkan ada di dalam respons API
+                if (isset($kelas['matakuliah']['mk_id']) && isset($kelas['semester'])) {
+                    $externalId = $kelas['matakuliah']['mk_id'];
+                    
+                    // Gunakan data pertama yang ditemukan untuk setiap external_id
+                    if (!isset($semesterMap[$externalId])) {
+                        $semesterMap[$externalId] = $kelas['semester'];
+                    }
+                }
+            }
+            
+            return $semesterMap;
+
+        } catch (\Exception $e) {
+            Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data semester dari API: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
