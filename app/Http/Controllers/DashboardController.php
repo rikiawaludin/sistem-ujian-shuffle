@@ -67,41 +67,67 @@ class DashboardController extends Controller
         // 1. Ambil Histori Ujian (yang sudah selesai)
         $pengerjaanSelesai = PengerjaanUjian::where('user_id', Auth::id())
             ->whereIn('status_pengerjaan', ['selesai', 'selesai_waktu_habis'])
-            ->with(['ujian:id,judul_ujian,kkm', 'ujian.mataKuliah:id,nama'])
+            ->with(['ujian:id,judul_ujian,kkm,durasi', 'ujian.mataKuliah:id,nama']) // Ambil juga durasi
             ->orderBy('waktu_selesai', 'desc')
-            ->limit(4) // Ambil 4 teratas untuk ditampilkan di dashboard
             ->get();
             
-        $historiUjian = $pengerjaanSelesai->map(function ($attempt) {
+        // Format data riwayat ujian menjadi lebih kaya
+        $historiUjian = $pengerjaanSelesai->map(function ($pengerjaan) {
+            if (!$pengerjaan->ujian) return null; // Skip jika relasi ujiannya tidak ada
             return [
-                'id_pengerjaan' => $attempt->id,
-                'namaUjian' => $attempt->ujian->judul_ujian ?? 'N/A',
-                'namaMataKuliah' => $attempt->ujian->mataKuliah->nama ?? 'N/A',
-                'skor' => $attempt->skor_total,
-                'kkm' => $attempt->ujian->kkm ?? 0,
+                'id_pengerjaan' => $pengerjaan->id,
+                'id_ujian' => $pengerjaan->ujian->id,
+                'judul' => $pengerjaan->ujian->judul_ujian,
+                'matakuliah' => $pengerjaan->ujian->mataKuliah->nama ?? 'N/A',
+                'skor' => $pengerjaan->skor_total,
+                'kkm' => $pengerjaan->ujian->kkm ?? 0,
+                'durasi' => $pengerjaan->ujian->durasi,
+                'waktu_selesai' => $pengerjaan->waktu_selesai->format('d M Y, H:i'),
+                'status' => 'Selesai', // Tambahkan status eksplisit
             ];
-        });
+        })->filter();
 
-        // 2. Ambil Daftar Ujian (yang belum/sedang dikerjakan atau akan datang)
+        // 2. Ambil semua ujian yang relevan (yang belum berakhir)
         $now = Carbon::now();
         $ujianTersedia = Ujian::where('status_publikasi', 'published')
                             ->where('tanggal_selesai', '>=', $now)
+                            ->with('mataKuliah:id,nama')
+                            ->with(['pengerjaanUjian' => function ($query) {
+                                $query->where('user_id', Auth::id())->latest('waktu_mulai');
+                            }])
                             ->get();
 
+        // Format data ujian yang akan datang / sedang aktif
         $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now) {
-            $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujian->id)
-                                    ->where('user_id', Auth::id())
-                                    ->latest('waktu_mulai')
-                                    ->first();
+            $pengerjaanTerakhir = $ujian->pengerjaanUjian->first();
             $statusUjian = "Tidak Tersedia";
+
             if ($now->between($ujian->tanggal_mulai, $ujian->tanggal_selesai)) {
-                if (!$pengerjaanTerakhir) { $statusUjian = "Belum Dikerjakan"; } 
-                elseif ($pengerjaanTerakhir->status_pengerjaan === 'sedang_dikerjakan') { $statusUjian = "Sedang Dikerjakan"; }
+                if (!$pengerjaanTerakhir) {
+                    $statusUjian = "Aktif";
+                } elseif ($pengerjaanTerakhir->status_pengerjaan === 'sedang_dikerjakan') {
+                    $statusUjian = "Aktif"; // Sedang dikerjakan juga termasuk aktif
+                } else {
+                    // Sudah pernah dikerjakan dan selesai, jadi tidak muncul di daftar aktif lagi
+                    return null;
+                }
             } elseif ($now->lt($ujian->tanggal_mulai)) {
-                $statusUjian = "Akan Datang";
+                $statusUjian = "Mendatang";
             }
-            return ['status' => $statusUjian];
-        });
+
+            if ($statusUjian === "Tidak Tersedia") return null;
+
+            return [
+                'id_ujian' => $ujian->id,
+                'judul' => $ujian->judul_ujian,
+                'matakuliah' => $ujian->mataKuliah->nama ?? 'N/A',
+                'durasi' => $ujian->durasi,
+                'tanggal_mulai' => $ujian->tanggal_mulai->format('d M Y, H:i'),
+                'tanggal_selesai' => $ujian->tanggal_selesai->format('d M Y, H:i'),
+                'status' => $statusUjian,
+            ];
+        })->filter(); // filter() tanpa argumen akan menghapus nilai null
+
 
         // --- AKHIR PERBAIKAN LOGIKA ---
 
