@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Dosen\BankSoalController;
 use App\Http\Controllers\Dosen\UjianController;
 use App\Http\Controllers\Dosen\DosenDashboardController;
+use App\Http\Controllers\Dosen\MataKuliahDosenController; 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -50,7 +51,7 @@ Route::middleware('auth.token', 'auth.mahasiswa')->group(function () {
     });
 });
 
-Route::middleware('auth.token')->group(function () {
+Route::middleware('auth.token', 'auth.admin')->group(function () {
  
     Route::prefix('admin')->name('admin.')->group(function () {
         
@@ -73,6 +74,7 @@ Route::middleware('auth.token')->group(function () {
 Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
 
     Route::get('dosen/dashboard', [DosenDashboardController::class, 'index'])->name('dosen.dashboard');
+    Route::get('dosen/matakuliah/{mata_kuliah}', [MataKuliahDosenController::class, 'show'])->name('dosen.matakuliah.show');
 
     Route::resource('dosen/bank-soal', BankSoalController::class)
         ->names('dosen.bank-soal');
