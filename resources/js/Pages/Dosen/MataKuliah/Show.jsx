@@ -12,7 +12,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/Components/ui/dialog"
-import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Badge } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2 } from 'lucide-react';
+import { Badge } from "@/Components/ui/badge";
 
 // Komponen Form Soal yang akan kita buat
 import BankSoalForm from '@/Pages/Dosen/Partials/BankSoalForm';
@@ -46,6 +47,12 @@ export default function Show() {
                 preserveScroll: true, // Agar halaman tidak scroll ke atas setelah aksi
             });
         }
+    };
+
+    const difficultyStyles = {
+        mudah: 'bg-green-100 text-green-800 border-green-200',
+        sedang: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        sulit: 'bg-red-100 text-red-800 border-red-200',
     };
 
     // Periksa apakah user prop ada sebelum mencoba mengaksesnya
@@ -232,8 +239,10 @@ export default function Show() {
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1 mr-4">
                                                 <div className="flex items-center space-x-3 mb-2">
-                                                    <Badge variant="outline" className="text-xs capitalize">{soal.tipe_soal.replace('_', ' ')}</Badge>
-                                                    <Badge className={`text-xs ${soal.level_kesulitan === 'mudah' ? 'bg-green-100 text-green-800' : soal.level_kesulitan === 'sedang' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                                    <Badge variant="outline" className="text-xs capitalize border-gray-300">
+                                                        {soal.tipe_soal.replace('_', ' ')}
+                                                    </Badge>
+                                                    <Badge className={`text-xs capitalize ${difficultyStyles[soal.level_kesulitan] || 'bg-gray-100 text-gray-800'}`}>
                                                         {soal.level_kesulitan}
                                                     </Badge>
                                                 </div>
