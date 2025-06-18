@@ -29,7 +29,7 @@ class MataKuliahDosenController extends Controller
         $mata_kuliah->load([
             // Muat relasi 'soal' DAN sub-relasi 'opsiJawaban' untuk setiap soal
             'soal.opsiJawaban', 
-            'ujian'
+            'ujian.aturan'
         ]);
 
         // 1. Ringkasan Bank Soal per Tipe
@@ -41,14 +41,19 @@ class MataKuliahDosenController extends Controller
         $ujianSummary = $mata_kuliah->ujian
             ->groupBy('status_publikasi')
             ->map(fn ($group) => $group->count());
+        
+        $bankSoalSummaryByDifficulty = $mata_kuliah->soal
+            ->groupBy('level_kesulitan')
+            ->map(fn ($group) => $group->count());
 
         $mataKuliahOptions = $this->getDosenMataKuliahOptions($request);
 
         return Inertia::render('Dosen/MataKuliah/Show', [
             'course' => $mata_kuliah,
             'soalSummary' => $soalSummary,  
-            'ujianSummary' => $ujianSummary,  
-            'mataKuliahOptions' => $mataKuliahOptions
+            'ujianSummary' => $ujianSummary,
+            'bankSoalSummaryByDifficulty' => $bankSoalSummaryByDifficulty,  
+            'mataKuliahOptions' => $mataKuliahOptions,
         ]);
     }
 }

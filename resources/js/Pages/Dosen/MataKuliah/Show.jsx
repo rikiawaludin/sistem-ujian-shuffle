@@ -14,6 +14,9 @@ import {
 } from "@/Components/ui/dialog"
 import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2 } from 'lucide-react';
 import { Badge } from "@/Components/ui/badge";
+import { Cog6ToothIcon } from '@heroicons/react/24/solid';
+import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
+import UjianAturanDialog from '@/Pages/Dosen/Partials/UjianAturanDialog';
 
 // Komponen Form Soal yang akan kita buat
 import BankSoalForm from '@/Pages/Dosen/Partials/BankSoalForm';
@@ -53,6 +56,27 @@ export default function Show() {
         mudah: 'bg-green-100 text-green-800 border-green-200',
         sedang: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         sulit: 'bg-red-100 text-red-800 border-red-200',
+    };
+
+    // TAMBAHKAN STATE BARU UNTUK MODAL UJIAN
+    const [isUjianFormOpen, setIsUjianFormOpen] = useState(false);
+    const [isAturanFormOpen, setIsAturanFormOpen] = useState(false);
+    const [selectedUjian, setSelectedUjian] = useState(null);
+
+    // HANDLER BARU UNTUK UJIAN
+    const handleAddUjian = () => {
+        setSelectedUjian(null);
+        setIsUjianFormOpen(true);
+    };
+
+    const handleEditUjian = (ujian) => {
+        setSelectedUjian(ujian);
+        setIsUjianFormOpen(true);
+    };
+
+    const handleAturSoal = (ujian) => {
+        setSelectedUjian(ujian);
+        setIsAturanFormOpen(true);
     };
 
     // Periksa apakah user prop ada sebelum mencoba mengaksesnya
@@ -266,20 +290,46 @@ export default function Show() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="exams">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Manajemen Ujian</CardTitle>
-                                <CardDescription>Daftar ujian yang telah dibuat untuk mata kuliah ini.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                {course.ujian.map(u => (
-                                    <ListItem key={u.id}>
-                                        <p>{u.judul_ujian}</p>
-                                    </ListItem>
-                                ))}
-                            </CardContent>
-                        </Card>
+                    <TabsContent value="exams" className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800">Manajemen Ujian</h3>
+                                <p className="text-sm text-muted-foreground">Kelola semua ujian untuk mata kuliah ini.</p>
+                            </div>
+                            <Button onClick={handleAddUjian} className="bg-green-600 hover:bg-green-700">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Buat Ujian Baru
+                            </Button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {course.ujian.map((ujian) => (
+                                <Card key={ujian.id} className="bg-white shadow-md">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1 mr-4">
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h4 className="font-semibold text-gray-800">{ujian.judul_ujian}</h4>
+                                                    <Badge variant="secondary" className="capitalize">{ujian.status_publikasi}</Badge>
+                                                </div>
+                                                <p className="text-sm text-gray-500">
+                                                    Durasi: {ujian.durasi} menit | KKM: {ujian.kkm || 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => handleAturSoal(ujian)}>
+                                                    <Cog6ToothIcon className="h-4 w-4" /> Atur Soal
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleEditUjian(ujian)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                {/* Tombol Hapus bisa ditambahkan di sini jika perlu */}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="results">
@@ -316,6 +366,26 @@ export default function Show() {
                         />
                     </DialogContent>
                 </Dialog>
+
+                {/* TAMBAHKAN MODAL-MODAL BARU DI SINI */}
+                {/* Modal untuk Form Detail Ujian */}
+                <UjianDetailFormDialog
+                    open={isUjianFormOpen}
+                    onOpenChange={setIsUjianFormOpen}
+                    ujian={selectedUjian}
+                    mataKuliahId={course.id}
+                    onSuccess={() => setIsUjianFormOpen(false)}
+                />
+
+                {/* Modal untuk Form Aturan Soal */}
+                {selectedUjian && (
+                    <UjianAturanDialog
+                        open={isAturanFormOpen}
+                        onOpenChange={setIsAturanFormOpen}
+                        ujian={selectedUjian}
+                        onSuccess={() => setIsAturanFormOpen(false)}
+                    />
+                )}
 
             </div>
         </div>

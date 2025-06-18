@@ -82,7 +82,7 @@ class UjianController extends Controller
         $validated['jenis_ujian'] = 'kuis';
         $ujian = Ujian::create($validated);
 
-        return redirect()->route('dosen.ujian.edit', $ujian->id)->with('success', 'Ujian berhasil dibuat. Silakan tambahkan soal.');
+        return back()->with('success', 'Detail Ujian berhasil dibuat. Silakan atur soalnya.');
     }
 
     /**
@@ -125,7 +125,6 @@ class UjianController extends Controller
             abort(403);
         }
         
-        // Logika untuk menyimpan aturan soal
         if ($request->has('aturan_soal')) {
             $validated = $request->validate([
                 'aturan_soal' => 'required|array',
@@ -135,10 +134,7 @@ class UjianController extends Controller
             ]);
 
             DB::transaction(function () use ($ujian, $validated) {
-                // Hapus aturan lama
                 $ujian->aturan()->delete();
-
-                // Buat aturan baru berdasarkan input
                 foreach ($validated['aturan_soal'] as $level => $jumlah) {
                     if ($jumlah > 0) {
                         $ujian->aturan()->create([
@@ -147,13 +143,27 @@ class UjianController extends Controller
                         ]);
                     }
                 }
-                
-                // Hapus juga relasi lama di pivot table untuk membersihkan
                 $ujian->soal()->detach();
             });
 
-            return redirect()->route('dosen.ujian.index')->with('success', 'Aturan soal untuk ujian berhasil disimpan.');
+            return back()->with('success', 'Aturan soal berhasil disimpan.');
         }
+
+        // SCENARIO 2: Menyimpan DETAIL UJIAN dari modal "Edit Detail Ujian"
+        $validated = $request->validate([
+            'judul_ujian' => 'required|string|max:255',
+            'deskripsi' => 'nullable|string',
+            'durasi' => 'required|integer|min:1',
+            'kkm' => 'nullable|numeric|min:0|max:100',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'acak_soal' => 'required|boolean',
+            'acak_opsi' => 'required|boolean',
+            'tampilkan_hasil' => 'required|boolean',
+            // mata_kuliah_id tidak perlu divalidasi saat update, karena tidak boleh diubah
+        ]);
+
+        $ujian->update($validated);
         
         // Blok "else" ini bisa Anda gunakan jika ingin ada form update detail ujian terpisah
         // atau gabungkan validasinya di atas.
@@ -174,6 +184,6 @@ class UjianController extends Controller
             $ujian->soal()->detach();
             $ujian->delete();
         });
-        return redirect()->route('dosen.ujian.index')->with('success', 'Ujian berhasil dihapus.');
+        return back()->with('success', 'Ujian berhasil dihapus.');
     }
 }
