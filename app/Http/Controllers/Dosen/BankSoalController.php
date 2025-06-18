@@ -155,7 +155,7 @@ class BankSoalController extends Controller
             return redirect()->back()->withErrors(['db_error' => 'Gagal menyimpan soal. Silakan coba lagi.']);
         }
 
-        return redirect()->route('dosen.bank-soal.index')->with('success', 'Soal berhasil dibuat.');
+        return back()->with('success', 'Soal berhasil dibuat.');
     }
 
     public function update(Request $request, Soal $bank_soal)
@@ -219,7 +219,7 @@ class BankSoalController extends Controller
             return redirect()->back()->withErrors(['db_error' => 'Gagal memperbarui soal. Silakan coba lagi.']);
         }
 
-        return redirect()->route('dosen.bank-soal.index')->with('success', 'Soal berhasil diperbarui.');
+        return back()->with('success', 'Soal berhasil diperbarui.');
     }
 
     public function destroy(Soal $bank_soal)
@@ -229,6 +229,6 @@ class BankSoalController extends Controller
             abort(403);
         }
         $bank_soal->delete();
-        return redirect()->route('dosen.bank-soal.index')->with('success', 'Soal berhasil dihapus.');
+        return back()->with('success', 'Soal berhasil dihapus.');
     }
 }

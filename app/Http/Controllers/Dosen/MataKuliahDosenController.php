@@ -8,16 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth;
 
 class MataKuliahDosenController extends Controller
 {
-    /**
-     * Menampilkan halaman detail manajemen untuk satu mata kuliah.
-     *
-     * @param  \App\Models\MataKuliah  $mata_kuliah
-     * @return \Inertia\Response
-     */
-    public function show(MataKuliah $mata_kuliah)
+
+    use ManagesDosenAuth;
+
+    public function show(Request $request, MataKuliah $mata_kuliah)
     {
         // Otorisasi: Pastikan dosen yang login memiliki akses ke mata kuliah ini.
         // Logika ini perlu disesuaikan dengan cara Anda menentukan kepemilikan mata kuliah.
@@ -27,6 +25,12 @@ class MataKuliahDosenController extends Controller
             // Atau Anda bisa melakukan query ke API di sini untuk memastikan kepemilikan
             // abort(403, 'Anda tidak memiliki akses ke mata kuliah ini.');
         }
+
+        $mata_kuliah->load([
+            // Muat relasi 'soal' DAN sub-relasi 'opsiJawaban' untuk setiap soal
+            'soal.opsiJawaban', 
+            'ujian'
+        ]);
 
         // 1. Ringkasan Bank Soal per Tipe
         $soalSummary = $mata_kuliah->soal
@@ -38,11 +42,13 @@ class MataKuliahDosenController extends Controller
             ->groupBy('status_publikasi')
             ->map(fn ($group) => $group->count());
 
+        $mataKuliahOptions = $this->getDosenMataKuliahOptions($request);
 
         return Inertia::render('Dosen/MataKuliah/Show', [
             'course' => $mata_kuliah,
-            'soalSummary' => $soalSummary,     // <-- Kirim data ringkasan soal
-            'ujianSummary' => $ujianSummary,   // <-- Kirim data ringkasan ujian
+            'soalSummary' => $soalSummary,  
+            'ujianSummary' => $ujianSummary,  
+            'mataKuliahOptions' => $mataKuliahOptions
         ]);
     }
 }

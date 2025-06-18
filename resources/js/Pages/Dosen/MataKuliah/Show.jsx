@@ -1,9 +1,21 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/card";
 import { Button } from "@/Components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs";
-import { ArrowLeft, BookOpen, FileText, BarChart3, Users } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/Components/ui/dialog"
+import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Badge } from 'lucide-react';
+
+// Komponen Form Soal yang akan kita buat
+import BankSoalForm from '@/Pages/Dosen/Partials/BankSoalForm';
 
 const ListItem = ({ children }) => (
     <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
@@ -12,7 +24,29 @@ const ListItem = ({ children }) => (
 );
 
 export default function Show() {
-    const { course, soalSummary = {}, ujianSummary = {} } = usePage().props;
+    const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions } = usePage().props;
+
+    // State untuk mengontrol modal form soal
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingSoal, setEditingSoal] = useState(null); // untuk menyimpan data soal yang akan diedit
+
+    const handleAddSoal = () => {
+        setEditingSoal(null); // Pastikan mode edit mati
+        setIsFormOpen(true);
+    };
+
+    const handleEditSoal = (soal) => {
+        setEditingSoal(soal); // Set data soal untuk diedit
+        setIsFormOpen(true);
+    };
+
+    const handleDeleteSoal = (soal) => {
+        if (confirm(`Apakah Anda yakin ingin menghapus soal: "${soal.pertanyaan.substring(0, 50)}..."?`)) {
+            router.delete(route('dosen.bank-soal.destroy', soal.id), {
+                preserveScroll: true, // Agar halaman tidak scroll ke atas setelah aksi
+            });
+        }
+    };
 
     // Periksa apakah user prop ada sebelum mencoba mengaksesnya
     const { auth } = usePage().props;
@@ -179,20 +213,48 @@ export default function Show() {
                         </Card>
                     </TabsContent>
 
-                    <TabsContent value="questions">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Bank Soal</CardTitle>
-                                <CardDescription>Daftar soal terbaru untuk mata kuliah ini.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                {course.soal.map(s => (
-                                    <ListItem key={s.id}>
-                                        <div dangerouslySetInnerHTML={{ __html: s.pertanyaan }} className="line-clamp-1" />
-                                    </ListItem>
-                                ))}
-                            </CardContent>
-                        </Card>
+                    <TabsContent value="questions" className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800">Bank Soal Mata Kuliah</h3>
+                                <p className="text-sm text-muted-foreground">Kelola semua soal untuk mata kuliah ini.</p>
+                            </div>
+                            <Button onClick={handleAddSoal} className="bg-blue-600 hover:bg-blue-700">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Tambah Soal
+                            </Button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {course.soal.map((soal) => (
+                                <Card key={soal.id} className="bg-white shadow-md hover:shadow-lg transition-shadow">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1 mr-4">
+                                                <div className="flex items-center space-x-3 mb-2">
+                                                    <Badge variant="outline" className="text-xs capitalize">{soal.tipe_soal.replace('_', ' ')}</Badge>
+                                                    <Badge className={`text-xs ${soal.level_kesulitan === 'mudah' ? 'bg-green-100 text-green-800' : soal.level_kesulitan === 'sedang' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                                        {soal.level_kesulitan}
+                                                    </Badge>
+                                                </div>
+                                                <div
+                                                    className="font-medium text-gray-800 line-clamp-2"
+                                                    dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                                                />
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                <Button variant="outline" size="sm" onClick={() => handleEditSoal(soal)}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteSoal(soal)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="exams">
@@ -223,6 +285,29 @@ export default function Show() {
                         </Card>
                     </TabsContent>
                 </Tabs>
+
+                {/* MODAL UNTUK FORM TAMBAH/EDIT SOAL */}
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogContent className="sm:max-w-[80vw] max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>{editingSoal ? 'Edit Soal' : 'Buat Soal Baru'}</DialogTitle>
+                            <DialogDescription>
+                                {editingSoal ? 'Perbarui detail soal di bawah ini.' : `Buat soal baru untuk mata kuliah ${course.nama}.`}
+                            </DialogDescription>
+                        </DialogHeader>
+                        {/* Render komponen form di dalam modal */}
+                        <BankSoalForm
+                            // Kirim props yang dibutuhkan oleh form
+                            soal={editingSoal}
+                            mataKuliahOptions={mataKuliahOptions}
+                            // Tambahkan prop untuk menutup modal setelah berhasil
+                            onSuccess={() => setIsFormOpen(false)}
+                            // Set mata kuliah default sesuai halaman saat ini
+                            defaultMataKuliahId={course.id}
+                        />
+                    </DialogContent>
+                </Dialog>
+
             </div>
         </div>
     );
