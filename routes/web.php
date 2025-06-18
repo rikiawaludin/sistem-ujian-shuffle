@@ -31,7 +31,7 @@ Route::controller(AuthController::class)
         Route::get('/roles', 'changeUserRole')->middleware('auth.token');
 });
 
-Route::middleware('auth.token')->group(function () {
+Route::middleware('auth.token', 'auth.mahasiswa')->group(function () {
     Route::get('/home', [DashboardController::class, 'index'])->name('home');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

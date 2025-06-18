@@ -77,7 +77,7 @@ export default function AuthenticatedLayout({ children, title, useCustomPadding 
               </main>
               <div className="text-blue-gray-600 mt-8">
                 <Footer
-                  brandName="Nama Tim Anda"
+                  brandName="STMIK Bandung"
                   brandLink="#"
                   routes={[]}
                 />

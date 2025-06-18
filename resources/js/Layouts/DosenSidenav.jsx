@@ -41,7 +41,7 @@ export default function DosenSidenav({ isCollapsed, isMobileOpen, toggleCollapse
             {/* Header Sidenav */}
             <div className={`flex items-center mb-8 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
                 {/* Logo dan Judul Sidenav, sekarang digabung dan dinamis */}
-                <Link href={route('home')} className="flex items-center gap-3 overflow-hidden">
+                <Link href={route('dosen.dashboard')} className="flex items-center gap-3 overflow-hidden">
                     <img
                         src="/images/stmik.png" // Mengambil path dari referensi AppNavbar Anda
                         alt="Logo STMIK"
