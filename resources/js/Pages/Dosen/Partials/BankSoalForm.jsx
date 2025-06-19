@@ -4,6 +4,8 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { Button, Card, Select, Option, Typography, Input } from '@material-tailwind/react';
 import { Editor } from '@tinymce/tinymce-react';
 import PilihanGandaForm from '@/Pages/Dosen/Partials/PilihanGandaForm';
+import MenjodohkanForm from '@/Pages/Dosen/Partials/MenjodohkanForm';
+import IsianSingkatForm from '@/Pages/Dosen/Partials/IsianSingkatForm';
 
 export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKuliahId }) {
     const isEditMode = !!soal;
@@ -15,24 +17,39 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
         }));
     };
 
+    const generateEmptyMatching = (count) => Array.from({ length: count }, (_, i) => ({ id: `match_${Date.now()}_${i}`, teks: '', pasangan_teks: '' }));
+
     // Helper untuk mendapatkan ID kunci jawaban dari data soal (saat mode edit)
     const getInitialKunciJawabanId = () => {
         if (!isEditMode || !soal.opsi_jawaban) return null;
+
+        // Jika tipe soalnya jawaban ganda, kembalikan array ID
+        if (soal.tipe_soal === 'pilihan_jawaban_ganda') {
+            return soal.opsi_jawaban
+                .filter(opt => opt.is_kunci_jawaban)
+                .map(opt => opt.id);
+        }
+
+        // Jika tidak, kembalikan satu ID seperti biasa
         const kunci = soal.opsi_jawaban.find(opt => opt.is_kunci_jawaban);
         return kunci ? kunci.id : null;
     };
 
+
     // Helper untuk memformat opsi jawaban dari backend ke state frontend
     const formatOpsiUntukState = () => {
-        // Jika mode edit, format data dari backend
-        if (isEditMode && soal.opsi_jawaban) {
-            return soal.opsi_jawaban.map(opt => ({
-                id: opt.id,
-                teks: opt.teks_opsi
-            }));
+        if (!isEditMode) return generateEmptyOptions(4); // Default untuk pilihan ganda
+        switch (soal.tipe_soal) {
+            case 'pilihan_ganda':
+            case 'pilihan_jawaban_ganda':
+            case 'benar_salah':
+            case 'isian_singkat':
+                return soal.opsi_jawaban.map(opt => ({ id: opt.id, teks: opt.teks_opsi }));
+            case 'menjodohkan':
+                return soal.opsi_jawaban.map(opt => ({ id: opt.id, teks: opt.teks_opsi, pasangan_teks: opt.pasangan_teks }));
+            default:
+                return [];
         }
-        // Jika mode buat baru, defaultnya adalah 4 opsi kosong untuk 'pilihan_ganda'
-        return generateEmptyOptions(4);
     };
 
     const { data, setData, post, put, errors, processing, reset, recentlySuccessful } = useForm({
@@ -72,27 +89,28 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
     // Handler baru saat tipe soal diubah oleh pengguna
     const handleTipeSoalChange = (value) => {
         let newOptions = [];
-        if (value === 'pilihan_ganda') {
-            newOptions = generateEmptyOptions(4);
-        } else if (value === 'benar_salah') {
-            newOptions = [
-                { id: 'Benar', teks: 'Benar' },
-                { id: 'Salah', teks: 'Salah' },
-            ];
-        }
-        // Untuk 'esai', newOptions akan menjadi array kosong
+        let newKunciJawaban = null;
 
-        // Update tipe_soal dan opsi_jawaban secara bersamaan
+        if (value === 'pilihan_ganda') newOptions = generateEmptyOptions(4);
+        if (value === 'pilihan_jawaban_ganda') {
+            newOptions = generateEmptyOptions(4);
+            newKunciJawaban = []; // Kunci jawaban ganda adalah array
+        }
+        if (value === 'benar_salah') newOptions = [{ id: 'Benar', teks: 'Benar' }, { id: 'Salah', teks: 'Salah' }];
+        if (value === 'menjodohkan') newOptions = generateEmptyMatching(4);
+        if (value === 'isian_singkat') newOptions = generateEmptyOptions(1); // Mulai dengan 1 jawaban singkat
+
         setData(currentData => ({
             ...currentData,
             tipe_soal: value,
             opsi_jawaban: newOptions,
+            kunci_jawaban_id: newKunciJawaban
         }));
     };
 
-    const handleOptionsChange = (index, value) => {
+    const handleOptionChange = (index, value, fieldName = 'teks') => {
         const newOptions = [...data.opsi_jawaban];
-        newOptions[index].teks = value;
+        newOptions[index][fieldName] = value;
         setData('opsi_jawaban', newOptions);
     };
 
@@ -122,7 +140,10 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
                             {/* Gunakan handler baru untuk onChange */}
                             <Select label="Tipe Soal" value={data.tipe_soal} onChange={handleTipeSoalChange}>
                                 <Option value="pilihan_ganda">Pilihan Ganda</Option>
+                                <Option value="pilihan_jawaban_ganda">Pilihan Jawaban Ganda</Option>
                                 <Option value="benar_salah">Benar/Salah</Option>
+                                <Option value="isian_singkat">Isian Singkat</Option>
+                                <Option value="menjodohkan">Menjodohkan</Option>
                                 <Option value="esai">Esai</Option>
                             </Select>
                         </div>
@@ -173,16 +194,48 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
                         {errors.pertanyaan && <Typography color="red" className="mt-1 text-sm">{errors.pertanyaan}</Typography>}
                     </div>
 
+                    {/* === BLOK KONDISIONAL DENGAN PROPS LENGKAP === */}
                     {(data.tipe_soal === 'pilihan_ganda' || data.tipe_soal === 'benar_salah') && (
                         <PilihanGandaForm
+                            inputType="radio"
                             opsiJawaban={data.opsi_jawaban}
                             kunciJawabanId={data.kunci_jawaban_id}
                             errors={errors}
-                            onOptionChange={handleOptionsChange}
-                            onKeyChange={(optionId) => setData('kunci_jawaban_id', optionId)}
+                            onOptionChange={handleOptionChange}
+                            onKeyChange={(id) => setData('kunci_jawaban_id', id)}
                             onAddOption={addOption}
                             onRemoveOption={removeOption}
                             canManageOptions={data.tipe_soal === 'pilihan_ganda'}
+                        />
+                    )}
+                    {data.tipe_soal === 'pilihan_jawaban_ganda' && (
+                        <PilihanGandaForm
+                            inputType="checkbox"
+                            opsiJawaban={data.opsi_jawaban}
+                            kunciJawabanId={data.kunci_jawaban_id || []}
+                            errors={errors}
+                            onOptionChange={handleOptionChange}
+                            onKeyChange={(keys) => setData('kunci_jawaban_id', keys)}
+                            onAddOption={addOption}
+                            onRemoveOption={removeOption}
+                        />
+                    )}
+                    {data.tipe_soal === 'menjodohkan' && (
+                        <MenjodohkanForm
+                            opsiJawaban={data.opsi_jawaban}
+                            errors={errors}
+                            onOptionChange={handleOptionChange} // Menggunakan handler generik
+                            onAddOption={addOption}
+                            onRemoveOption={removeOption}
+                        />
+                    )}
+                    {data.tipe_soal === 'isian_singkat' && (
+                        <IsianSingkatForm
+                            opsiJawaban={data.opsi_jawaban}
+                            errors={errors}
+                            onOptionChange={handleOptionChange} // Menggunakan handler generik
+                            onAddOption={addOption}
+                            onRemoveOption={removeOption}
                         />
                     )}
 

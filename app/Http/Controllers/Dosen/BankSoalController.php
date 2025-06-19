@@ -100,25 +100,18 @@ class BankSoalController extends Controller
         
         $validated = $request->validate([
             'pertanyaan' => 'required|string',
-            'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
+            // 1. Perbarui daftar tipe soal yang valid
+            'tipe_soal' => 'required|in:pilihan_ganda,pilihan_jawaban_ganda,benar_salah,isian_singkat,menjodohkan,esai',
             'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
             'level_kesulitan' => 'required|in:mudah,sedang,sulit',
             'bobot' => 'required|integer|min:0',
             'penjelasan' => 'nullable|string',
-            'opsi_jawaban' => 'nullable|array|required_if:tipe_soal,pilihan_ganda,benar_salah|min:2',
-            'opsi_jawaban.*.id' => 'present|string',
-            'opsi_jawaban.*.teks' => 'required|string|max:1000',
-            // Kita ubah validasi kunci jawaban
-            'kunci_jawaban_id' => [
-                Rule::requiredIf(fn () => in_array($request->tipe_soal, ['pilihan_ganda', 'benar_salah'])),
-                'nullable',
-                'string',
-            ],
+            'opsi_jawaban' => 'nullable|array',
+            'kunci_jawaban_id' => 'nullable', // Validasi kunci jawaban akan lebih spesifik di bawah
         ]);
 
         DB::beginTransaction();
         try {
-            // 1. Buat Soal Utama
             $soal = Soal::create([
                 'dosen_pembuat_id' => Auth::id(),
                 'pertanyaan' => $validated['pertanyaan'],
@@ -127,32 +120,65 @@ class BankSoalController extends Controller
                 'bobot' => $validated['bobot'],
                 'level_kesulitan' => $validated['level_kesulitan'],
                 'penjelasan' => $validated['penjelasan'] ?? null,
-
-                // Tambahkan nilai default untuk kolom yang wajib diisi
-                'pasangan' => null,
-                'gambar_url' => null,
-                'audio_url' => null,
-                'video_url' => null,
             ]);
 
-            // 2. Simpan Opsi Jawaban jika ada
+            // 2. Logika penyimpanan dinamis berdasarkan tipe soal
             if (isset($validated['opsi_jawaban'])) {
-                foreach ($validated['opsi_jawaban'] as $opsi) {
-                    OpsiJawaban::create([
-                        'soal_id' => $soal->id,
-                        'teks_opsi' => $opsi['teks'],
-                        // Cek apakah ID sementara dari frontend sama dengan ID kunci jawaban
-                        'is_kunci_jawaban' => ($opsi['id'] === $validated['kunci_jawaban_id']),
-                    ]);
+                switch ($validated['tipe_soal']) {
+                    case 'pilihan_ganda':
+                    case 'benar_salah':
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                            OpsiJawaban::create([
+                                'soal_id' => $soal->id,
+                                'teks_opsi' => $opsi['teks'],
+                                'is_kunci_jawaban' => ($opsi['id'] === $validated['kunci_jawaban_id']),
+                            ]);
+                        }
+                        break;
+                    
+                    case 'pilihan_jawaban_ganda':
+                        $kunciJawabanArr = $validated['kunci_jawaban_id'] ?? [];
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                            OpsiJawaban::create([
+                                'soal_id' => $soal->id,
+                                'teks_opsi' => $opsi['teks'],
+                                'is_kunci_jawaban' => in_array($opsi['id'], $kunciJawabanArr),
+                            ]);
+                        }
+                        break;
+
+                    case 'isian_singkat':
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                            if (!empty($opsi['teks'])) {
+                                OpsiJawaban::create([
+                                    'soal_id' => $soal->id,
+                                    'teks_opsi' => $opsi['teks'],
+                                    'is_kunci_jawaban' => true, // Semua opsi adalah jawaban benar
+                                ]);
+                            }
+                        }
+                        break;
+                    
+                    case 'menjodohkan':
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                             if (!empty($opsi['teks']) || !empty($opsi['pasangan_teks'])) {
+                                OpsiJawaban::create([
+                                    'soal_id' => $soal->id,
+                                    'teks_opsi' => $opsi['teks'],
+                                    'pasangan_teks' => $opsi['pasangan_teks'],
+                                    'is_kunci_jawaban' => false,
+                                ]);
+                            }
+                        }
+                        break;
                 }
             }
 
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            // Tulis log error untuk debugging
-            \Illuminate\Support\Facades\Log::error('Gagal menyimpan soal baru: ' . $e->getMessage());
-            return redirect()->back()->withErrors(['db_error' => 'Gagal menyimpan soal. Silakan coba lagi.']);
+            Log::error('Gagal menyimpan soal baru: ' . $e->getMessage());
+            return back()->withErrors(['db_error' => 'Gagal menyimpan soal. Silakan coba lagi.']);
         }
 
         return back()->with('success', 'Soal berhasil dibuat.');
@@ -161,62 +187,86 @@ class BankSoalController extends Controller
     public function update(Request $request, Soal $bank_soal)
     {
         $this->getAuthProps();
-
-        // dd($request->all());
-
         if ($bank_soal->dosen_pembuat_id !== Auth::id()) {
             abort(403);
         }
 
         $validated = $request->validate([
             'pertanyaan' => 'required|string',
-            'tipe_soal' => 'required|in:pilihan_ganda,benar_salah,esai',
+            'tipe_soal' => 'required|in:pilihan_ganda,pilihan_jawaban_ganda,benar_salah,isian_singkat,menjodohkan,esai',
             'mata_kuliah_id' => 'required|integer|exists:mata_kuliah,id',
             'level_kesulitan' => 'required|in:mudah,sedang,sulit',
             'bobot' => 'required|integer|min:0',
             'penjelasan' => 'nullable|string',
-            'opsi_jawaban.*.id' => 'present|nullable',
-            'opsi_jawaban.*.teks' => 'required_with:opsi_jawaban|string|max:1000',
-            // Kita ubah validasi kunci jawaban
-            'kunci_jawaban_id' => [
-                Rule::requiredIf(fn () => in_array($request->tipe_soal, ['pilihan_ganda', 'benar_salah'])),
-                'nullable',
-                // Ganti 'string' dengan aturan 'in' yang lebih cerdas
-                Rule::in(collect($request->input('opsi_jawaban', []))->pluck('id')),
-            ],
+            'opsi_jawaban' => 'nullable|array',
+            'kunci_jawaban_id' => 'nullable',
         ]);
 
         DB::beginTransaction();
         try {
             // 1. Update data soal utama
-            $bank_soal->update([
-                'pertanyaan' => $validated['pertanyaan'],
-                'tipe_soal' => $validated['tipe_soal'],
-                'mata_kuliah_id' => $validated['mata_kuliah_id'],
-                'level_kesulitan' => $validated['level_kesulitan'],
-                'bobot' => $validated['bobot'],
-                'penjelasan' => $validated['penjelasan'] ?? null,
-            ]);
+            $bank_soal->update($validated);
 
-            // 2. Hapus semua opsi jawaban lama
+            // 2. Hapus semua opsi jawaban lama untuk diganti dengan yang baru
             $bank_soal->opsiJawaban()->delete();
 
-            // 3. Buat ulang opsi jawaban yang baru
-            if (isset($validated['opsi_jawaban'])) {
-                foreach ($validated['opsi_jawaban'] as $opsi) {
-                    OpsiJawaban::create([
-                        'soal_id' => $bank_soal->id,
-                        'teks_opsi' => $opsi['teks'],
-                        'is_kunci_jawaban' => ($opsi['id'] === $validated['kunci_jawaban_id']),
-                    ]);
+            // 3. Logika penyimpanan baru yang dinamis (sama seperti di 'store')
+             if (isset($validated['opsi_jawaban'])) {
+                switch ($validated['tipe_soal']) {
+                    case 'pilihan_ganda':
+                    case 'benar_salah':
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                            OpsiJawaban::create([
+                                'soal_id' => $bank_soal->id,
+                                'teks_opsi' => $opsi['teks'],
+                                'is_kunci_jawaban' => ($opsi['id'] === $validated['kunci_jawaban_id']),
+                            ]);
+                        }
+                        break;
+                    
+                    case 'pilihan_jawaban_ganda':
+                        $kunciJawabanArr = $validated['kunci_jawaban_id'] ?? [];
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                            OpsiJawaban::create([
+                                'soal_id' => $bank_soal->id,
+                                'teks_opsi' => $opsi['teks'],
+                                'is_kunci_jawaban' => in_array($opsi['id'], $kunciJawabanArr),
+                            ]);
+                        }
+                        break;
+
+                    case 'isian_singkat':
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                            if (!empty($opsi['teks'])) {
+                                OpsiJawaban::create([
+                                    'soal_id' => $bank_soal->id,
+                                    'teks_opsi' => $opsi['teks'],
+                                    'is_kunci_jawaban' => true,
+                                ]);
+                            }
+                        }
+                        break;
+                    
+                    case 'menjodohkan':
+                        foreach ($validated['opsi_jawaban'] as $opsi) {
+                             if (!empty($opsi['teks']) || !empty($opsi['pasangan_teks'])) {
+                                OpsiJawaban::create([
+                                    'soal_id' => $bank_soal->id,
+                                    'teks_opsi' => $opsi['teks'],
+                                    'pasangan_teks' => $opsi['pasangan_teks'],
+                                    'is_kunci_jawaban' => false,
+                                ]);
+                            }
+                        }
+                        break;
                 }
             }
 
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            \Illuminate\Support\Facades\Log::error('Gagal memperbarui soal ID ' . $bank_soal->id . ': ' . $e->getMessage());
-            return redirect()->back()->withErrors(['db_error' => 'Gagal memperbarui soal. Silakan coba lagi.']);
+            Log::error('Gagal memperbarui soal ID ' . $bank_soal->id . ': ' . $e->getMessage());
+            return back()->withErrors(['db_error' => 'Gagal memperbarui soal. Silakan coba lagi.']);
         }
 
         return back()->with('success', 'Soal berhasil diperbarui.');

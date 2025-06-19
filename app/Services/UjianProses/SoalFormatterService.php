@@ -8,33 +8,34 @@ use Illuminate\Support\Facades\Log;
 
 class SoalFormatterService
 {
-    /**
-     * Memformat koleksi Soal Eloquent menjadi array untuk dikirim ke Express.js.
-     */
     public function formatForExpress(Collection $laravelSoalCollection): array
     {
-        // Eager load relasi untuk menghindari N+1 query problem di dalam loop
         $laravelSoalCollection->load('opsiJawaban');
 
         return $laravelSoalCollection->map(function (Soal $itemSoal) {
-            
             $tipeSoal = $itemSoal->tipe_soal;
             $pilihanUntukExpress = null;
             $kunciJawabanUntukExpress = null;
+            $pasanganUntukExpress = null;
 
-            if ($tipeSoal === 'pilihan_ganda' || $tipeSoal === 'benar_salah') {
-                // Ambil opsi dari relasi
-                $pilihanUntukExpress = $itemSoal->opsiJawaban->map(function ($opsi) {
-                    return ['id' => $opsi->id, 'teks' => $opsi->teks_opsi];
-                })->all();
+            if (in_array($tipeSoal, ['pilihan_ganda', 'benar_salah', 'pilihan_jawaban_ganda'])) {
+                $pilihanUntukExpress = $itemSoal->opsiJawaban->map(fn($opsi) => ['id' => $opsi->id, 'teks' => $opsi->teks_opsi])->all();
                 
-                // Ambil kunci jawaban dari relasi
-                $kunciJawabanObj = $itemSoal->opsiJawaban->firstWhere('is_kunci_jawaban', true);
-                $kunciJawabanUntukExpress = $kunciJawabanObj ? $kunciJawabanObj->id : null;
-            } 
-            elseif ($tipeSoal === 'esai') {
-                // Untuk esai, kunci jawaban bisa berupa rubrik/panduan dari kolom penjelasan
-                $kunciJawabanUntukExpress = $itemSoal->penjelasan; 
+                if ($tipeSoal === 'pilihan_jawaban_ganda') {
+                    $kunciJawabanUntukExpress = $itemSoal->opsiJawaban->where('is_kunci_jawaban', true)->pluck('id')->all();
+                } else {
+                    $kunciJawabanObj = $itemSoal->opsiJawaban->firstWhere('is_kunci_jawaban', true);
+                    $kunciJawabanUntukExpress = $kunciJawabanObj ? $kunciJawabanObj->id : null;
+                }
+            } elseif ($tipeSoal === 'isian_singkat') {
+                $kunciJawabanTeks = $itemSoal->opsiJawaban->pluck('teks_opsi')->all();
+                $kunciJawabanUntukExpress = $kunciJawabanTeks;
+            } elseif ($tipeSoal === 'menjodohkan') {
+                $pilihanUntukExpress = $itemSoal->opsiJawaban->map(fn($opsi) => ['id' => $opsi->id, 'teks' => $opsi->teks_opsi])->all();
+                $pasanganUntukExpress = $itemSoal->opsiJawaban->map(fn($opsi) => ['id' => $opsi->id, 'teks' => $opsi->pasangan_teks])->all();
+                $kunciJawabanUntukExpress = $itemSoal->opsiJawaban->pluck('id', 'id')->all();
+            } elseif ($tipeSoal === 'esai') {
+                $kunciJawabanUntukExpress = $itemSoal->penjelasan;
             }
 
             return [
@@ -42,14 +43,12 @@ class SoalFormatterService
                 'pertanyaan' => $itemSoal->pertanyaan,
                 'tipe' => $tipeSoal,
                 'pilihan' => $pilihanUntukExpress,
-                'jawaban' => $kunciJawabanUntukExpress, // Kunci jawaban sekarang adalah ID dari tabel opsi_jawaban
+                'pasangan' => $pasanganUntukExpress,
+                'jawaban' => $kunciJawabanUntukExpress,
             ];
         })->values()->all();
     }
 
-    /**
-     * Memformat daftar soal yang sudah diacak dari Express untuk dikirim ke frontend.
-     */
     public function formatForFrontend(array $shuffledSoalListFromExpress): array
     {
         return array_map(function ($itemSoalExpress, $index) {
@@ -59,6 +58,7 @@ class SoalFormatterService
                 'tipe' => $itemSoalExpress['tipe'],
                 'pertanyaan' => $itemSoalExpress['pertanyaan'],
                 'opsi' => $itemSoalExpress['pilihan'] ?? null,
+                'pasangan' => $itemSoalExpress['pasangan'] ?? null,
             ];
         }, $shuffledSoalListFromExpress, array_keys($shuffledSoalListFromExpress));
     }

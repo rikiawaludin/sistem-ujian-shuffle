@@ -84,19 +84,30 @@ class PengerjaanUjianController extends Controller
                 $isBenar = null;
                 $skorPerSoal = 0;
 
-                if (isset($jawabanDiterima) && $jawabanDiterima !== '') {
-                    if (in_array($soalRef->tipe_soal, ['pilihan_ganda', 'benar_salah'])) {
+                if (isset($jawabanDiterima) && $jawabanDiterima !== '' && $jawabanDiterima !== []) {
+                    $tipeSoal = $soalRef->tipe_soal;
+
+                    if (in_array($tipeSoal, ['pilihan_ganda', 'benar_salah'])) {
                         $kunciJawabanId = $kunciJawabanMap->get((int)$soalId);
                         if ($kunciJawabanId !== null && (string)$jawabanDiterima === (string)$kunciJawabanId) {
                             $isBenar = true;
-                            $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10;
                         } else {
                             $isBenar = false;
                         }
-                    } elseif ($soalRef->tipe_soal === 'esai') {
-                        $adaSoalEsai = true;
-                        $isBenar = null; // Perlu dinilai manual
-                        $skorPerSoal = 0;
+                    } elseif ($tipeSoal === 'pilihan_jawaban_ganda') {
+                        $kunciJawabanIds = OpsiJawaban::where('soal_id', $soalId)->where('is_kunci_jawaban', true)->pluck('id')->map(fn($id) => (string)$id)->sort()->values()->all();
+                        $jawabanUserArray = collect($jawabanDiterima)->map(fn($id) => (string)$id)->sort()->values()->all();
+                        $isBenar = ($kunciJawabanIds === $jawabanUserArray);
+                    } elseif ($tipeSoal === 'isian_singkat') {
+                        $kunciJawabanTeks = OpsiJawaban::where('soal_id', $soalId)->pluck('teks_opsi')->all();
+                        $isBenar = in_array(strtolower(trim($jawabanDiterima)), array_map('strtolower', $kunciJawabanTeks));
+                    } elseif (in_array($tipeSoal, ['esai', 'menjodohkan'])) {
+                        $adaSoalEsai = true; // Anggap 'menjodohkan' juga perlu dinilai manual untuk saat ini
+                        $isBenar = null;
+                    }
+
+                    if ($isBenar === true) {
+                        $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10;
                     }
                 }
                 

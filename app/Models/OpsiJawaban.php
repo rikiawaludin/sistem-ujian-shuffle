@@ -13,6 +13,7 @@ class OpsiJawaban extends Model
     protected $fillable = [
         'soal_id',
         'teks_opsi',
+        'pasangan_teks',
         'is_kunci_jawaban',
     ];
 
