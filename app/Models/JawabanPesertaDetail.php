@@ -22,7 +22,7 @@ class JawabanPesertaDetail extends Model
     ];
 
     protected $casts = [
-        'jawaban_user' => 'json', // Atau 'array' jika jawaban PG disimpan sebagai array ID opsi
+        // 'jawaban_user' => 'json', // Atau 'array' jika jawaban PG disimpan sebagai array ID opsi
         'is_benar' => 'boolean',
         'is_ragu_ragu' => 'boolean',
         'skor_per_soal' => 'float', // atau 'decimal:2'

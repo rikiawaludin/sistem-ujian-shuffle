@@ -94,15 +94,51 @@ class PengerjaanUjianController extends Controller
                         } else {
                             $isBenar = false;
                         }
+
                     } elseif ($tipeSoal === 'pilihan_jawaban_ganda') {
-                        $kunciJawabanIds = OpsiJawaban::where('soal_id', $soalId)->where('is_kunci_jawaban', true)->pluck('id')->map(fn($id) => (string)$id)->sort()->values()->all();
-                        $jawabanUserArray = collect($jawabanDiterima)->map(fn($id) => (string)$id)->sort()->values()->all();
-                        $isBenar = ($kunciJawabanIds === $jawabanUserArray);
+                        // PERBAIKAN: Logika untuk format string "id1,id2,id3"
+                        $kunciJawabanIds = OpsiJawaban::where('soal_id', $soalId)
+                                                      ->where('is_kunci_jawaban', true)
+                                                      ->pluck('id')
+                                                      ->map(fn($id) => (string)$id)
+                                                      ->sort()
+                                                      ->values()
+                                                      ->all();
+                        
+                        $kunciJawabanString = implode(',', $kunciJawabanIds);
+
+                        // Jawaban diterima dari frontend sudah diurutkan dan di-join
+                        $isBenar = ($kunciJawabanString === $jawabanDiterima);
+
                     } elseif ($tipeSoal === 'isian_singkat') {
                         $kunciJawabanTeks = OpsiJawaban::where('soal_id', $soalId)->pluck('teks_opsi')->all();
                         $isBenar = in_array(strtolower(trim($jawabanDiterima)), array_map('strtolower', $kunciJawabanTeks));
-                    } elseif (in_array($tipeSoal, ['esai', 'menjodohkan'])) {
-                        $adaSoalEsai = true; // Anggap 'menjodohkan' juga perlu dinilai manual untuk saat ini
+                    }  
+                    
+                    elseif ($tipeSoal === 'menjodohkan') {
+                        // PERBAIKAN: Logika untuk format string "kiri1:kanan1,kiri2:kanan2"
+                        $jawabanUserPairs = explode(',', $jawabanDiterima);
+                        
+                        // Kunci jawaban yang benar selalu memiliki ID kiri dan kanan yang sama
+                        $kunciJawabanIds = OpsiJawaban::where('soal_id', $soalId)->pluck('id')->all();
+
+                        if (count($jawabanUserPairs) !== count($kunciJawabanIds)) {
+                            $isBenar = false; // Jumlah pasangan tidak cocok
+                        } else {
+                            $isBenar = true; // Asumsikan benar, batalkan jika ada yang salah
+                            foreach ($jawabanUserPairs as $pair) {
+                                $ids = explode(':', $pair);
+                                if (count($ids) !== 2 || (int)$ids[0] !== (int)$ids[1]) {
+                                    $isBenar = false;
+                                    break; // Ditemukan pasangan yang salah, hentikan loop
+                                }
+                            }
+                        }
+
+                    }
+                    
+                    elseif ($tipeSoal === 'esai') {
+                        $adaSoalEsai = true;
                         $isBenar = null;
                     }
 
@@ -128,6 +164,8 @@ class PengerjaanUjianController extends Controller
             if ($adaSoalEsai) {
                 // Jika ada esai, skornya belum final
                 $pengerjaan->status_pengerjaan = 'menunggu_penilaian';
+            } else {
+                $pengerjaan->status_pengerjaan = 'selesai';
             }
             $pengerjaan->skor_total = $totalSkor;
 

@@ -28,7 +28,7 @@ export default function NavigasiSoalSidebar({
             <XMarkIcon className="h-5 w-5" />
           </IconButton>
         </div>
-        <div className="flex-grow p-4 grid grid-cols-4 sm:grid-cols-5 gap-2 overflow-y-auto">
+        <div className="flex-grow p-4 grid grid-cols-4 sm:grid-cols-5 gap-2 overflow-y-auto content-start">
           {soalList.map((soal, index) => {
             // Pastikan soal memiliki id, jika tidak, gunakan index sebagai key fallback (kurang ideal)
             const key = soal.id !== undefined ? soal.id : `soal-nav-${index}`;
