@@ -3,30 +3,28 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Ujian;
 use App\Models\PengerjaanUjian;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
-use App\Services\UjianProses\SoalFormatterService;
-use App\Services\UjianProses\ExpressShuffleClientService;
-use Illuminate\Http\Client\ConnectionException;
-
 use App\Models\Soal;
+use App\Models\Ujian;
+use App\Services\UjianProses\SoalFormatterService;
+use App\Services\UjianProses\UjianShuffleService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UjianSoalController extends Controller
 {
     protected SoalFormatterService $soalFormatter;
-    protected ExpressShuffleClientService $expressClient;
+    protected UjianShuffleService $ujianShuffleService;
 
     public function __construct(
         SoalFormatterService $soalFormatter,
-        ExpressShuffleClientService $expressClient
+        UjianShuffleService $ujianShuffleService
     ) {
         $this->soalFormatter = $soalFormatter;
-        $this->expressClient = $expressClient;
+        $this->ujianShuffleService = $ujianShuffleService;
     }
 
     public function getSoalUntukUjian(Request $request, $id_ujian)
@@ -35,7 +33,7 @@ class UjianSoalController extends Controller
         $user = Auth::user();
         $now = Carbon::now();
 
-        // Validasi Jendela Waktu (tidak berubah)
+        // Validasi Jendela Waktu Pengerjaan
         if ($ujian->tanggal_mulai && $now->lt(Carbon::parse($ujian->tanggal_mulai))) {
             return response()->json(['message' => 'Ujian belum dapat dimulai.'], 403);
         }
@@ -43,31 +41,23 @@ class UjianSoalController extends Controller
             return response()->json(['message' => 'Periode ujian telah berakhir.'], 403);
         }
 
-        // =========================================================================
-        // AWAL BLOK LOGIKA PengerjaanUjian YANG DIPERBARUI
-        // =========================================================================
-        
-        // 1. Cari pengerjaan APAPUN yang sudah ada untuk user dan ujian ini.
+        // Mencari atau membuat sesi pengerjaan ujian untuk mahasiswa
         $pengerjaanUjian = PengerjaanUjian::where('ujian_id', $ujian->id)
             ->where('user_id', $user->id)
             ->first();
 
-        // 2. Jika pengerjaan sudah ada, periksa statusnya.
         if ($pengerjaanUjian) {
-            // Jika statusnya BUKAN 'sedang_dikerjakan', berarti sudah selesai atau dievaluasi.
-            // Jangan biarkan mahasiswa mengerjakan ulang. Arahkan ke halaman hasil.
+            // Jika ujian sudah pernah dikerjakan dan statusnya bukan 'sedang_dikerjakan'
             if ($pengerjaanUjian->status_pengerjaan !== 'sedang_dikerjakan') {
                 Log::warning("[API UjianSoalCtrl] Percobaan akses ke ujian yang sudah selesai. Ujian ID: {$ujian->id}, Pengerjaan ID: {$pengerjaanUjian->id}.");
                 return response()->json([
                     'message' => 'Ujian ini telah selesai Anda kerjakan.',
-                    // Memberikan URL redirect akan sangat membantu frontend untuk mengarahkan pengguna.
-                    'redirect_url' => route('ujian.hasil.detail', ['id_attempt' => $pengerjaanUjian->id]) 
-                ], 403); // 403 Forbidden adalah status yang sesuai.
+                    'redirect_url' => route('ujian.hasil.detail', ['id_attempt' => $pengerjaanUjian->id])
+                ], 403);
             }
-            // Jika statusnya 'sedang_dikerjakan', kita gunakan record ini.
             $pengerjaanAktif = $pengerjaanUjian;
         } else {
-            // 3. Jika TIDAK ADA pengerjaan sama sekali, buat yang baru.
+            // Jika belum pernah mengerjakan, buat sesi baru
             Log::info("[API UjianSoalCtrl] Membuat PengerjaanUjian baru untuk Ujian ID: {$ujian->id}, User ID: {$user->id}.");
             $pengerjaanAktif = PengerjaanUjian::create([
                 'ujian_id' => $ujian->id,
@@ -78,31 +68,27 @@ class UjianSoalController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
         }
-        // =========================================================================
-        // AKHIR BLOK LOGIKA PengerjaanUjian YANG DIPERBARUI
-        // =========================================================================
-
 
         // Tentukan kunci session yang unik untuk pengerjaan ini
         $sessionKey = 'ujian_attempt_' . $pengerjaanAktif->id;
-
-        // Coba ambil daftar soal dari session terlebih dahulu
         $soalListFormatted = session($sessionKey);
 
-        // Jika TIDAK ADA di session, maka kita proses untuk membuatnya
+        // Jika soal tidak ada di session, proses pembuatan soal
         if (!$soalListFormatted) {
-            Log::info("[API UjianSoalCtrl] Session soal untuk '{$sessionKey}' tidak ditemukan. Membuat baru.");
+            Log::info("[API UjianSoalCtrl] Session soal untuk '{$sessionKey}' tidak ditemukan. Membuat baru via UjianShuffleService.");
             $ujian->load('soal');
+
+            $soalTerpilihDanTeracak = [];
 
             // A. Jika soal belum pernah di-generate sama sekali (percobaan pertama)
             if ($ujian->soal->isEmpty()) {
-                Log::info("[API UjianSoalCtrl] Ujian ID {$ujian->id} belum memiliki soal. Memulai proses seleksi via Express.");
+                Log::info("[API UjianSoalCtrl] Ujian ID {$ujian->id} belum memiliki soal. Memulai proses seleksi.");
 
                 if ($ujian->aturan->isEmpty()) {
                     return response()->json(['message' => 'Ujian tidak memiliki aturan pemilihan soal.'], 500);
                 }
 
-                // Siapkan pools dan rules
+                // Siapkan pools dan rules dari aturan ujian
                 $pools = [];
                 $rules = [];
                 foreach ($ujian->aturan as $aturan) {
@@ -110,34 +96,33 @@ class UjianSoalController extends Controller
                         $level = $aturan->level_kesulitan;
                         $kandidatSoal = Soal::where('mata_kuliah_id', $ujian->mata_kuliah_id)
                             ->where('level_kesulitan', $level)->with('opsiJawaban')->get();
-                        
+
                         $pools[$level] = $this->soalFormatter->formatForExpress($kandidatSoal);
                         $rules[$level] = $aturan->jumlah_soal;
                     }
                 }
-                
-                // Buat payload dan panggil Express
-                $payloadForExpress = [
-                    'pools' => $pools, 'rules' => $rules,
+
+                // Buat payload dan panggil SERVICE LOKAL
+                $payload = [
+                    'pools' => $pools,
+                    'rules' => $rules,
                     'config' => ['acakUrutanSoal' => $ujian->acak_soal, 'acakUrutanOpsi' => $ujian->acak_opsi]
                 ];
-                
+
                 try {
-                    $soalTerpilihDariExpress = $this->expressClient->pickAndShuffle($payloadForExpress);
-                    
+                    // ** PERUBAHAN UTAMA: Memanggil service lokal **
+                    $soalTerpilihDanTeracak = $this->ujianShuffleService->process($payload);
+
                     // Simpan ID soal ke database (pivot table)
-                    DB::transaction(function () use ($ujian, $soalTerpilihDariExpress) {
-                        $selectedSoalIds = collect($soalTerpilihDariExpress)->pluck('id')->all();
+                    DB::transaction(function () use ($ujian, $soalTerpilihDanTeracak) {
+                        $selectedSoalIds = collect($soalTerpilihDanTeracak)->pluck('id')->all();
                         if (!empty($selectedSoalIds)) {
-                            $ujian->soal()->attach($selectedSoalIds);
+                            $ujian->soal()->sync($selectedSoalIds); // Gunakan sync untuk keamanan
                         }
                     });
 
-                    // Format untuk frontend
-                    $soalListFormatted = $this->soalFormatter->formatForFrontend($soalTerpilihDariExpress);
-
                 } catch (\Exception $e) {
-                    Log::error("[API UjianSoalCtrl] Gagal memproses soal via Express: " . $e->getMessage());
+                    Log::error("[API UjianSoalCtrl] Gagal memproses soal via UjianShuffleService: " . $e->getMessage());
                     return response()->json(['message' => 'Terjadi kesalahan saat mempersiapkan soal ujian.'], 500);
                 }
 
@@ -149,12 +134,17 @@ class UjianSoalController extends Controller
                 $soalUntukDiacak = $this->soalFormatter->formatForExpress($ujian->soal);
                 $config = ['acakUrutanSoal' => $ujian->acak_soal, 'acakUrutanOpsi' => $ujian->acak_opsi];
 
-                // Panggil Express hanya untuk mengacak, bukan memilih lagi
-                $soalTerpilihDariExpress = $this->expressClient->pickAndShuffle(['soalList' => $soalUntukDiacak, 'config' => $config]);
-                $soalListFormatted = $this->soalFormatter->formatForFrontend($soalTerpilihDariExpress);
+                // Buat payload dan panggil SERVICE LOKAL hanya untuk mengacak
+                $payload = ['soalList' => $soalUntukDiacak, 'config' => $config];
+                
+                // ** PERUBAHAN UTAMA: Memanggil service lokal **
+                $soalTerpilihDanTeracak = $this->ujianShuffleService->process($payload);
             }
 
-            // SIMPAN hasil akhir ke session!
+            // Format untuk frontend (langkah ini tetap sama)
+            $soalListFormatted = $this->soalFormatter->formatForFrontend($soalTerpilihDanTeracak);
+
+            // SIMPAN hasil akhir ke session
             if (!empty($soalListFormatted)) {
                 session([$sessionKey => $soalListFormatted]);
                 Log::info("[API UjianSoalCtrl] Daftar soal untuk '{$sessionKey}' berhasil disimpan ke session.");
@@ -162,14 +152,14 @@ class UjianSoalController extends Controller
         } else {
             Log::info("[API UjianSoalCtrl] Daftar soal untuk '{$sessionKey}' berhasil diambil dari session.");
         }
-        
-        // Hitung sisa waktu (tidak berubah)
+
+        // Hitung sisa waktu pengerjaan
         $durasiTotalUjianDetik = $ujian->durasi * 60;
         $detikTelahBerlalu = $now->diffInSeconds(Carbon::parse($pengerjaanAktif->waktu_mulai));
         $sisaWaktuDariDurasiIndividu = max(0, $durasiTotalUjianDetik - $detikTelahBerlalu);
         $sisaWaktuSampaiBatasGlobal = $ujian->tanggal_selesai ? max(0, Carbon::parse($ujian->tanggal_selesai)->diffInSeconds($now)) : PHP_INT_MAX;
         $sisaWaktuDetikFinal = min($sisaWaktuDariDurasiIndividu, $sisaWaktuSampaiBatasGlobal);
-        
+
         // Kirim respons final ke frontend
         return response()->json([
             'id' => $ujian->id,
