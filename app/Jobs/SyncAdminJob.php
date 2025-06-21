@@ -105,11 +105,8 @@ class SyncAdminJob implements ShouldQueue
                         }
                         $dataToUpsert[] = [
                             'external_id' => $adminData['id'],
-                            'is_admin' => true, // Flag utama untuk admin
-                            'is_mahasiswa' => false,
-                            'is_dosen' => false,
-                            'is_prodi' => false,
-                            // Kolom 'name' dan 'email' tidak disertakan
+                            'email' => $adminData['email'],
+                            'is_admin' => true, // Set role ini ke true
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -120,8 +117,8 @@ class SyncAdminJob implements ShouldQueue
                             try {
                                 $affectedRows = User::upsert(
                                     $chunk,
-                                    ['external_id', 'is_admin'], // Kolom unik untuk identifikasi admin
-                                    ['is_mahasiswa', 'is_dosen', 'is_prodi', 'updated_at']
+                                    ['external_id'], // Kunci unik
+                                    ['is_admin', 'email', 'updated_at'] // Kolom yang diupdate
                                 );
                                 $processedCount += $affectedRows;
                             } catch (\Illuminate\Database\QueryException $e) {

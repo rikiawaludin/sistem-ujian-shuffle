@@ -51,9 +51,9 @@ Route::middleware('auth.token', 'auth.mahasiswa')->group(function () {
     });
 });
 
-Route::middleware('auth.token', 'auth.admin')->group(function () {
- 
-    Route::prefix('admin')->name('admin.')->group(function () {
+Route::middleware('auth.token')->group(function () {
+    // middleware('auth.admin')->
+    Route::middleware('auth.admin')->prefix('admin')->name('admin.')->group(function () {
         
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 

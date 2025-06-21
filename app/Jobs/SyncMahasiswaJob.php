@@ -77,11 +77,9 @@ class SyncMahasiswaJob implements ShouldQueue
                         }
                         $dataToUpsert[] = [
                             'external_id' => $mhsData['id'],
-                            'is_mahasiswa' => true,
-                            'email' => $mhsData['email'],
-                            'is_dosen' => false,
-                            'is_prodi' => false,
-                            'is_admin' => false,
+                            'email' => $mhsData['email'], // Mahasiswa punya email
+                            'is_mahasiswa' => true,      // Set role ini ke true
+                            // Role lain tidak diatur di sini
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -92,14 +90,9 @@ class SyncMahasiswaJob implements ShouldQueue
                             try {
                                 $affectedRows = User::upsert(
                                     $chunk,
-                                    ['external_id', 'is_mahasiswa'], // Kolom unik
-                                    // HAPUS 'name' dan 'email' dari daftar kolom yang diupdate
-                                    // Jika tidak ada kolom lain yang perlu diupdate selain timestamp,
-                                    // Anda bisa mengosongkan array ini atau hanya menyertakan 'updated_at'.
-                                    // Jika array ketiga kosong, hanya record baru yang akan diinsert,
-                                    // record yang sudah ada tidak akan diupdate (kecuali timestamp jika model menggunakannya).
-                                    // Untuk memastikan record yang ada diupdate timestamp-nya:
-                                    ['email', 'is_dosen', 'is_prodi', 'is_admin', 'updated_at']
+                                    ['external_id'], // Kunci unik HANYA external_id
+                                    // Update role ini, email, dan timestamp
+                                    ['is_mahasiswa', 'email', 'updated_at']
                                 );
                                 $processedCount += $affectedRows;
                             } catch (\Illuminate\Database\QueryException $e) {

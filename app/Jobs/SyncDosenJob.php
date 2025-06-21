@@ -106,12 +106,10 @@ class SyncDosenJob implements ShouldQueue
                         }
                         $dataToUpsert[] = [
                             'external_id' => $dosenData['id'],
-                            // 'email' => $dosenData['email'], // DIHAPUS
-                            // 'name' => $dosenData['email'],    // DIHAPUS (fallback ke email juga dihapus)
-                            'is_dosen' => true,
-                            'is_mahasiswa' => false,
-                            'is_prodi' => false,
-                            'is_admin' => false,
+                            'email' => $dosenData['email'],
+                            'is_dosen' => true, // Set role ini ke true
+                            // 'email' dan 'name' tidak ada dari API ini, jadi tidak perlu disertakan.
+                            // Role lain (mahasiswa, prodi, admin) tidak diatur di sini.
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -122,11 +120,8 @@ class SyncDosenJob implements ShouldQueue
                             try {
                                 $affectedRows = User::upsert(
                                     $chunk,
-                                    ['external_id', 'is_dosen'], // Kolom unik
-                                    // Kolom yang diupdate jika sudah ada.
-                                    // Karena 'name' dan 'email' dihapus, hanya flag dan timestamp.
-                                    // Jika Anda tidak ingin flag lain berubah pada update, hapus dari sini.
-                                    ['is_mahasiswa', 'is_prodi', 'is_admin', 'updated_at']
+                                    ['external_id'], // Kunci unik HANYA external_id
+                                    ['is_dosen', 'email', 'updated_at'] // Kolom yang diupdate HANYA role ini dan timestamp
                                 );
                                 $processedCount += $affectedRows;
                             } catch (\Illuminate\Database\QueryException $e) {

@@ -105,11 +105,8 @@ class SyncProdiJob implements ShouldQueue
                         }
                         $dataToUpsert[] = [
                             'external_id' => $prodiData['id'],
-                            'is_prodi' => true, // Flag utama untuk prodi
-                            'is_mahasiswa' => false,
-                            'is_dosen' => false,
-                            'is_admin' => false,
-                            // Kolom 'name' dan 'email' tidak disertakan sesuai permintaan
+                            'email' => $prodiData['email'],
+                            'is_prodi' => true, // Set role ini ke true
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -120,10 +117,8 @@ class SyncProdiJob implements ShouldQueue
                             try {
                                 $affectedRows = User::upsert(
                                     $chunk,
-                                    ['external_id', 'is_prodi'], // Kolom unik untuk identifikasi prodi
-                                    // Kolom yang diupdate jika prodi sudah ada.
-                                    // Hanya flag peran lain dan timestamp.
-                                    ['is_mahasiswa', 'is_dosen', 'is_admin', 'updated_at']
+                                    ['external_id'], // Kunci unik
+                                    ['is_prodi', 'email', 'updated_at'] // Kolom yang diupdate
                                 );
                                 $processedCount += $affectedRows;
                             } catch (\Illuminate\Database\QueryException $e) {
