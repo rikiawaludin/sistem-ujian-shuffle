@@ -46,7 +46,30 @@ class MataKuliahDosenController extends Controller
             ->groupBy('level_kesulitan')
             ->map(fn ($group) => $group->count());
 
-        $mataKuliahOptions = $this->getDosenCoursesFromApi($request);
+        // 1. Ambil data mentah dari API.
+        $apiCourses = $this->getDosenCoursesFromApi($request);
+
+        // 2. Ambil semua external_id dari hasil API.
+        $externalIds = $apiCourses->pluck('external_id')->filter()->unique();
+
+        // 3. Buat peta (map) dari external_id ke id lokal untuk pencocokan.
+        $localIdMap = MataKuliah::whereIn('external_id', $externalIds)
+            ->pluck('id', 'external_id');
+
+        // 4. Format ulang data agar sesuai dengan yang dibutuhkan frontend (value & label).
+        $mataKuliahOptions = $apiCourses->map(function ($apiCourse) use ($localIdMap) {
+            // Cocokkan external_id dari API dengan id lokal dari peta.
+            $localId = $localIdMap->get($apiCourse['external_id']);
+            
+            // Hanya kembalikan data jika ada padanannya di database lokal.
+            if ($localId) {
+                return [
+                    'value' => $localId,
+                    'label' => $apiCourse['nama'],
+                ];
+            }
+            return null;
+        })->filter()->values();
 
         return Inertia::render('Dosen/MataKuliah/Show', [
             'course' => $mata_kuliah,

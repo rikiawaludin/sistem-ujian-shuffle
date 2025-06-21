@@ -131,6 +131,12 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
         }
     };
 
+    // DITAMBAHKAN: Logika untuk mencari nama mata kuliah berdasarkan ID
+    const selectedCourse = mataKuliahOptions?.find(
+        option => option.value === data.mata_kuliah_id
+    );
+    const courseName = selectedCourse ? selectedCourse.label : 'Mata Kuliah tidak ditemukan';
+
     return (
         <div>
             <form onSubmit={submit}>
@@ -148,21 +154,19 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
                             </Select>
                         </div>
                         <div>
-                            <Select
+                            <Input
+                                type="text"
                                 label="Mata Kuliah"
-                                value={String(data.mata_kuliah_id)}
-                                onChange={(value) => setData('mata_kuliah_id', Number(value))}
+                                value={courseName}
+                                disabled // atau bisa juga pakai readOnly
                                 error={!!errors.mata_kuliah_id}
-                                // TAMBAHKAN PROPERTI INI
-                                disabled
-                            >
-                                {/* Opsi akan tetap ditampilkan tapi tidak bisa diubah */}
-                                {(mataKuliahOptions || []).map(option => (
-                                    <Option key={option.value} value={String(option.value)}>
-                                        {option.label}
-                                    </Option>
-                                ))}
-                            </Select>
+                            />
+                            {/* Jika ada error, kita tetap bisa menampilkannya di bawah input */}
+                            {errors.mata_kuliah_id && (
+                                <Typography color="red" className="mt-1 text-sm">
+                                    {errors.mata_kuliah_id}
+                                 </Typography>
+                            )}
                         </div>
                         <div>
                             <Select
