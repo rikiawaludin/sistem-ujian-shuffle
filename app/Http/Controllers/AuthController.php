@@ -55,7 +55,18 @@ class AuthController extends Controller {
             Session::put('user_image', $user['account']['image']);
             Session::put('user_email', $user['account']['email']);
 
-            return redirect()->route('home');
+            switch ($role) {
+                case 'is_admin':
+                    return redirect()->route('admin.dashboard');
+                case 'is_dosen':
+                    return redirect()->route('dosen.dashboard');
+                case 'is_mahasiswa':
+                    // Pastikan Anda menggunakan 'is_mahasiswa' secara konsisten
+                    return redirect()->route('home');
+                default:
+                    // Fallback jika role tidak dikenali, arahkan ke halaman ganti role atau logout
+                    return self::changeUserRole();
+            }
         } else {
             if (Session::has('role') and Session::has('token')) {
                 return redirect()->route('home');
