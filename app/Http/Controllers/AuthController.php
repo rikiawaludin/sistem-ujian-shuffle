@@ -60,7 +60,7 @@ class AuthController extends Controller {
                     return redirect()->route('admin.dashboard');
                 case 'is_dosen':
                     return redirect()->route('dosen.dashboard');
-                case 'is_mahasiswa':
+                case 'is_mhs':
                     // Pastikan Anda menggunakan 'is_mahasiswa' secara konsisten
                     return redirect()->route('home');
                 default:

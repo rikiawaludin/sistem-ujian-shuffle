@@ -46,7 +46,7 @@ class MataKuliahDosenController extends Controller
             ->groupBy('level_kesulitan')
             ->map(fn ($group) => $group->count());
 
-        $mataKuliahOptions = $this->getDosenMataKuliahOptions($request);
+        $mataKuliahOptions = $this->getDosenCoursesFromApi($request);
 
         return Inertia::render('Dosen/MataKuliah/Show', [
             'course' => $mata_kuliah,

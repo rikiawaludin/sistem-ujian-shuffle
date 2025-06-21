@@ -28,11 +28,11 @@ const CourseCard = ({ course }) => {
     return (
         <Card className="bg-white shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-bold text-gray-800 mb-1 line-clamp-2">
+                <CardTitle className="text-lg font-bold text-gray-800 mb-1 line-clamp-2 h-14" title={course.nama}>
                     {course.nama}
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                    {course.kode} • {course.semester}
+                    {course.kode} • Semester {course.semester}
                 </CardDescription>
             </CardHeader>
 
@@ -81,7 +81,7 @@ export default function Index() {
     return (
         // Kita akan asumsikan layout bisa di-override, jika tidak, kita bisa abaikan layout ini
         // dan langsung render kontennya di dalam <AuthenticatedLayout>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
             <Head title="Dashboard Dosen" />
 
             {/* Header Internal */}
@@ -93,7 +93,7 @@ export default function Index() {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold">Dashboard Dosen</h1>
-                            <p className="text-blue-100">{auth.user.name}</p>
+                            <p className="text-blue-100">{auth.user.name} {auth.user.gelar}</p>
                         </div>
                     </div>
                 </div>
@@ -125,11 +125,3 @@ export default function Index() {
         </div>
     );
 }
-
-/** * CATATAN PENTING:
- * Kode di atas tidak lagi memanggil <AuthenticatedLayout>.
- * Jika Anda ingin tetap ada Sidenav, Anda bisa membungkusnya dengan <AuthenticatedLayout>
- * dan menghapus div terluar dari kode ini. Namun, sesuai referensi, halaman ini menjadi
- * halaman full-width tanpa Sidenav. Anda mungkin perlu menyesuaikan AuthenticatedLayout.jsx
- * untuk menghandle kasus ini.
- */

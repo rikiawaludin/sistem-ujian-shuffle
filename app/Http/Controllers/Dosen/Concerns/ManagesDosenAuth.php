@@ -31,6 +31,7 @@ trait ManagesDosenAuth
             'user' => [
                 'id' => $localUser->id ?? null,
                 'name' => Session::get('profile')['nama'] ?? 'Pengguna Dosen',
+                'gelar' => Session::get('profile')['gelar'] ?? null,
                 'email' => $userAccount['email'] ?? null,
                 'image' => $userAccount['image'] ?? null,
                 'is_dosen' => $userAccount['is_dosen'] ?? false,
@@ -41,42 +42,87 @@ trait ManagesDosenAuth
     /**
      * Mengambil mata kuliah yang diajar dosen dari API.
      */
-    private function getDosenMataKuliahOptions(Request $request): array
+    // private function getDosenMataKuliahOptions(Request $request): array
+    // {
+    //     $token = $request->session()->get('token');
+    //     // Pastikan path API ini benar untuk mengambil MK Dosen
+    //     $pathApi = 'ujian/mata-kuliah/dosen'; 
+    //     $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
+
+    //     if (!$token) {
+    //         Log::warning('[Trait ManagesDosenAuth] Tidak ada token sesi untuk memanggil API mata kuliah.');
+    //         return [];
+    //     }
+
+    //     try {
+    //         $response = Http::withToken($token)->timeout(15)->get($apiUrl);
+
+
+    //         if ($response->failed()) {
+    //             Log::error('[Trait ManagesDosenAuth] Gagal mengambil data MK dari API.', ['status' => $response->status(), 'url' => $apiUrl]);
+    //             return [];
+    //         }
+            
+    //         $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
+    //         $externalIds = collect($mataKuliahFromApi)->pluck('matakuliah.mk_id')->filter()->unique()->all();
+            
+    //         $mataKuliahLokal = MataKuliah::whereIn('external_id', $externalIds)->get(['id', 'nama']);
+            
+            
+
+    //         // Diubah agar value adalah ID, bukan nama, agar lebih andal
+    //         return $mataKuliahLokal->map(function ($mk) {
+    //             return ['value' => $mk->id, 'label' => $mk->nama];
+    //         })->all();
+
+    //     } catch (\Exception $e) {
+    //         Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data MK dari API: ' . $e->getMessage());
+    //         return [];
+    //     }
+    // }
+
+    private function getDosenCoursesFromApi(Request $request): \Illuminate\Support\Collection
     {
         $token = $request->session()->get('token');
-        // Pastikan path API ini benar untuk mengambil MK Dosen
+        // Menggunakan path API yang sama seperti sebelumnya, yang berisi data lengkap.
         $pathApi = 'ujian/mata-kuliah/dosen'; 
         $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
 
         if (!$token) {
             Log::warning('[Trait ManagesDosenAuth] Tidak ada token sesi untuk memanggil API mata kuliah.');
-            return [];
+            return collect();
         }
 
         try {
             $response = Http::withToken($token)->timeout(15)->get($apiUrl);
 
-
             if ($response->failed()) {
                 Log::error('[Trait ManagesDosenAuth] Gagal mengambil data MK dari API.', ['status' => $response->status(), 'url' => $apiUrl]);
-                return [];
+                return collect();
             }
             
             $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
-            $externalIds = collect($mataKuliahFromApi)->pluck('matakuliah.mk_id')->filter()->unique()->all();
             
-            $mataKuliahLokal = MataKuliah::whereIn('external_id', $externalIds)->get(['id', 'nama']);
-            
-            
+            $courses = collect($mataKuliahFromApi)->map(function ($kelas) {
+                // Pastikan struktur data dari API sesuai dengan yang diharapkan
+                if (!isset($kelas['matakuliah'])) {
+                    return null;
+                }
+                
+                return [
+                    'external_id' => $kelas['matakuliah']['mk_id'] ?? null,
+                    'nama' => $kelas['matakuliah']['nm_mk'] ?? 'Nama MK Tidak Ditemukan',
+                    'kode' => $kelas['matakuliah']['kd_mk'] ?? 'KODE-MK',
+                    'semester' => $kelas['matakuliah']['semester'] ?? 'N/A',
+                ];
+            })->filter(); // Hapus item yang null
 
-            // Diubah agar value adalah ID, bukan nama, agar lebih andal
-            return $mataKuliahLokal->map(function ($mk) {
-                return ['value' => $mk->id, 'label' => $mk->nama];
-            })->all();
+            // Karena satu mata kuliah bisa diajar di beberapa kelas, kita ambil yang unik berdasarkan ID eksternal.
+            return $courses->unique('external_id')->values();
 
         } catch (\Exception $e) {
             Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data MK dari API: ' . $e->getMessage());
-            return [];
+            return collect();
         }
     }
 
@@ -120,48 +166,6 @@ trait ManagesDosenAuth
 
         } catch (\Exception $e) {
             Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data mahasiswa dari API: ' . $e->getMessage());
-            return [];
-        }
-    }
-
-    private function getSemesterMap(Request $request): array
-    {
-        $token = $request->session()->get('token');
-        $pathApi = 'ujian/mata-kuliah/dosen'; // Path API yang sama
-        $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
-
-        if (!$token) {
-            Log::warning('[Trait ManagesDosenAuth] Tidak ada token sesi untuk memanggil API semester.');
-            return [];
-        }
-
-        try {
-            $response = Http::withToken($token)->timeout(15)->get($apiUrl);
-
-            if ($response->failed()) {
-                Log::error('[Trait ManagesDosenAuth] Gagal mengambil data semester dari API.', ['status' => $response->status(), 'url' => $apiUrl]);
-                return [];
-            }
-            
-            $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
-            $semesterMap = [];
-
-            foreach ($mataKuliahFromApi as $kelas) {
-                // Pastikan data yang dibutuhkan ada di dalam respons API
-                if (isset($kelas['matakuliah']['mk_id']) && isset($kelas['semester'])) {
-                    $externalId = $kelas['matakuliah']['mk_id'];
-                    
-                    // Gunakan data pertama yang ditemukan untuk setiap external_id
-                    if (!isset($semesterMap[$externalId])) {
-                        $semesterMap[$externalId] = $kelas['semester'];
-                    }
-                }
-            }
-            
-            return $semesterMap;
-
-        } catch (\Exception $e) {
-            Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data semester dari API: ' . $e->getMessage());
             return [];
         }
     }
