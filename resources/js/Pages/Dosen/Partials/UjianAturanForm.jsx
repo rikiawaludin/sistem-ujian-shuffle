@@ -50,51 +50,38 @@ function AturanItem({ level, label, tersedia, value, onChange, error }) {
 // ==========================================================
 // 2. Komponen Utama UjianAturanForm dengan semua logika
 // ==========================================================
-export default function UjianAturanForm({ ujian, bankSoalSummary, onSuccess }) {
+export default function UjianAturanForm({
+    bankSoalSummary,
+    onSuccess,
+    isWizardMode = false,
+    processing, // Terima 'processing' dari induk
+    data,       // Terima 'data' dari induk
+    setData,    // Terima 'setData' dari induk
+}) {
     const { errors } = usePage().props;
-
-    const formatAturanToState = (aturanArray) => {
-        const state = { mudah: 0, sedang: 0, sulit: 0 };
-        if (aturanArray) {
-            aturanArray.forEach(aturan => {
-                state[aturan.level_kesulitan] = aturan.jumlah_soal;
-            });
-        }
-        return state;
-    };
-
-    const { data, setData, put, processing, recentlySuccessful } = useForm({
-        aturan_soal: formatAturanToState(ujian.aturan),
-    });
-
-    useEffect(() => {
-        if (recentlySuccessful) {
-            onSuccess?.();
-        }
-    }, [recentlySuccessful]);
 
     const handleAturanChange = (level, jumlah) => {
         const tersedia = bankSoalSummary[level] || 0;
         let nilai = parseInt(jumlah, 10) || 0;
         if (nilai > tersedia) nilai = tersedia;
         if (nilai < 0) nilai = 0;
-        
+
+        // Gunakan setData dari props untuk mengubah state di komponen INDUK
         setData('aturan_soal', { ...data.aturan_soal, [level]: nilai });
     };
 
     const submitAturan = (e) => {
         e.preventDefault();
-        if(ujian && ujian.id) {
-            put(route('dosen.ujian.update', ujian.id), { preserveScroll: true });
-        }
+        // Langsung panggil onSuccess dari induk, karena induk sudah punya data terbaru
+        onSuccess?.();
     };
 
+    const totalSoalDipilih = Object.values(data.aturan_soal || {}).reduce((sum, count) => sum + Number(count), 0);
     const totalSoalTersedia = Object.values(bankSoalSummary || {}).reduce((sum, count) => sum + count, 0);
-    const totalSoalDipilih = Object.values(data.aturan_soal).reduce((sum, count) => sum + Number(count), 0);
 
     return (
         <form onSubmit={submitAturan} className="mt-4">
-            {totalSoalTersedia > 0 ? (
+             {totalSoalTersedia > 0 ? (
                 <div className="space-y-4">
                     <AturanItem
                         level="mudah"
@@ -127,13 +114,13 @@ export default function UjianAturanForm({ ujian, bankSoalSummary, onSuccess }) {
                     <p>Tidak ada soal di Bank Soal untuk mata kuliah ini.</p>
                 </div>
             )}
-             <div className="flex justify-between items-center mt-6 pt-4 border-t">
+            <div className="flex justify-between items-center mt-6 pt-4 border-t">
                 <div className="text-right">
                     <p className="font-semibold text-gray-800">{totalSoalDipilih}</p>
                     <p className="text-xs text-gray-500">Total Soal Dipilih</p>
                 </div>
                 <Button type="submit" disabled={processing || totalSoalDipilih === 0}>
-                    Simpan Aturan
+                    {isWizardMode ? 'Simpan Ujian & Aturan' : 'Simpan Aturan'}
                 </Button>
             </div>
         </form>

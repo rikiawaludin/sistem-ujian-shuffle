@@ -5,6 +5,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { Toaster } from '@/Components/ui/toaster';
 import { MaterialTailwindControllerProvider } from './Context/MaterialTailwindContext'; // Path ke context provider Anda
 
 const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Laravel';
@@ -17,6 +18,7 @@ createInertiaApp({
     root.render(
       <MaterialTailwindControllerProvider> {/* Bungkus di sini */}
         <App {...props} />
+        <Toaster duration={3000} />
       </MaterialTailwindControllerProvider>
     );
   },

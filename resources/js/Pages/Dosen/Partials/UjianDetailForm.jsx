@@ -9,23 +9,33 @@ import { Input } from "@/Components/ui/input";
 import { Checkbox } from "@/Components/ui/checkbox";
 import { Textarea } from "@/Components/ui/textarea";
 import { Label } from '@/Components/ui/label';
+import { DateTimePicker } from '@/Components/ui/DateTimePicker';
 
+// TAMBAHKAN FUNGSI HELPER INI
+const toLocalISOString = (date) => {
+    if (!date) return '';
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+    const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+    return localISOTime;
+};
 
-export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess }) {
+export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess, isWizardMode = false, initialData = {} }) {
     const isEditMode = !!ujian;
 
-    const { data, setData, post, put, errors, processing, recentlySuccessful } = useForm({
-        judul_ujian: ujian?.judul_ujian || '',
-        deskripsi: ujian?.deskripsi || '',
-        mata_kuliah_id: ujian?.mata_kuliah_id || defaultMataKuliahId,
-        durasi: ujian?.durasi || 60,
-        kkm: ujian?.kkm || 75,
-        tanggal_mulai: ujian?.tanggal_mulai?.substring(0, 16) || '',
-        tanggal_selesai: ujian?.tanggal_selesai?.substring(0, 16) || '',
-        acak_soal: ujian?.acak_soal ?? true,
-        acak_opsi: ujian?.acak_opsi ?? true,
-        tampilkan_hasil: ujian?.tampilkan_hasil ?? true,
-    });
+    const { data, setData, post, put, errors, processing, recentlySuccessful } = useForm(
+        isWizardMode ? initialData : {
+            judul_ujian: ujian?.judul_ujian || '',
+            deskripsi: ujian?.deskripsi || '',
+            mata_kuliah_id: ujian?.mata_kuliah_id || defaultMataKuliahId,
+            durasi: ujian?.durasi || 60,
+            kkm: ujian?.kkm || 75,
+            tanggal_mulai: ujian?.tanggal_mulai?.substring(0, 16) || '',
+            tanggal_selesai: ujian?.tanggal_selesai?.substring(0, 16) || '',
+            acak_soal: ujian?.acak_soal ?? true,
+            acak_opsi: ujian?.acak_opsi ?? true,
+            tampilkan_hasil: ujian?.tampilkan_hasil ?? true,
+        }
+    );
 
     useEffect(() => {
         if (data.tanggal_mulai && data.tanggal_selesai) {
@@ -42,17 +52,26 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess 
 
 
     useEffect(() => {
-        if (recentlySuccessful) {
+        // Hanya panggil onSuccess jika tidak dalam wizard mode
+        if (recentlySuccessful && !isWizardMode) {
             onSuccess?.();
         }
     }, [recentlySuccessful]);
 
     const submit = (e) => {
         e.preventDefault();
+        // Jika dalam wizard, panggil onSuccess dengan data saat ini
+        if (isWizardMode) {
+            onSuccess?.(data);
+            return;
+        }
+
+        // Logika submit lama untuk mode edit
         const options = { preserveScroll: true };
         if (isEditMode) {
             put(route('dosen.ujian.update', ujian.id), options);
         } else {
+            // Mode create lama (sekarang tidak terpakai, tapi jaga-jaga)
             post(route('dosen.ujian.store'), options);
         }
     };
@@ -71,24 +90,33 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess 
                 {errors.deskripsi && <p className="text-sm text-red-600 mt-1">{errors.deskripsi}</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* UBAH INPUT WAKTU MULAI */}
+                <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="tanggal_mulai">Waktu Mulai</Label>
-                    <Input id="tanggal_mulai" type="datetime-local" value={data.tanggal_mulai} onChange={e => setData('tanggal_mulai', e.target.value)} className="mt-1" />
+                    <DateTimePicker
+                        value={data.tanggal_mulai}
+                        onChange={(date) => setData('tanggal_mulai', toLocalISOString(date))}
+                    />
                     {errors.tanggal_mulai && <p className="text-sm text-red-600 mt-1">{errors.tanggal_mulai}</p>}
                 </div>
-                 <div>
+
+                {/* UBAH INPUT WAKTU SELESAI */}
+                <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="tanggal_selesai">Waktu Selesai</Label>
-                    <Input id="tanggal_selesai" type="datetime-local" value={data.tanggal_selesai} onChange={e => setData('tanggal_selesai', e.target.value)} className="mt-1" />
+                    <DateTimePicker
+                        value={data.tanggal_selesai}
+                        onChange={(date) => setData('tanggal_selesai', toLocalISOString(date))}
+                    />
                     {errors.tanggal_selesai && <p className="text-sm text-red-600 mt-1">{errors.tanggal_selesai}</p>}
                 </div>
-                 <div>
+                <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="durasi">Durasi (menit)</Label>
-                    <Input id="durasi" type="number" value={data.durasi} readOnly className="mt-1 bg-gray-100" />
+                    <Input id="durasi" type="number" value={data.durasi} readOnly className="bg-gray-100" />
                 </div>
-                 <div>
+                <div className="flex flex-col space-y-1.5">
                     <Label htmlFor="kkm">KKM</Label>
-                    <Input id="kkm" type="number" value={data.kkm} onChange={e => setData('kkm', e.target.value)} className="mt-1" />
+                    <Input id="kkm" type="number" value={data.kkm} onChange={e => setData('kkm', e.target.value)} />
                     {errors.kkm && <p className="text-sm text-red-600 mt-1">{errors.kkm}</p>}
                 </div>
             </div>
@@ -109,7 +137,9 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess 
             </div>
 
             <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={processing}>{isEditMode ? 'Simpan Perubahan' : 'Buat Ujian'}</Button>
+                <Button type="submit" disabled={processing}>
+                    {isWizardMode ? 'Lanjut ke Atur Soal' : (isEditMode ? 'Simpan Perubahan' : 'Buat Ujian')}
+                </Button>
             </div>
         </form>
     );

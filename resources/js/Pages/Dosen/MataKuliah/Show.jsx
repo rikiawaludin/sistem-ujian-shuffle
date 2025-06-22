@@ -17,6 +17,7 @@ import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
 import UjianAturanDialog from '@/Pages/Dosen/Partials/UjianAturanDialog';
+import UjianCreateDialog from '@/Pages/Dosen/Partials/UjianCreateDialog'; 
 
 // Komponen Form Soal yang akan kita buat
 import BankSoalForm from '@/Pages/Dosen/Partials/BankSoalForm';
@@ -28,7 +29,7 @@ const ListItem = ({ children }) => (
 );
 
 export default function Show() {
-    const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions } = usePage().props;
+    const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions, bankSoalSummaryByDifficulty = {} } = usePage().props;
 
     // State untuk mengontrol modal form soal
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -59,19 +60,21 @@ export default function Show() {
     };
 
     // TAMBAHKAN STATE BARU UNTUK MODAL UJIAN
-    const [isUjianFormOpen, setIsUjianFormOpen] = useState(false);
+    const [isCreateUjianOpen, setIsCreateUjianOpen] = useState(false); // State untuk wizard baru
+    const [isEditUjianOpen, setIsEditUjianOpen] = useState(false); // State untuk modal edit detail
     const [isAturanFormOpen, setIsAturanFormOpen] = useState(false);
     const [selectedUjian, setSelectedUjian] = useState(null);
 
     // HANDLER BARU UNTUK UJIAN
+    // Handler untuk membuka wizard create
     const handleAddUjian = () => {
         setSelectedUjian(null);
-        setIsUjianFormOpen(true);
+        setIsCreateUjianOpen(true);
     };
 
     const handleEditUjian = (ujian) => {
         setSelectedUjian(ujian);
-        setIsUjianFormOpen(true);
+        setIsEditUjianOpen(true);
     };
 
     const handleAturSoal = (ujian) => {
@@ -367,11 +370,19 @@ export default function Show() {
                     </DialogContent>
                 </Dialog>
 
+                <UjianCreateDialog
+                    open={isCreateUjianOpen}
+                    onOpenChange={setIsCreateUjianOpen}
+                    mataKuliahId={course.id}
+                    bankSoalSummary={bankSoalSummaryByDifficulty} // Kirim summary soal
+                    onSuccess={() => setIsCreateUjianOpen(false)}
+                />
+
                 {/* TAMBAHKAN MODAL-MODAL BARU DI SINI */}
                 {/* Modal untuk Form Detail Ujian */}
                 <UjianDetailFormDialog
-                    open={isUjianFormOpen}
-                    onOpenChange={setIsUjianFormOpen}
+                    open={isEditUjianOpen}
+                    onOpenChange={setIsEditUjianOpen}
                     ujian={selectedUjian}
                     mataKuliahId={course.id}
                     onSuccess={() => setIsUjianFormOpen(false)}

@@ -64,7 +64,11 @@ class UjianController extends Controller
     public function store(Request $request)
     {
         $this->getAuthProps(); // Panggil untuk memastikan Auth::id() valid
-        $validated = $request->validate([
+
+        // ==========================================================
+        // PERBAIKAN UTAMA DI SINI: Gabungkan semua validasi jadi satu
+        // ==========================================================
+        $validatedData = $request->validate([
             'mata_kuliah_id' => 'required|exists:mata_kuliah,id',
             'judul_ujian' => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
@@ -75,14 +79,48 @@ class UjianController extends Controller
             'acak_soal' => 'required|boolean',
             'acak_opsi' => 'required|boolean',
             'tampilkan_hasil' => 'required|boolean',
+            'aturan_soal' => 'required|array',
+            'aturan_soal.mudah' => 'required|integer|min:0',
+            'aturan_soal.sedang' => 'required|integer|min:0',
+            'aturan_soal.sulit' => 'required|integer|min:0',
         ]);
-        
-        $validated['dosen_pembuat_id'] = Auth::id();
-        $validated['status_publikasi'] = 'published'; 
-        $validated['jenis_ujian'] = 'kuis';
-        $ujian = Ujian::create($validated);
 
-        return back()->with('success', 'Detail Ujian berhasil dibuat. Silakan atur soalnya.');
+        $totalSoal = array_sum($validatedData['aturan_soal']);
+
+        if ($totalSoal === 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'aturan_soal' => 'Anda harus memilih setidaknya satu soal untuk ujian.',
+            ]);
+        }
+
+        // Gunakan transaksi database untuk memastikan semua data tersimpan atau tidak sama sekali
+        DB::transaction(function () use ($validatedData) {
+            // 1. Pisahkan data untuk tabel 'ujians' dan data untuk relasi 'aturan'
+            $ujianDetails = collect($validatedData)->except('aturan_soal')->all();
+            $aturanSoal = $validatedData['aturan_soal'];
+
+            // 2. Tambahkan data default ke detail ujian
+            $ujianDetails['dosen_pembuat_id'] = Auth::id();
+            $ujianDetails['status_publikasi'] = 'published';
+            $ujianDetails['jenis_ujian'] = 'kuis';
+
+            // 3. Buat record Ujian
+            $ujian = Ujian::create($ujianDetails);
+
+            // 4. Buat record UjianAturan dari data yang sudah dipisahkan
+            foreach ($aturanSoal as $level => $jumlah) {
+                if ($jumlah > 0) {
+                    $ujian->aturan()->create([
+                        'level_kesulitan' => $level,
+                        'jumlah_soal' => $jumlah,
+                    ]);
+                }
+            }
+        });
+
+        // Redirect ke halaman detail mata kuliah agar list ujian ter-update
+        return redirect()->route('dosen.matakuliah.show', $validatedData['mata_kuliah_id'])
+                        ->with('success', 'Ujian berhasil dibuat beserta aturannya.');
     }
 
     /**
@@ -167,7 +205,7 @@ class UjianController extends Controller
         
         // Blok "else" ini bisa Anda gunakan jika ingin ada form update detail ujian terpisah
         // atau gabungkan validasinya di atas.
-        return redirect()->back()->withErrors(['error' => 'Request tidak valid.']);
+        return back()->with('success', 'Detail ujian berhasil diperbarui.');
     }
 
     /**

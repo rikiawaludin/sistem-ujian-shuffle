@@ -17,5 +17,10 @@ class UjianAturan extends Model
         'jumlah_soal',
     ];
 
+    public function ujian()
+    {
+        return $this->belongsTo(Ujian::class, 'ujian_id');
+    }
+
     public $timestamps = false;
 }
