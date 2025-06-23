@@ -1,7 +1,7 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva } from "class-variance-authority";
-import { X, CheckCircle } from "lucide-react"
+import { X, CheckCircle, XCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -11,7 +11,7 @@ const ToastViewport = React.forwardRef(({ className, ...props }, ref) => (
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      "fixed top-4 right-4 z-[100] flex max-h-screen w-full max-w-sm flex-col space-y-2 p-4",
       className
     )}
     {...props} />
@@ -27,7 +27,7 @@ const toastVariants = cva(
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
         success:
-          "success group border-green-500 bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100",
+          "success group border-green-500 bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100",
       },
     },
     defaultVariants: {
@@ -44,13 +44,14 @@ const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
       {...props} >
       <div className="flex items-start gap-3 w-full">
         {variant === "success" && <CheckCircle className="h-6 w-6 mt-0.5" />}
+        {variant === "destructive" && <XCircle className="h-6 w-6 mt-0.5 text-white dark:text-red-300" />}
         <div className="grid gap-1 flex-1">
           {props.children}
         </div>
       </div>
       <ToastClose />
     </ToastPrimitives.Root>
-      
+
   );
 })
 Toast.displayName = ToastPrimitives.Root.displayName

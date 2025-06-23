@@ -385,7 +385,7 @@ export default function Show() {
                     onOpenChange={setIsEditUjianOpen}
                     ujian={selectedUjian}
                     mataKuliahId={course.id}
-                    onSuccess={() => setIsUjianFormOpen(false)}
+                    onSuccess={() => setIsEditUjianOpen(false)}
                 />
 
                 {/* Modal untuk Form Aturan Soal */}

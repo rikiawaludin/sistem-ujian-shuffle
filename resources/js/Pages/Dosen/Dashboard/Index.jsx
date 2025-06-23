@@ -81,7 +81,7 @@ export default function Index() {
     return (
         // Kita akan asumsikan layout bisa di-override, jika tidak, kita bisa abaikan layout ini
         // dan langsung render kontennya di dalam <AuthenticatedLayout>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
             <Head title="Dashboard Dosen" />
 
             {/* Header Internal */}
