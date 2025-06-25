@@ -19,7 +19,7 @@ const toLocalISOString = (date) => {
     return localISOTime;
 };
 
-export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess, isWizardMode = false, initialData = {} }) {
+export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess, onError, isWizardMode = false, initialData = {} }) {
     const isEditMode = !!ujian;
 
     const { data, setData, post, put, errors, processing, recentlySuccessful } = useForm(
@@ -51,27 +51,30 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
     }, [data.tanggal_mulai, data.tanggal_selesai]);
 
 
-    useEffect(() => {
-        // Hanya panggil onSuccess jika tidak dalam wizard mode
-        if (recentlySuccessful && !isWizardMode) {
-            onSuccess?.();
-        }
-    }, [recentlySuccessful]);
+    // useEffect(() => {
+    //     // Hanya panggil onSuccess jika tidak dalam wizard mode
+    //     if (recentlySuccessful && !isWizardMode) {
+    //         onSuccess?.();
+    //     }
+    // }, [recentlySuccessful]);
 
     const submit = (e) => {
         e.preventDefault();
-        // Jika dalam wizard, panggil onSuccess dengan data saat ini
         if (isWizardMode) {
             onSuccess?.(data);
             return;
         }
 
-        // Logika submit lama untuk mode edit
-        const options = { preserveScroll: true };
+        // Definisikan opsi dengan callback onSuccess dan onError dari props
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => onSuccess?.(),
+            onError: (errors) => onError?.(errors),
+        };
+
         if (isEditMode) {
             put(route('dosen.ujian.update', ujian.id), options);
         } else {
-            // Mode create lama (sekarang tidak terpakai, tapi jaga-jaga)
             post(route('dosen.ujian.store'), options);
         }
     };

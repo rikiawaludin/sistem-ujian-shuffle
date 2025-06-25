@@ -46,9 +46,6 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
             ...data,
             preserveScroll: true,
             onSuccess: () => {
-                // ==========================================================
-                // 3. TAMPILKAN NOTIFIKASI SUKSES
-                // ==========================================================
                 toast({
                     title: "Berhasil!",
                     description: "Ujian baru telah berhasil dibuat.",
@@ -58,9 +55,6 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
                 reset();
             },
             onError: (errors) => {
-                // ==========================================================
-                // 4. (REKOMENDASI) TAMPILKAN NOTIFIKASI GAGAL
-                // ==========================================================
                 toast({
                     variant: "destructive",
                     title: "Terjadi Kesalahan!",

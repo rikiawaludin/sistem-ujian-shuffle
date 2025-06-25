@@ -6,9 +6,12 @@ import { Editor } from '@tinymce/tinymce-react';
 import PilihanGandaForm from '@/Pages/Dosen/Partials/PilihanGandaForm';
 import MenjodohkanForm from '@/Pages/Dosen/Partials/MenjodohkanForm';
 import IsianSingkatForm from '@/Pages/Dosen/Partials/IsianSingkatForm';
+import { useToast } from "@/hooks/use-toast";
 
 export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKuliahId }) {
     const isEditMode = !!soal;
+
+    const { toast } = useToast();
 
     const generateEmptyOptions = (count) => {
         return Array.from({ length: count }, (_, i) => ({
@@ -63,12 +66,12 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
         penjelasan: soal?.penjelasan || '',
     });
 
-    useEffect(() => {
-        // Cek apakah form baru saja berhasil
-        if (recentlySuccessful) {
-            onSuccess?.(); // Panggil fungsi onSuccess untuk menutup modal
-        }
-    }, [recentlySuccessful]);
+    // useEffect(() => {
+    //     // Cek apakah form baru saja berhasil
+    //     if (recentlySuccessful) {
+    //         onSuccess?.(); // Panggil fungsi onSuccess untuk menutup modal
+    //     }
+    // }, [recentlySuccessful]);
 
     // useEffect ini HANYA untuk sinkronisasi data saat masuk mode EDIT.
     useEffect(() => {
@@ -124,10 +127,34 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
 
     const submit = (e) => {
         e.preventDefault();
+
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Tampilkan notifikasi sukses
+                toast({
+                    title: "Berhasil!",
+                    description: `Soal telah berhasil ${isEditMode ? 'diperbarui' : 'dibuat'}.`,
+                    variant: "success",
+                });
+                // Panggil props onSuccess untuk menutup modal
+                onSuccess?.();
+            },
+            onError: (errors) => {
+                // Tampilkan notifikasi error
+                toast({
+                    variant: "destructive",
+                    title: "Terjadi Kesalahan!",
+                    description: "Data soal tidak dapat disimpan. Silakan periksa kembali semua isian Anda.",
+                });
+                console.error("Submit GAGAL dengan error:", errors);
+            },
+        };
+
         if (isEditMode) {
-            put(route('dosen.bank-soal.update', soal.id));
+            put(route('dosen.bank-soal.update', soal.id), options);
         } else {
-            post(route('dosen.bank-soal.store'));
+            post(route('dosen.bank-soal.store'), options);
         }
     };
 
@@ -165,7 +192,7 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
                             {errors.mata_kuliah_id && (
                                 <Typography color="red" className="mt-1 text-sm">
                                     {errors.mata_kuliah_id}
-                                 </Typography>
+                                </Typography>
                             )}
                         </div>
                         <div>
