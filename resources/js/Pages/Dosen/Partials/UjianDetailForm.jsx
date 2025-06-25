@@ -10,12 +10,14 @@ import { Checkbox } from "@/Components/ui/checkbox";
 import { Textarea } from "@/Components/ui/textarea";
 import { Label } from '@/Components/ui/label';
 import { DateTimePicker } from '@/Components/ui/DateTimePicker';
+import { RadioGroup, RadioGroupItem } from "@/Components/ui/radio-group";
 
 // TAMBAHKAN FUNGSI HELPER INI
 const toLocalISOString = (date) => {
     if (!date) return '';
-    const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
-    const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+    const d = new Date(date);
+    const tzoffset = d.getTimezoneOffset() * 60000; //offset in milliseconds
+    const localISOTime = (new Date(d - tzoffset)).toISOString().slice(0, 16);
     return localISOTime;
 };
 
@@ -29,8 +31,8 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
             mata_kuliah_id: ujian?.mata_kuliah_id || defaultMataKuliahId,
             durasi: ujian?.durasi || 60,
             kkm: ujian?.kkm || 75,
-            tanggal_mulai: ujian?.tanggal_mulai?.substring(0, 16) || '',
-            tanggal_selesai: ujian?.tanggal_selesai?.substring(0, 16) || '',
+            tanggal_mulai: ujian?.tanggal_mulai ? toLocalISOString(new Date(ujian.tanggal_mulai)) : '',
+            tanggal_selesai: ujian?.tanggal_selesai ? toLocalISOString(new Date(ujian.tanggal_selesai)) : '',
             acak_soal: ujian?.acak_soal ?? true,
             acak_opsi: ujian?.acak_opsi ?? true,
             tampilkan_hasil: ujian?.tampilkan_hasil ?? true,
@@ -124,6 +126,25 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                 </div>
             </div>
 
+            <div>
+                <Label>Status Ujian</Label>
+                <RadioGroup
+                    value={data.status}
+                    onValueChange={(value) => setData('status', value)}
+                    className="mt-2 flex space-x-4"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="draft" id="status-draft" />
+                        <Label htmlFor="status-draft">Simpan sebagai Draft</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="published" id="status-published" />
+                        <Label htmlFor="status-published">Publikasikan Ujian</Label>
+                    </div>
+                </RadioGroup>
+                {errors.status && <p className="text-sm text-red-600 mt-1">{errors.status}</p>}
+            </div>
+
             <div className="flex space-x-6 items-center">
                 <div className="flex items-center space-x-2">
                     <Checkbox id="acak_soal" checked={data.acak_soal} onCheckedChange={val => setData('acak_soal', val)} />
@@ -134,9 +155,11 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                     <Label htmlFor="acak_opsi">Acak Opsi?</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                    <Checkbox id="tampilkan_hasil" checked={data.tampilkan_hasil} onCheckedChange={val => setData('tampilkan_hasil', val)} />
-                    <Label htmlFor="tampilkan_hasil">Tampilkan Hasil?</Label>
+                    {/* Checkbox ini sekarang mengontrol visibilitas_hasil */}
+                    <Checkbox id="visibilitas_hasil" checked={data.visibilitas_hasil} onCheckedChange={val => setData('visibilitas_hasil', val)} />
+                    <Label htmlFor="visibilitas_hasil">Izinkan mahasiswa ulas hasil?</Label>
                 </div>
+                {errors.visibilitas_hasil && <p className="text-sm text-red-600 mt-1">{errors.visibilitas_hasil}</p>}
             </div>
 
             <div className="flex justify-end pt-4">

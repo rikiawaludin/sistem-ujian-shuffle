@@ -89,7 +89,7 @@ class DashboardController extends Controller
 
         // 2. Ambil semua ujian yang relevan (yang belum berakhir)
         $now = Carbon::now();
-        $ujianTersedia = Ujian::where('status_publikasi', 'published')
+        $ujianTersedia = Ujian::where('status', 'published')
                             ->where('tanggal_selesai', '>=', $now)
                             ->with('mataKuliah:id,nama')
                             ->with(['pengerjaanUjian' => function ($query) {

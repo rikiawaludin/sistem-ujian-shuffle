@@ -105,8 +105,8 @@ class DosenDashboardController extends Controller
             ->withCount([
                 'soal',
                 'ujian as active_exams_count' => function ($query) {
-                    $query->whereIn('status_publikasi', ['published', 'scheduled'])
-                          ->whereDate('tanggal_selesai', '>=', now());
+                    $query->where('status', 'published') // Gunakan 'status' bukan 'status_publikasi'
+                        ->whereDate('tanggal_selesai', '>=', now());
                 },
                 'pengerjaanUjian as students_count' => function ($query) {
                     $query->select(DB::raw('count(distinct user_id)'));
@@ -137,7 +137,7 @@ class DosenDashboardController extends Controller
 
         // Hitung total ujian aktif yang dibuat oleh dosen ini
         $totalUjianAktif = Ujian::where('dosen_pembuat_id', $dosenId)
-            ->whereIn('status_publikasi', ['published', 'scheduled'])
+            ->where('status', 'published') // Gunakan 'status' bukan 'status_publikasi'
             ->whereDate('tanggal_selesai', '>=', now())
             ->count();
 

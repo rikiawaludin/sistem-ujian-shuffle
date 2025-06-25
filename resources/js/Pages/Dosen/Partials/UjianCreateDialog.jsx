@@ -25,7 +25,8 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
         tanggal_selesai: '',
         acak_soal: true,
         acak_opsi: true,
-        tampilkan_hasil: true,
+        status: 'draft', // Set default ke 'draft'
+        visibilitas_hasil: true,
 
         // Data dari UjianAturanForm
         aturan_soal: {

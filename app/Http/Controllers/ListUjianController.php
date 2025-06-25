@@ -72,42 +72,62 @@ class ListUjianController extends Controller
         // =================================================================
 
         $mataKuliah = MataKuliah::findOrFail($id_mata_kuliah);
+        $now = Carbon::now(config('app.timezone')); // Gunakan timezone dari config
+        $userId = Auth::id();
 
+        // 1. Query yang sudah dioptimalkan untuk mengambil semua data yang dibutuhkan
         $ujianTersedia = Ujian::where('mata_kuliah_id', $id_mata_kuliah)
-                            ->where('status_publikasi', 'published')
-                            ->withSum('aturan', 'jumlah_soal') 
-                            ->get();
+            ->where(function ($query) {
+                // Kondisi 1: Tampilkan ujian yang statusnya 'published'
+                $query->where('status', 'published')
+                      // Kondisi 2: ATAU tampilkan ujian yang sudah 'archived' TAPI hasilnya boleh dilihat
+                      ->orWhere(function ($subQuery) {
+                          $subQuery->where('status', 'archived')
+                                   ->where('visibilitas_hasil', true);
+                      });
+            })
+            // Eager load pengerjaan terakhir oleh user ini untuk menghindari N+1 query
+            ->with(['pengerjaanUjian' => function ($query) use ($userId) {
+                $query->where('user_id', $userId)->latest('waktu_mulai');
+            }])
+            ->withSum('aturan', 'jumlah_soal')
+            ->orderBy('tanggal_mulai', 'desc')
+            ->get();
 
-        $now = Carbon::now();
-        
-        // Mengambil ID pengguna yang sudah terotentikasi untuk query pengerjaan ujian
-        $userId = Auth::id(); 
-        $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now, $userId) {
-            $pengerjaanTerakhir = PengerjaanUjian::where('ujian_id', $ujian->id)
-                                    ->where('user_id', $userId) // Menggunakan $userId yang sudah pasti ada
-                                    ->latest('waktu_mulai')
-                                    ->first();
+        // 2. Proses mapping data dengan logika status baru
+        $daftarUjian = $ujianTersedia->map(function ($ujian) use ($now) {
+            // Ambil data pengerjaan yang sudah di-load, jauh lebih efisien
+            $pengerjaanTerakhir = $ujian->pengerjaanUjian->first();
 
             $statusUjian = "Tidak Tersedia";
+            $isFinished = $now->isAfter($ujian->tanggal_selesai);
 
-            if ($now->between($ujian->tanggal_mulai, $ujian->tanggal_selesai)) {
+            if ($isFinished) {
+                // Jika waktu ujian sudah selesai
+                if ($pengerjaanTerakhir && in_array($pengerjaanTerakhir->status_pengerjaan, ['selesai', 'selesai_waktu_habis'])) {
+                    $statusUjian = $ujian->visibilitas_hasil ? "Selesai" : "Selesai (Hasil Ditutup)";
+                } else {
+                    $statusUjian = "Waktu Habis";
+                }
+            } elseif ($now->between($ujian->tanggal_mulai, $ujian->tanggal_selesai)) {
+                // Jika waktu ujian sedang berlangsung
                 if (!$pengerjaanTerakhir) {
                     $statusUjian = "Belum Dikerjakan";
                 } elseif ($pengerjaanTerakhir->status_pengerjaan === 'sedang_dikerjakan') {
                     $statusUjian = "Sedang Dikerjakan";
-                } elseif ($pengerjaanTerakhir->status_pengerjaan === 'selesai') {
-                    $statusUjian = "Selesai";
+                } elseif (in_array($pengerjaanTerakhir->status_pengerjaan, ['selesai', 'selesai_waktu_habis'])) {
+                    $statusUjian = $ujian->visibilitas_hasil ? "Selesai" : "Selesai (Hasil Ditutup)";
                 }
-            } elseif ($now->lt($ujian->tanggal_mulai)) {
+            } elseif ($now->isBefore($ujian->tanggal_mulai)) {
+                // Jika waktu ujian belum dimulai
                 $statusUjian = "Akan Datang";
-            } elseif ($now->gt($ujian->tanggal_selesai)) {
-                if ($pengerjaanTerakhir && $pengerjaanTerakhir->status_pengerjaan === 'selesai') {
-                    $statusUjian = "Selesai";
-                } else {
-                    $statusUjian = "Waktu Habis";
-                }
             }
             
+            // Filter tambahan: Jangan tampilkan ujian 'archived' yang belum pernah dikerjakan mahasiswa
+            if ($ujian->status === 'archived' && !$pengerjaanTerakhir) {
+                return null;
+            }
+
             return [
                 'id' => $ujian->id,
                 'nama' => $ujian->judul_ujian,
@@ -120,29 +140,29 @@ class ListUjianController extends Controller
                 'skor' => $pengerjaanTerakhir->skor_total ?? null,
                 'id_pengerjaan_terakhir' => $pengerjaanTerakhir->id ?? null,
                 'tanggal_mulai_raw' => $ujian->tanggal_mulai,
+                'jenis_ujian' => $ujian->jenis_ujian,
+                'visibilitas_hasil' => $ujian->visibilitas_hasil,
             ];
-        });
+        })->filter();
 
+        // 3. Aturan sorting dengan status baru
         $statusOrder = [
-            "Sedang Dikerjakan" => 1, // Prioritas tertinggi
-            "Belum Dikerjakan" => 2, // Prioritas kedua
-            "Akan Datang"      => 3, // Dan seterusnya
-            "Selesai"          => 4,
-            "Waktu Habis"      => 5,
-            "Tidak Tersedia"   => 6,
+            "Sedang Dikerjakan" => 1,
+            "Belum Dikerjakan" => 2,
+            "Akan Datang" => 3,
+            "Selesai" => 4,
+            "Selesai (Hasil Ditutup)" => 5,
+            "Waktu Habis" => 6,
+            "Tidak Tersedia" => 99,
         ];
 
         $sortedDaftarUjian = $daftarUjian->sort(function ($a, $b) use ($statusOrder) {
-            // Ambil nilai prioritas untuk dibandingkan
             $priorityA = $statusOrder[$a['status']] ?? 99;
             $priorityB = $statusOrder[$b['status']] ?? 99;
 
-            // 1. Jika prioritas statusnya berbeda, urutkan berdasarkan status
             if ($priorityA !== $priorityB) {
-                return $priorityA <=> $priorityB; // `a` banding `b` untuk urutan ascending (1, 2, 3, ...)
+                return $priorityA <=> $priorityB;
             }
-
-            // 2. Jika prioritas statusnya SAMA, urutkan berdasarkan tanggal (terbaru di atas)
             return $b['tanggal_mulai_raw'] <=> $a['tanggal_mulai_raw'];
         });
 

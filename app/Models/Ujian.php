@@ -25,7 +25,8 @@ class Ujian extends Model
         'acak_soal',
         'acak_opsi',
         'tampilkan_hasil',
-        'status_publikasi',
+        'status',
+        'visibilitas_hasil',
     ];
 
     protected $casts = [
@@ -42,33 +43,39 @@ class Ujian extends Model
 
     public function getStatusTerkiniAttribute(): string
     {
-        // Pastikan status_publikasi bukan 'published', jangan tampilkan status dinamis
-        // Ini adalah fallback jika Anda ingin menambahkan status seperti 'draft' di masa depan
-        if ($this->status_publikasi !== 'published') {
-            return ucfirst($this->status_publikasi);
-        }
-
         $now = Carbon::now(config('app.timezone'));
         $mulai = $this->tanggal_mulai;
         $selesai = $this->tanggal_selesai;
 
-        // Prioritas 1: Cek apakah waktu ujian sudah lewat.
-        if ($selesai && $now->isAfter($selesai)) {
+        // Jika ujian belum di-publish, statusnya selalu Draft.
+        if ($this->status === 'draft') {
+            return 'Draft';
+        }
+
+        // Cek apakah waktu ujian sudah lewat
+        $isFinished = $selesai && $now->isAfter($selesai);
+
+        if ($isFinished) {
+            // Jika sudah selesai DAN diarsipkan, cek visibilitas hasil
+            if ($this->status === 'archived' && !$this->visibilitas_hasil) {
+                // Tidak seharusnya terlihat oleh mahasiswa, tapi sebagai info untuk dosen
+                return 'Diarsipkan (Tersembunyi)';
+            }
             return 'Selesai';
         }
 
-        // Prioritas 2: Cek apakah ujian sedang berlangsung.
-        if ($mulai && $selesai && $now->between($mulai, $selesai)) {
+        // Cek apakah ujian sedang berlangsung (hanya jika statusnya published)
+        if ($this->status === 'published' && $mulai && $selesai && $now->between($mulai, $selesai)) {
             return 'Berlangsung';
         }
         
-        // Prioritas 3: Cek apakah ujian dijadwalkan untuk masa depan.
-        if ($mulai && $now->isBefore($mulai)) {
+        // Cek apakah ujian dijadwalkan untuk masa depan (hanya jika statusnya published)
+        if ($this->status === 'published' && $mulai && $now->isBefore($mulai)) {
             return 'Terjadwal';
         }
 
-        // Fallback jika tidak ada kondisi waktu yang cocok (seharusnya jarang terjadi)
-        return 'Published';
+        // Fallback untuk status lainnya, misal 'archived' tapi belum lewat waktu (kasus aneh)
+        return ucfirst($this->status);
     }
 
     /**

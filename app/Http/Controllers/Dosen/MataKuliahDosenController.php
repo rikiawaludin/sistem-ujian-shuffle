@@ -37,9 +37,9 @@ class MataKuliahDosenController extends Controller
             ->groupBy('tipe_soal')
             ->map(fn ($group) => $group->count());
 
-        // 2. Ringkasan Ujian per Status Publikasi
+        // 2. Ringkasan Ujian per Status
         $ujianSummary = $mata_kuliah->ujian
-            ->groupBy('status_publikasi')
+            ->groupBy('status')
             ->map(fn ($group) => $group->count());
         
         $bankSoalSummaryByDifficulty = $mata_kuliah->soal

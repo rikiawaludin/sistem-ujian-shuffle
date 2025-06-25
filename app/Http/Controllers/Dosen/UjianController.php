@@ -78,7 +78,9 @@ class UjianController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'acak_soal' => 'required|boolean',
             'acak_opsi' => 'required|boolean',
-            'tampilkan_hasil' => 'required|boolean',
+            // 'tampilkan_hasil' => 'required|boolean',
+            'status' => ['required', \Illuminate\Validation\Rule::in(['draft', 'published'])],
+            'visibilitas_hasil' => 'required|boolean',
             'aturan_soal' => 'required|array',
             'aturan_soal.mudah' => 'required|integer|min:0',
             'aturan_soal.sedang' => 'required|integer|min:0',
@@ -101,7 +103,7 @@ class UjianController extends Controller
 
             // 2. Tambahkan data default ke detail ujian
             $ujianDetails['dosen_pembuat_id'] = Auth::id();
-            $ujianDetails['status_publikasi'] = 'published';
+            // $ujianDetails['status_publikasi'] = 'published';
             $ujianDetails['jenis_ujian'] = 'kuis';
 
             // 3. Buat record Ujian
@@ -197,7 +199,9 @@ class UjianController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'acak_soal' => 'required|boolean',
             'acak_opsi' => 'required|boolean',
-            'tampilkan_hasil' => 'required|boolean',
+            // 'tampilkan_hasil' => 'required|boolean',
+            'status' => ['required', \Illuminate\Validation\Rule::in(['draft', 'published', 'archived'])], // Tambahkan 'archived' jika dosen bisa mengarsip manual
+            'visibilitas_hasil' => 'required|boolean',
             // mata_kuliah_id tidak perlu divalidasi saat update, karena tidak boleh diubah
         ]);
 
