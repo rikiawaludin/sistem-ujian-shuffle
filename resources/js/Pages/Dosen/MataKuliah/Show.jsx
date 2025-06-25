@@ -157,9 +157,27 @@ export default function Show() {
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-sm">
+                                            <span>Pilihan Jawaban Ganda</span>
+                                            <span className="font-medium">
+                                                {soalSummary['pilihan_jawaban_ganda'] || 0}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
                                             <span>Benar Salah</span>
                                             <span className="font-medium">
                                                 {soalSummary['benar_salah'] || 0}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span>Isian Singkat</span>
+                                            <span className="font-medium">
+                                                {soalSummary['isian_singkat'] || 0}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span>Menjodohkan</span>
+                                            <span className="font-medium">
+                                                {soalSummary['menjodohkan'] || 0}
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-sm">
