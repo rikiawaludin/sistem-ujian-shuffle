@@ -53,6 +53,7 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
                 });
                 onOpenChange(false);
                 reset();
+                setStep(1);
             },
             onError: (errors) => {
                 toast({
@@ -70,6 +71,11 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
 
     const handleClose = () => {
         onOpenChange(false);
+        // Beri sedikit delay agar tidak terlihat aneh saat transisi tutup
+        setTimeout(() => {
+            reset();
+            setStep(1);
+        }, 300);
     }
 
     return (

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Ujian extends Model
 {
@@ -32,9 +33,43 @@ class Ujian extends Model
         'tanggal_selesai' => 'datetime',
         'acak_soal' => 'boolean',
         'acak_opsi' => 'boolean',
+        'tampilkan_hasil' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    protected $appends = ['status_terkini'];
+
+    public function getStatusTerkiniAttribute(): string
+    {
+        // Pastikan status_publikasi bukan 'published', jangan tampilkan status dinamis
+        // Ini adalah fallback jika Anda ingin menambahkan status seperti 'draft' di masa depan
+        if ($this->status_publikasi !== 'published') {
+            return ucfirst($this->status_publikasi);
+        }
+
+        $now = Carbon::now(config('app.timezone'));
+        $mulai = $this->tanggal_mulai;
+        $selesai = $this->tanggal_selesai;
+
+        // Prioritas 1: Cek apakah waktu ujian sudah lewat.
+        if ($selesai && $now->isAfter($selesai)) {
+            return 'Selesai';
+        }
+
+        // Prioritas 2: Cek apakah ujian sedang berlangsung.
+        if ($mulai && $selesai && $now->between($mulai, $selesai)) {
+            return 'Berlangsung';
+        }
+        
+        // Prioritas 3: Cek apakah ujian dijadwalkan untuk masa depan.
+        if ($mulai && $now->isBefore($mulai)) {
+            return 'Terjadwal';
+        }
+
+        // Fallback jika tidak ada kondisi waktu yang cocok (seharusnya jarang terjadi)
+        return 'Published';
+    }
 
     /**
      * Aturan pemilihan soal untuk ujian ini.

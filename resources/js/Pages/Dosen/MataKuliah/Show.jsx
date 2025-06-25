@@ -17,7 +17,7 @@ import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
 import UjianAturanDialog from '@/Pages/Dosen/Partials/UjianAturanDialog';
-import UjianCreateDialog from '@/Pages/Dosen/Partials/UjianCreateDialog'; 
+import UjianCreateDialog from '@/Pages/Dosen/Partials/UjianCreateDialog';
 
 // Komponen Form Soal yang akan kita buat
 import BankSoalForm from '@/Pages/Dosen/Partials/BankSoalForm';
@@ -85,6 +85,13 @@ export default function Show() {
     // Periksa apakah user prop ada sebelum mencoba mengaksesnya
     const { auth } = usePage().props;
     const user = auth ? auth.user : null;
+
+    const statusStyles = {
+        'Berlangsung': 'bg-green-100 text-green-800 border-green-200',
+        'Terjadwal': 'bg-blue-100 text-blue-800 border-blue-200',
+        'Selesai': 'bg-gray-100 text-gray-800 border-gray-200',
+        'Archived': 'bg-gray-100 text-gray-800 border-gray-200', // fallback
+    };
 
     return (
         <div>
@@ -331,7 +338,11 @@ export default function Show() {
                                             <div className="flex-1 mr-4">
                                                 <div className="flex items-center gap-3 mb-1">
                                                     <h4 className="font-semibold text-gray-800">{ujian.judul_ujian}</h4>
-                                                    <Badge variant="secondary" className="capitalize">{ujian.status_publikasi}</Badge>
+                                                    <Badge
+                                                        className={`capitalize ${statusStyles[ujian.status_terkini] || 'bg-yellow-100 text-yellow-800'}`}
+                                                    >
+                                                        {ujian.status_terkini}
+                                                    </Badge>
                                                 </div>
                                                 <p className="text-sm text-gray-500">
                                                     Durasi: {ujian.durasi} menit | KKM: {ujian.kkm || 'N/A'}
