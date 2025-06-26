@@ -104,15 +104,14 @@ class DosenDashboardController extends Controller
         $localCourseData = MataKuliah::whereIn('external_id', $mataKuliahExternalIds)
             ->withCount([
                 'soal',
-                'ujian as active_exams_count' => function ($query) {
-                    $query->where('status', 'published') // Gunakan 'status' bukan 'status_publikasi'
-                        ->whereDate('tanggal_selesai', '>=', now());
-                },
+                // Hapus kondisi 'where' untuk menghitung semua ujian.
+                // Eloquent akan secara otomatis membuat properti 'ujian_count'
+                'ujian', 
                 'pengerjaanUjian as students_count' => function ($query) {
                     $query->select(DB::raw('count(distinct user_id)'));
                 }
             ])
-            ->get(['id', 'external_id', 'soal_count']) // Hanya ambil kolom yang dibutuhkan
+            ->get(['id', 'external_id', 'soal_count', 'ujian_count']) // Ambil juga 'ujian_count'
             ->keyBy('external_id');
         
         // 4. Gabungkan data API (sumber utama) dengan data lokal (data tambahan).
@@ -121,7 +120,7 @@ class DosenDashboardController extends Controller
             
             // Menggabungkan data. Data dari API adalah basisnya.
             $apiCourse['id'] = $localData->id ?? null; // ID lokal penting untuk link
-            $apiCourse['active_exams_count'] = $localData->active_exams_count ?? 0;
+            $apiCourse['ujian_count'] = $localData->ujian_count ?? 0;
             $apiCourse['students_count'] = $localData->students_count ?? 0;
             $apiCourse['soal_count'] = $localData->soal_count ?? 0;
             
@@ -135,23 +134,13 @@ class DosenDashboardController extends Controller
         // Hitung total bank soal yang dibuat oleh dosen ini
         $totalBankSoal = Soal::where('dosen_pembuat_id', $dosenId)->count();
 
-        // Hitung total ujian aktif yang dibuat oleh dosen ini
-        $totalUjianAktif = Ujian::where('dosen_pembuat_id', $dosenId)
-            ->where('status', 'published') // Gunakan 'status' bukan 'status_publikasi'
-            ->whereDate('tanggal_selesai', '>=', now())
-            ->count();
+        $totalUjianKeseluruhan = Ujian::where('dosen_pembuat_id', $dosenId)->count();
 
         $stats = [
-            // Total mata kuliah tetap dihitung dari data API yang unik.
             'total_courses' => $dashboardData->count(),
-            
-            // Total mahasiswa di-nol-kan sesuai permintaan.
             'total_students' => $dashboardData->sum('students_count'),
-            
-            // Menggunakan hasil perhitungan total ujian aktif.
-            'active_exams' => $totalUjianAktif,
-            
-            // Menggunakan hasil perhitungan total bank soal.
+            // Gunakan nama key dan value yang baru
+            'total_exams' => $totalUjianKeseluruhan,
             'total_questions' => $totalBankSoal,
         ];
 

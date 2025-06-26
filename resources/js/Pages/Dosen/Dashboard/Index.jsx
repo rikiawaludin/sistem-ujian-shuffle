@@ -49,8 +49,8 @@ const CourseCard = ({ course }) => {
                         <div className="flex items-center justify-center mb-1">
                             <FileText className="h-4 w-4 text-green-600" />
                         </div>
-                        <p className="text-xl font-bold text-green-600">{course.active_exams_count}</p>
-                        <p className="text-xs text-gray-600">Ujian Aktif</p>
+                        <p className="text-xl font-bold text-green-600">{course.ujian_count}</p>
+                        <p className="text-xs text-gray-600">Total Ujian</p>
                     </div>
                     <div className="bg-purple-50 p-3 rounded-lg">
                         <div className="flex items-center justify-center mb-1">
@@ -103,7 +103,7 @@ export default function Index() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <StatCard title="Total Mata Kuliah" value={stats.total_courses} icon={BookOpen} iconColor="text-blue-600" />
                 <StatCard title="Total Mahasiswa" value={stats.total_students} icon={Users} iconColor="text-green-600" />
-                <StatCard title="Ujian Aktif" value={stats.active_exams} icon={FileText} iconColor="text-orange-600" />
+                <StatCard title="Total Ujian" value={stats.total_exams} icon={FileText} iconColor="text-orange-600" />
                 <StatCard title="Total Bank Soal" value={stats.total_questions} icon={BarChart3} iconColor="text-purple-600" />
             </div>
 

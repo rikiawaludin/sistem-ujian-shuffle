@@ -90,7 +90,9 @@ export default function Show() {
         'Berlangsung': 'bg-green-100 text-green-800 border-green-200',
         'Terjadwal': 'bg-blue-100 text-blue-800 border-blue-200',
         'Selesai': 'bg-gray-100 text-gray-800 border-gray-200',
-        'Archived': 'bg-gray-100 text-gray-800 border-gray-200', // fallback
+        'Draft': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        // Fallback jika ada status lain
+        'Diarsipkan (Tersembunyi)': 'bg-gray-100 text-gray-800 border-gray-200',
     };
 
     return (
@@ -212,21 +214,30 @@ export default function Show() {
                                     <p className="text-sm text-gray-600">Total Ujian</p>
                                     <div className="mt-4 space-y-2">
                                         <div className="flex justify-between text-sm">
-                                            <span>Aktif</span>
+                                            <span>Berlangsung</span>
                                             <span className="font-medium text-green-600">
-                                                {ujianSummary['published'] || 0}
+                                                {ujianSummary['Berlangsung'] || 0}
                                             </span>
                                         </div>
+                                        {/* Ganti key 'scheduled' menjadi 'Terjadwal' */}
                                         <div className="flex justify-between text-sm">
                                             <span>Terjadwal</span>
                                             <span className="font-medium text-blue-600">
-                                                {ujianSummary['scheduled'] || 0}
+                                                {ujianSummary['Terjadwal'] || 0}
+                                            </span>
+                                        </div>
+                                        {/* Ganti key 'archived' menjadi 'Selesai' dan 'Draft' */}
+                                        <div className="flex justify-between text-sm">
+                                            <span>Selesai</span>
+                                            <span className="font-medium text-gray-600">
+                                                {/* Gabungkan Selesai dan status tersembunyi jika ada */}
+                                                {(ujianSummary['Selesai'] || 0) + (ujianSummary['Diarsipkan (Tersembunyi)'] || 0)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-sm">
-                                            <span>Selesai/Arsip</span>
-                                            <span className="font-medium text-gray-600">
-                                                {ujianSummary['archived'] || 0}
+                                            <span>Draft</span>
+                                            <span className="font-medium text-yellow-800">
+                                                {ujianSummary['Draft'] || 0}
                                             </span>
                                         </div>
                                     </div>
