@@ -12,6 +12,17 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/Components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/Components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2 } from 'lucide-react';
 import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
@@ -31,6 +42,8 @@ const ListItem = ({ children }) => (
 export default function Show() {
     const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions, bankSoalSummaryByDifficulty = {} } = usePage().props;
 
+    const { toast } = useToast();
+
     // State untuk mengontrol modal form soal
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingSoal, setEditingSoal] = useState(null); // untuk menyimpan data soal yang akan diedit
@@ -46,11 +59,35 @@ export default function Show() {
     };
 
     const handleDeleteSoal = (soal) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus soal: "${soal.pertanyaan.substring(0, 50)}..."?`)) {
-            router.delete(route('dosen.bank-soal.destroy', soal.id), {
-                preserveScroll: true, // Agar halaman tidak scroll ke atas setelah aksi
-            });
-        }
+        setSoalToDelete(soal);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const confirmDeleteSoal = () => {
+        if (!soalToDelete) return;
+
+        router.delete(route('dosen.bank-soal.destroy', soalToDelete.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast({
+                    title: "Berhasil!",
+                    description: "Soal telah berhasil dihapus dari bank soal.",
+                    variant: "success",
+                });
+            },
+            onError: () => {
+                toast({
+                    variant: "destructive",
+                    title: "Gagal!",
+                    description: "Soal tidak dapat dihapus. Silakan coba lagi.",
+                });
+            },
+            onFinish: () => {
+                // Reset state dan tutup dialog setelah selesai
+                setSoalToDelete(null);
+                setIsDeleteConfirmOpen(false);
+            }
+        });
     };
 
     const difficultyStyles = {
@@ -64,6 +101,10 @@ export default function Show() {
     const [isEditUjianOpen, setIsEditUjianOpen] = useState(false); // State untuk modal edit detail
     const [isAturanFormOpen, setIsAturanFormOpen] = useState(false);
     const [selectedUjian, setSelectedUjian] = useState(null);
+
+    // State untuk konfirmasi hapus
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [soalToDelete, setSoalToDelete] = useState(null);
 
     // HANDLER BARU UNTUK UJIAN
     // Handler untuk membuka wizard create
@@ -437,6 +478,28 @@ export default function Show() {
                         onSuccess={() => setIsAturanFormOpen(false)}
                     />
                 )}
+
+                <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Apakah Anda benar-benar yakin?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tindakan ini akan menghapus soal secara permanen dan tidak dapat dipulihkan.
+                                <div className="mt-2 font-medium text-gray-800">Soal yang akan dihapus:</div>
+                                <div
+                                    className="mt-1 p-2 bg-gray-100 rounded-md text-sm text-gray-700 italic line-clamp-3 border"
+                                    dangerouslySetInnerHTML={{ __html: soalToDelete?.pertanyaan }}
+                                />
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Batal</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDeleteSoal} className="bg-red-600 hover:bg-red-700">
+                                Ya, Hapus Soal
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
             </div>
         </div>
