@@ -35,7 +35,8 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
             tanggal_selesai: ujian?.tanggal_selesai ? toLocalISOString(new Date(ujian.tanggal_selesai)) : '',
             acak_soal: ujian?.acak_soal ?? true,
             acak_opsi: ujian?.acak_opsi ?? true,
-            tampilkan_hasil: ujian?.tampilkan_hasil ?? true,
+            status: ujian?.status || 'draft',
+            visibilitas_hasil: ujian?.visibilitas_hasil ?? true,
         }
     );
 
@@ -126,24 +127,26 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                 </div>
             </div>
 
-            <div>
-                <Label>Status Ujian</Label>
-                <RadioGroup
-                    value={data.status}
-                    onValueChange={(value) => setData('status', value)}
-                    className="mt-2 flex space-x-4"
-                >
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="draft" id="status-draft" />
-                        <Label htmlFor="status-draft">Simpan sebagai Draft</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="published" id="status-published" />
-                        <Label htmlFor="status-published">Publikasikan Ujian</Label>
-                    </div>
-                </RadioGroup>
-                {errors.status && <p className="text-sm text-red-600 mt-1">{errors.status}</p>}
-            </div>
+            {!isWizardMode && (
+                <div>
+                    <Label>Status Ujian</Label>
+                    <RadioGroup
+                        value={data.status}
+                        onValueChange={(value) => setData('status', value)}
+                        className="mt-2 flex space-x-4"
+                    >
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="draft" id="status-draft" />
+                            <Label htmlFor="status-draft">Simpan sebagai Draft</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="published" id="status-published" />
+                            <Label htmlFor="status-published">Publikasikan Ujian</Label>
+                        </div>
+                    </RadioGroup>
+                    {errors.status && <p className="text-sm text-red-600 mt-1">{errors.status}</p>}
+                </div>
+            )}
 
             <div className="flex space-x-6 items-center">
                 <div className="flex items-center space-x-2">
@@ -159,7 +162,6 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                     <Checkbox id="visibilitas_hasil" checked={data.visibilitas_hasil} onCheckedChange={val => setData('visibilitas_hasil', val)} />
                     <Label htmlFor="visibilitas_hasil">Izinkan mahasiswa ulas hasil?</Label>
                 </div>
-                {errors.visibilitas_hasil && <p className="text-sm text-red-600 mt-1">{errors.visibilitas_hasil}</p>}
             </div>
 
             <div className="flex justify-end pt-4">

@@ -80,7 +80,7 @@ class UjianController extends Controller
             'acak_opsi' => 'required|boolean',
             // 'tampilkan_hasil' => 'required|boolean',
             'status' => ['required', \Illuminate\Validation\Rule::in(['draft', 'published'])],
-            'visibilitas_hasil' => 'required|boolean',
+            'visibilitas_hasil' => 'boolean',
             'aturan_soal' => 'required|array',
             'aturan_soal.mudah' => 'required|integer|min:0',
             'aturan_soal.sedang' => 'required|integer|min:0',
@@ -201,7 +201,7 @@ class UjianController extends Controller
             'acak_opsi' => 'required|boolean',
             // 'tampilkan_hasil' => 'required|boolean',
             'status' => ['required', \Illuminate\Validation\Rule::in(['draft', 'published', 'archived'])], // Tambahkan 'archived' jika dosen bisa mengarsip manual
-            'visibilitas_hasil' => 'required|boolean',
+            'visibilitas_hasil' => 'boolean',
             // mata_kuliah_id tidak perlu divalidasi saat update, karena tidak boleh diubah
         ]);
 

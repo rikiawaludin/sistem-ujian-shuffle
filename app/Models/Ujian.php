@@ -34,7 +34,7 @@ class Ujian extends Model
         'tanggal_selesai' => 'datetime',
         'acak_soal' => 'boolean',
         'acak_opsi' => 'boolean',
-        'tampilkan_hasil' => 'boolean',
+        'visibilitas_hasil' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
