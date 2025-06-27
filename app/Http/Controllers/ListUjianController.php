@@ -273,18 +273,31 @@ class ListUjianController extends Controller
             $jawabanDataAttempt = $jawabanUserPerSoalMap->get($soalMasterUjian->id);
             
             // 1. Decode jawaban user dari format JSON
-            $jawabanPenggunaDecoded = null;
-            if ($jawabanDataAttempt && $jawabanDataAttempt->jawaban_user) {
-                $decoded = json_decode($jawabanDataAttempt->jawaban_user, true);
-                // Jika hasil decode tidak null, gunakan itu. Ini menangani kasus "null" atau string kosong.
-                $jawabanPenggunaDecoded = ($decoded !== null && $decoded !== '') ? $decoded : null;
-            }
+            $jawabanPenggunaFinal = null;
+            if ($jawabanDataAttempt && $jawabanDataAttempt->jawaban_user !== null) {
+                $tipeSoal = $soalMasterUjian->tipe_soal;
+                $jawabanDb = $jawabanDataAttempt->jawaban_user;
 
-            // 2. Untuk soal PG/BS, jika jawaban berupa array dengan satu elemen, ambil elemen tersebut.
-            if (is_array($jawabanPenggunaDecoded) && count($jawabanPenggunaDecoded) === 1) {
-                $jawabanPenggunaFinal = $jawabanPenggunaDecoded[0];
-            } else {
-                $jawabanPenggunaFinal = $jawabanPenggunaDecoded;
+                // Untuk tipe soal ini, jawaban adalah string biasa, bukan JSON.
+                if (in_array($tipeSoal, ['isian_singkat', 'menjodohkan', 'pilihan_jawaban_ganda', 'esai'])) {
+                    $jawabanPenggunaFinal = $jawabanDb;
+                } else {
+                    // Untuk tipe lain (pilihan_ganda, benar_salah), coba decode JSON.
+                    // Ini untuk menangani jika jawaban disimpan sebagai JSON array (misal: ["18"])
+                    // atau sebagai string biasa (misal: "18").
+                    $decoded = json_decode($jawabanDb, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        // Jika valid JSON dan merupakan array dengan 1 elemen, ambil isinya.
+                        if (is_array($decoded) && count($decoded) === 1) {
+                            $jawabanPenggunaFinal = $decoded[0];
+                        } else {
+                            $jawabanPenggunaFinal = $decoded;
+                        }
+                    } else {
+                        // Jika bukan JSON, berarti itu string biasa (ID jawaban).
+                        $jawabanPenggunaFinal = $jawabanDb;
+                    }
+                }
             }
 
             return [

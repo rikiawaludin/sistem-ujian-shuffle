@@ -70,23 +70,25 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
                     <div className="space-y-2 mb-4">
                         <Typography variant="small" className="font-semibold text-blue-gray-700">Opsi Jawaban (Bisa lebih dari satu):</Typography>
                         {opsiJawaban.map((opsi, index) => {
-                            // jawabanPengguna adalah string "id1,id2", ubah jadi array
-                            const jawabanUserArr = typeof jawabanPengguna === 'string' ? jawabanPengguna.split(',') : [];
+                            const jawabanUserArr = typeof jawabanPengguna === 'string' ? jawabanPengguna.split(',').map(s => s.trim()) : [];
                             const isJawabanUser = jawabanUserArr.includes(String(opsi.id));
                             const isKunci = kunciJawabanIds.includes(String(opsi.id));
 
-                            let chip = null;
-                            if (isKunci && isJawabanUser) chip = <Chip icon={<CheckIcon />} color="green" variant="ghost" value="Pilihan Benar" size="sm" />;
-                            else if (!isKunci && isJawabanUser) chip = <Chip icon={<XMarkIcon />} color="red" variant="ghost" value="Pilihan Salah" size="sm" />;
-                            else if (isKunci && !isJawabanUser) chip = <Chip icon={<CheckIcon />} color="green" variant="outlined" value="Kunci Jawaban" size="sm" />;
+                            let bgColor = "bg-blue-gray-50/50"; // Default
+                            if (isKunci && isJawabanUser) bgColor = "bg-green-50"; // Pilihan benar
+                            else if (!isKunci && isJawabanUser) bgColor = "bg-red-50"; // Pilihan salah
+                            else if (isKunci && !isJawabanUser) bgColor = "bg-green-50/70"; // Kunci jawaban yang terlewat
 
                             return (
-                                <div key={opsi.id} className="p-3 rounded-lg text-sm border flex items-center justify-between gap-2 bg-blue-gray-50/50">
+                                <div key={opsi.id} className={`p-3 rounded-lg text-sm border flex items-center justify-between gap-2 ${bgColor}`}>
                                     <div className="flex items-start gap-2">
                                         <span className="font-medium mr-1">{getOptionLetter(index)}.</span>
                                         <span className="flex-1">{opsi.teks_opsi}</span>
                                     </div>
-                                    {chip}
+                                    <div className="flex gap-2">
+                                        {isJawabanUser && <Chip value="Pilihan Anda" size="sm" color={isKunci ? "green" : "red"} variant="ghost" />}
+                                        {isKunci && !isJawabanUser && <Chip value="Kunci Jawaban" size="sm" color="green" variant="ghost" />}
+                                    </div>
                                 </div>
                             );
                         })}
