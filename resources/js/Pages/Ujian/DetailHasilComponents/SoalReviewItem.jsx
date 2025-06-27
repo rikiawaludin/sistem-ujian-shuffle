@@ -70,7 +70,8 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
                     <div className="space-y-2 mb-4">
                         <Typography variant="small" className="font-semibold text-blue-gray-700">Opsi Jawaban (Bisa lebih dari satu):</Typography>
                         {opsiJawaban.map((opsi, index) => {
-                            const jawabanUserArr = Array.isArray(jawabanPengguna) ? jawabanPengguna.map(String) : [];
+                            // jawabanPengguna adalah string "id1,id2", ubah jadi array
+                            const jawabanUserArr = typeof jawabanPengguna === 'string' ? jawabanPengguna.split(',') : [];
                             const isJawabanUser = jawabanUserArr.includes(String(opsi.id));
                             const isKunci = kunciJawabanIds.includes(String(opsi.id));
 
@@ -116,20 +117,16 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
                 {tipeSoal === "menjodohkan" && Array.isArray(opsiJawaban) && (
                     <div className="space-y-3 mb-4">
                         <Typography variant="small" className="font-semibold text-blue-gray-700">Detail Jawaban Menjodohkan:</Typography>
-
                         {(() => {
-                            // 1. Buat map untuk lookup text dari ID opsi
                             const opsiMap = new Map(opsiJawaban.map(o => [String(o.id), o]));
-
-                            // 2. Parse string jawaban pengguna menjadi map
+                            // jawabanPengguna adalah string 'id1:id1,id2:id2', ubah jadi Map
                             const jawabanPenggunaMap = new Map(
-                                (jawabanPengguna || "").split(',').map(pair => {
+                                (jawabanPengguna || "").split(',').filter(Boolean).map(pair => {
                                     const [leftId, rightId] = pair.split(':');
                                     return [leftId, rightId];
                                 })
                             );
 
-                            // 3. Tampilkan setiap baris perjodohan
                             return opsiJawaban.map(opsiKiri => {
                                 const idKiri = String(opsiKiri.id);
                                 const idKananPilihanUser = jawabanPenggunaMap.get(idKiri);
@@ -137,25 +134,14 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
 
                                 const teksPilihanUser = idKananPilihanUser
                                     ? opsiMap.get(idKananPilihanUser)?.pasangan_teks
-                                    : "- Tidak Dijawab -";
-
-                                const teksKunciJawaban = opsiKiri.pasangan_teks;
-
-                                let bgColor = "bg-blue-gray-50/50";
-                                if (isBenar === true) bgColor = "bg-green-50";
-                                else if (isBenar === false) bgColor = "bg-red-50";
+                                    : <span className="italic text-gray-500">- Tidak Dijawab -</span>;
 
                                 return (
-                                    <div key={idKiri} className={`p-3 rounded-lg text-sm border ${bgColor}`}>
+                                    <div key={idKiri} className={`p-3 rounded-lg text-sm border ${isPairCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                            {/* Item Soal (Kiri) */}
-                                            <div className="flex-1">
-                                                <span className="font-medium">{opsiKiri.teks_opsi}</span>
-                                            </div>
-
-                                            {/* Jawaban Pengguna (Kanan) */}
+                                            <div className="flex-1 font-medium">{opsiKiri.teks_opsi}</div>
                                             <div className="flex-1 flex items-center gap-2">
-                                                <span className="font-semibold">Pasangan Pilihan:</span>
+                                                <span className="font-semibold">Dijodohkan dengan:</span>
                                                 <span>{teksPilihanUser}</span>
                                                 {idKananPilihanUser && (
                                                     isPairCorrect
@@ -164,15 +150,6 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
                                                 )}
                                             </div>
                                         </div>
-
-                                        {/* Tampilkan kunci jawaban jika pasangan yang dipilih salah */}
-                                        {!isPairCorrect && idKananPilihanUser && (
-                                            <div className="mt-2 pt-2 border-t border-gray-200">
-                                                <p className="text-xs text-green-700 font-semibold">
-                                                    Kunci Jawaban: {teksKunciJawaban}
-                                                </p>
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             });

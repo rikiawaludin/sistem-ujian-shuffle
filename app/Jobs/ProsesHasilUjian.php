@@ -39,7 +39,7 @@ class ProsesHasilUjian implements ShouldQueue
      */
     public function handle(): void
     {
-        $pengerjaan = PengerjaanUjian::with('ujian.soal.pivot', 'ujian.soal.opsiJawaban')->find($this->pengerjaanId);
+        $pengerjaan = PengerjaanUjian::with('ujian.soal.opsiJawaban')->find($this->pengerjaanId);
 
         if (!$pengerjaan) {
             Log::error("[Job:ProsesHasilUjian] PengerjaanUjian tidak ditemukan dengan ID {$this->pengerjaanId}.");
