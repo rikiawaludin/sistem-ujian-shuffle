@@ -28,11 +28,21 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
         status: 'draft', // Set default ke 'draft'
         visibilitas_hasil: true,
 
+        sertakan_esai: false, // Switch (toggle)
+        persentase_esai: 0,  // Slider value (default 20%)
+
         // Data dari UjianAturanForm
         aturan_soal: {
-            mudah: 0,
-            sedang: 0,
-            sulit: 0,
+            non_esai: { // <-- Tambahkan tingkat 'non_esai'
+                mudah: 0,
+                sedang: 0,
+                sulit: 0,
+            },
+            esai: { // <-- Tambahkan tingkat 'esai'
+                mudah: 0,
+                sedang: 0,
+                sulit: 0,
+            }
         },
     });
 
@@ -104,17 +114,19 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
 
                 <div className="mt-4">
                     {step === 1 && (
-                        <UjianDetailForm
-                            // Gunakan 'key' untuk me-remount komponen jika kita kembali, memastikan state initial-nya benar
-                            key={`step1-${mataKuliahId}`}
-                            // Kita tidak mengirim 'ujian' karena ini mode 'create'
-                            defaultMataKuliahId={mataKuliahId}
-                            // Ganti fungsi submit bawaan dengan fungsi untuk lanjut ke step 2
-                            onSuccess={handleDetailsSubmit}
-                            // Kita tandai ini sebagai bagian dari wizard
-                            isWizardMode={true}
-                            initialData={data} // Berikan state awal
-                        />
+                        <>
+                            <UjianDetailForm
+                                // Gunakan 'key' untuk me-remount komponen jika kita kembali, memastikan state initial-nya benar
+                                key={`step1-${mataKuliahId}`}
+                                // Kita tidak mengirim 'ujian' karena ini mode 'create'
+                                defaultMataKuliahId={mataKuliahId}
+                                // Ganti fungsi submit bawaan dengan fungsi untuk lanjut ke step 2
+                                onSuccess={handleDetailsSubmit}
+                                // Kita tandai ini sebagai bagian dari wizard
+                                isWizardMode={true}
+                                initialData={data} // Berikan state awal
+                            />
+                        </>
                     )}
 
                     {step === 2 && (

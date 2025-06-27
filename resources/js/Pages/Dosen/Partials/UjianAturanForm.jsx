@@ -1,13 +1,11 @@
-import React, { useEffect } from 'react';
-import { useForm, usePage } from '@inertiajs/react';
+import React from 'react';
+import { usePage } from '@inertiajs/react';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/Components/ui/card";
 import { Input } from "@/Components/ui/input";
 import { CheckCircle2, AlertTriangle, BarChart3 } from 'lucide-react';
 
-// ==========================================================
-// 1. Komponen AturanItem yang bersih (hanya untuk tampilan)
-// ==========================================================
+// Komponen AturanItem tidak perlu diubah sama sekali
 function AturanItem({ level, label, tersedia, value, onChange, error }) {
     const levelConfig = {
         mudah: { icon: CheckCircle2, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
@@ -47,82 +45,124 @@ function AturanItem({ level, label, tersedia, value, onChange, error }) {
     );
 }
 
-// ==========================================================
-// 2. Komponen Utama UjianAturanForm dengan semua logika
-// ==========================================================
+// Komponen Utama dengan Logika yang Diperbarui
 export default function UjianAturanForm({
     bankSoalSummary,
     onSuccess,
     isWizardMode = false,
-    processing, // Terima 'processing' dari induk
-    data,       // Terima 'data' dari induk
-    setData,    // Terima 'setData' dari induk
+    processing,
+    data,
+    setData,
 }) {
     const { errors } = usePage().props;
 
-    const handleAturanChange = (level, jumlah) => {
-        const tersedia = bankSoalSummary[level] || 0;
+    // **PERUBAHAN 1: Handler diperbarui untuk menerima 'tipe'**
+    const handleAturanChange = (tipe, level, jumlah) => {
+        // Ambil jumlah soal yang tersedia dari struktur baru
+        const tersedia = bankSoalSummary[tipe]?.[level] || 0;
         let nilai = parseInt(jumlah, 10) || 0;
         if (nilai > tersedia) nilai = tersedia;
         if (nilai < 0) nilai = 0;
 
-        // Gunakan setData dari props untuk mengubah state di komponen INDUK
-        setData('aturan_soal', { ...data.aturan_soal, [level]: nilai });
+        // Set state dengan struktur bersarang
+        setData('aturan_soal', {
+            ...data.aturan_soal,
+            [tipe]: {
+                ...data.aturan_soal[tipe],
+                [level]: nilai
+            }
+        });
     };
 
     const submitAturan = (e) => {
         e.preventDefault();
-        // Langsung panggil onSuccess dari induk, karena induk sudah punya data terbaru
         onSuccess?.();
     };
 
-    const totalSoalDipilih = Object.values(data.aturan_soal || {}).reduce((sum, count) => sum + Number(count), 0);
-    const totalSoalTersedia = Object.values(bankSoalSummary || {}).reduce((sum, count) => sum + count, 0);
+    const totalNonEsaiDipilih = Object.values(data.aturan_soal.non_esai || {}).reduce((sum, count) => sum + Number(count), 0);
+    const totalEsaiDipilih = Object.values(data.aturan_soal.esai || {}).reduce((sum, count) => sum + Number(count), 0);
+    const totalSoalDipilih = totalNonEsaiDipilih + totalEsaiDipilih;
 
     return (
         <form onSubmit={submitAturan} className="mt-4">
-             {totalSoalTersedia > 0 ? (
-                <div className="space-y-4">
-                    <AturanItem
-                        level="mudah"
-                        label="Mudah"
-                        tersedia={bankSoalSummary.mudah || 0}
-                        value={data.aturan_soal.mudah}
-                        onChange={handleAturanChange}
-                        error={errors['aturan_soal.mudah']}
-                    />
-                    <AturanItem
-                        level="sedang"
-                        label="Sedang"
-                        tersedia={bankSoalSummary.sedang || 0}
-                        value={data.aturan_soal.sedang}
-                        onChange={handleAturanChange}
-                        error={errors['aturan_soal.sedang']}
-                    />
-                    <AturanItem
-                        level="sulit"
-                        label="Sulit"
-                        tersedia={bankSoalSummary.sulit || 0}
-                        value={data.aturan_soal.sulit}
-                        onChange={handleAturanChange}
-                        error={errors['aturan_soal.sulit']}
-                    />
+            {/* Area Konten Utama */}
+            <div className="space-y-6">
+                {/* Grup Soal Pilihan Ganda */}
+                <div>
+                    <h4 className="text-lg font-medium mb-4">Komposisi Soal Pilihan Ganda & Sejenisnya</h4>
+                    <div className="space-y-4">
+                        <AturanItem
+                            level="mudah"
+                            label="Mudah"
+                            tersedia={bankSoalSummary.non_esai?.mudah || 0}
+                            value={data.aturan_soal.non_esai.mudah}
+                            onChange={(level, val) => handleAturanChange('non_esai', level, val)}
+                            error={errors['aturan_soal.non_esai.mudah']}
+                        />
+                        <AturanItem
+                            level="sedang"
+                            label="Sedang"
+                            tersedia={bankSoalSummary.non_esai?.sedang || 0}
+                            value={data.aturan_soal.non_esai.sedang}
+                            onChange={(level, val) => handleAturanChange('non_esai', level, val)}
+                            error={errors['aturan_soal.non_esai.sedang']}
+                        />
+                        <AturanItem
+                            level="sulit"
+                            label="Sulit"
+                            tersedia={bankSoalSummary.non_esai?.sulit || 0}
+                            value={data.aturan_soal.non_esai.sulit}
+                            onChange={(level, val) => handleAturanChange('non_esai', level, val)}
+                            error={errors['aturan_soal.non_esai.sulit']}
+                        />
+                    </div>
                 </div>
-            ) : (
-                <div className="text-center p-8 text-gray-500 border-2 border-dashed rounded-lg">
-                    <h3 className="text-lg font-semibold">Bank Soal Kosong</h3>
-                    <p>Tidak ada soal di Bank Soal untuk mata kuliah ini.</p>
-                </div>
-            )}
-            <div className="flex justify-between items-center mt-6 pt-4 border-t">
+
+                {/* Grup Soal Esai (Kondisional) */}
+                {data.sertakan_esai && (
+                    <div>
+                        <h4 className="text-lg font-medium mb-4">Komposisi Soal Esai</h4>
+                        <div className="space-y-4">
+                            <AturanItem
+                                level="mudah"
+                                label="Esai Mudah"
+                                tersedia={bankSoalSummary.esai?.mudah || 0}
+                                value={data.aturan_soal.esai.mudah}
+                                onChange={(level, val) => handleAturanChange('esai', level, val)}
+                                error={errors['aturan_soal.esai.mudah']}
+                            />
+                            <AturanItem
+                                level="sedang"
+                                label="Esai Sedang"
+                                tersedia={bankSoalSummary.esai?.sedang || 0}
+                                value={data.aturan_soal.esai.sedang}
+                                onChange={(level, val) => handleAturanChange('esai', level, val)}
+                                error={errors['aturan_soal.esai.sedang']}
+                            />
+                            <AturanItem
+                                level="sulit"
+                                label="Esai Sulit"
+                                tersedia={bankSoalSummary.esai?.sulit || 0}
+                                value={data.aturan_soal.esai.sulit}
+                                onChange={(level, val) => handleAturanChange('esai', level, val)}
+                                error={errors['aturan_soal.esai.sulit']}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Area Footer (Total & Tombol) */}
+            <div className="flex justify-between items-center mt-8 pt-6 border-t">
                 <div className="text-right">
-                    <p className="font-semibold text-gray-800">{totalSoalDipilih}</p>
-                    <p className="text-xs text-gray-500">Total Soal Dipilih</p>
+                    <p className="font-semibold text-lg text-gray-800">{totalSoalDipilih}</p>
+                    <p className="text-sm text-gray-500">Total Soal Dipilih</p>
                 </div>
                 <Button type="submit" disabled={processing || totalSoalDipilih === 0}>
                     {isWizardMode ? 'Simpan Ujian & Aturan' : 'Simpan Aturan'}
                 </Button>
             </div>
         </form>
+
     );
 }

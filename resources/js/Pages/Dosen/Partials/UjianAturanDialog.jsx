@@ -4,33 +4,44 @@ import { usePage, useForm } from '@inertiajs/react';
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-export default function UjianAturanDialog({ open, onOpenChange, ujian, onSuccess }) {
+export default function UjianAturanDialog({ open, onOpenChange, bankSoalSummary, ujian, onSuccess }) {
 
     const { toast } = useToast();
 
     // Helper function untuk mengubah format data aturan dari array ke object
     const formatAturanToState = (aturanArray) => {
-        const state = { mudah: 0, sedang: 0, sulit: 0 };
+        const state = {
+            non_esai: { mudah: 0, sedang: 0, sulit: 0 },
+            esai: { mudah: 0, sedang: 0, sulit: 0 }
+        };
+
         if (aturanArray) {
             aturanArray.forEach(aturan => {
-                state[aturan.level_kesulitan] = aturan.jumlah_soal;
+                // Pastikan tipe soal dan level kesulitan ada di state
+                if (state[aturan.tipe_soal] && typeof state[aturan.tipe_soal][aturan.level_kesulitan] !== 'undefined') {
+                    state[aturan.tipe_soal][aturan.level_kesulitan] = aturan.jumlah_soal;
+                }
             });
         }
         return state;
     };
 
-    const { bankSoalSummaryByDifficulty } = usePage().props;
+    // const { bankSoalSummary } = usePage().props;
 
     // 1. Tambahkan state `useForm` di sini
     const { data, setData, put, processing, recentlySuccessful, reset } = useForm({
         aturan_soal: formatAturanToState(ujian?.aturan),
+        sertakan_esai: ujian?.sertakan_esai || false,
     });
 
     // 2. Reset form setiap kali modal dibuka dengan ujian yang berbeda
     useEffect(() => {
-        if (open) {
-            reset('aturan_soal');
-            setData('aturan_soal', formatAturanToState(ujian?.aturan));
+        if (open && ujian) {
+            // setData untuk memastikan kedua properti (aturan_soal dan sertakan_esai) diperbarui
+            setData({
+                aturan_soal: formatAturanToState(ujian.aturan),
+                sertakan_esai: ujian.sertakan_esai, // <-- TAMBAHKAN INI
+            });
         }
     }, [open, ujian]);
 
@@ -67,14 +78,14 @@ export default function UjianAturanDialog({ open, onOpenChange, ujian, onSuccess
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>Atur Komposisi Soal</DialogTitle>
                     <DialogDescription>Tentukan jumlah soal yang akan diambil untuk ujian: {ujian.judul_ujian}</DialogDescription>
                 </DialogHeader>
                 {/* 5. Kirim props yang dibutuhkan oleh UjianAturanForm */}
                 <UjianAturanForm
-                    bankSoalSummary={bankSoalSummaryByDifficulty}
+                    bankSoalSummary={bankSoalSummary}
                     onSuccess={submit} // Panggil fungsi submit lokal
                     processing={processing}
                     data={data}

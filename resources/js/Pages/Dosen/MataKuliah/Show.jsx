@@ -40,7 +40,7 @@ const ListItem = ({ children }) => (
 );
 
 export default function Show() {
-    const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions, bankSoalSummaryByDifficulty = {} } = usePage().props;
+    const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions, bankSoalSummary = {} } = usePage().props;
 
     const { toast } = useToast();
 
@@ -455,7 +455,7 @@ export default function Show() {
                     open={isCreateUjianOpen}
                     onOpenChange={setIsCreateUjianOpen}
                     mataKuliahId={course.id}
-                    bankSoalSummary={bankSoalSummaryByDifficulty} // Kirim summary soal
+                    bankSoalSummary={bankSoalSummary} // Kirim summary soal
                     onSuccess={() => setIsCreateUjianOpen(false)}
                 />
 
@@ -475,6 +475,7 @@ export default function Show() {
                         open={isAturanFormOpen}
                         onOpenChange={setIsAturanFormOpen}
                         ujian={selectedUjian}
+                        bankSoalSummary={bankSoalSummary}
                         onSuccess={() => setIsAturanFormOpen(false)}
                     />
                 )}

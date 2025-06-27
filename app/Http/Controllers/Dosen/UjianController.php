@@ -4,17 +4,17 @@ namespace App\Http\Controllers\Dosen;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ujian;
-use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth; // <-- Impor Trait
+use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth; // Trait Anda
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UjianController extends Controller
 {
     // Gunakan Trait untuk mewarisi fungsi getAuthProps() dan getDosenMataKuliahOptions()
     use ManagesDosenAuth;
-
-    // Karena sudah menggunakan Trait, fungsi getAuthProps() yang sebelumnya ada di sini bisa dihapus.
 
     /**
      * Menampilkan daftar ujian yang dibuat oleh dosen.
@@ -26,9 +26,8 @@ class UjianController extends Controller
             abort(403);
         }
         
-        // Ganti withCount('soal') dengan withSum('aturan', 'jumlah_soal')
         $ujianList = Ujian::with('mataKuliah:id,nama')
-                        ->withSum('aturan', 'jumlah_soal') // <-- UBAH BARIS INI
+                        ->withSum('aturan', 'jumlah_soal')
                         ->where('dosen_pembuat_id', Auth::id())
                         ->orderBy('created_at', 'desc')
                         ->paginate(10);
@@ -40,15 +39,10 @@ class UjianController extends Controller
     }
 
     /**
-     * Menampilkan form untuk membuat ujian baru.
+     * Menampilkan form untuk membuat ujian baru. (Tidak berubah)
      */
     public function create(Request $request)
     {
-        // ==========================================================
-        // PERBAIKAN UTAMA DI SINI
-        // ==========================================================
-
-        // Panggil helper dari Trait untuk mendapatkan opsi Mata Kuliah dari API
         $authProps = $this->getAuthProps();
         $mataKuliahOptions = $this->getDosenMataKuliahOptions($request);
 
@@ -59,14 +53,14 @@ class UjianController extends Controller
     }
 
     /**
-     * Menyimpan ujian baru ke database.
+     * Menyimpan ujian baru ke database. (Logika Diperbarui)
      */
     public function store(Request $request)
     {
         $this->getAuthProps(); // Panggil untuk memastikan Auth::id() valid
 
         // ==========================================================
-        // PERBAIKAN UTAMA DI SINI: Gabungkan semua validasi jadi satu
+        // PERUBAHAN 1: Validasi diperbarui untuk menangani struktur data baru
         // ==========================================================
         $validatedData = $request->validate([
             'mata_kuliah_id' => 'required|exists:mata_kuliah,id',
@@ -78,44 +72,74 @@ class UjianController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'acak_soal' => 'required|boolean',
             'acak_opsi' => 'required|boolean',
-            // 'tampilkan_hasil' => 'required|boolean',
-            'status' => ['required', \Illuminate\Validation\Rule::in(['draft', 'published'])],
-            'visibilitas_hasil' => 'boolean',
+            'status' => ['required', Rule::in(['draft', 'published'])],
+            'visibilitas_hasil' => 'required|boolean',
+            // Validasi untuk opsi esai
+            'sertakan_esai' => 'boolean',
+            'persentase_esai' => 'required_if:sertakan_esai,true|nullable|integer|max:100',
+            // Validasi untuk aturan soal yang bersarang (nested)
             'aturan_soal' => 'required|array',
-            'aturan_soal.mudah' => 'required|integer|min:0',
-            'aturan_soal.sedang' => 'required|integer|min:0',
-            'aturan_soal.sulit' => 'required|integer|min:0',
+            'aturan_soal.non_esai' => 'required|array',
+            'aturan_soal.non_esai.mudah' => 'required|integer|min:0',
+            'aturan_soal.non_esai.sedang' => 'required|integer|min:0',
+            'aturan_soal.non_esai.sulit' => 'required|integer|min:0',
+            'aturan_soal.esai' => 'required|array',
+            'aturan_soal.esai.mudah' => 'required|integer|min:0',
+            'aturan_soal.esai.sedang' => 'required|integer|min:0',
+            'aturan_soal.esai.sulit' => 'required|integer|min:0',
         ]);
 
-        $totalSoal = array_sum($validatedData['aturan_soal']);
+        // ==========================================================
+        // PERUBAHAN 2: Logika pengecekan total soal diperbarui
+        // ==========================================================
+        $totalNonEsai = array_sum($validatedData['aturan_soal']['non_esai']);
+        $totalEsai = $validatedData['sertakan_esai'] ? array_sum($validatedData['aturan_soal']['esai']) : 0;
+        $totalSoal = $totalNonEsai + $totalEsai;
 
         if ($totalSoal === 0) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'aturan_soal' => 'Anda harus memilih setidaknya satu soal untuk ujian.',
+            throw ValidationException::withMessages([
+                'aturan_soal' => 'Anda harus memilih setidaknya satu soal untuk ujian ini.',
             ]);
         }
 
         // Gunakan transaksi database untuk memastikan semua data tersimpan atau tidak sama sekali
         DB::transaction(function () use ($validatedData) {
-            // 1. Pisahkan data untuk tabel 'ujians' dan data untuk relasi 'aturan'
+            // ==========================================================
+            // PERUBAHAN 3: Logika penyimpanan diperbarui
+            // ==========================================================
+
+            // 1. Pisahkan data untuk tabel 'ujians'. `except` akan menangani semua field
             $ujianDetails = collect($validatedData)->except('aturan_soal')->all();
             $aturanSoal = $validatedData['aturan_soal'];
 
             // 2. Tambahkan data default ke detail ujian
             $ujianDetails['dosen_pembuat_id'] = Auth::id();
-            // $ujianDetails['status_publikasi'] = 'published';
             $ujianDetails['jenis_ujian'] = 'kuis';
 
             // 3. Buat record Ujian
             $ujian = Ujian::create($ujianDetails);
 
-            // 4. Buat record UjianAturan dari data yang sudah dipisahkan
-            foreach ($aturanSoal as $level => $jumlah) {
+            // 4. Buat record UjianAturan untuk NON-ESAI
+            foreach ($aturanSoal['non_esai'] as $level => $jumlah) {
                 if ($jumlah > 0) {
                     $ujian->aturan()->create([
+                        'tipe_soal' => 'non_esai', // <-- KOLOM BARU
                         'level_kesulitan' => $level,
                         'jumlah_soal' => $jumlah,
                     ]);
+                }
+            }
+            
+            // 5. Buat record UjianAturan untuk ESAI jika disertakan
+            if ($validatedData['sertakan_esai']) {
+                foreach ($aturanSoal['esai'] as $level => $jumlah) {
+                    if ($jumlah > 0) {
+                        $ujian->aturan()->create([
+                            'tipe_soal' => 'esai', // <-- KOLOM BARU
+                            'level_kesulitan' => $level,
+                            'jumlah_soal' => $jumlah,
+                        ]);
+                    }
                 }
             }
         });
@@ -126,7 +150,7 @@ class UjianController extends Controller
     }
 
     /**
-     * Menampilkan halaman "Perakit Soal" (Soal Picker).
+     * Menampilkan halaman "Perakit Soal" (Soal Picker). (Tidak berubah)
      */
     public function edit(Request $request, Ujian $ujian)
     {
@@ -135,14 +159,39 @@ class UjianController extends Controller
             abort(403);
         }
 
-        // Ambil ringkasan jumlah soal yang tersedia di bank soal
-        $bankSoalSummary = \App\Models\Soal::where('dosen_pembuat_id', Auth::id())
+        $allSoal = Soal::where('dosen_pembuat_id', Auth::id())
             ->where('mata_kuliah_id', $ujian->mata_kuliah_id)
-            ->groupBy('level_kesulitan')
-            ->select('level_kesulitan', DB::raw('count(*) as total'))
-            ->pluck('total', 'level_kesulitan');
+            ->get();
 
-        // Ambil aturan yang sudah tersimpan sebelumnya
+        $allSoal = Soal::where('dosen_pembuat_id', Auth::id())
+            ->where('mata_kuliah_id', $ujian->mata_kuliah_id)
+            ->get();
+
+        // 1. Pisahkan koleksi soal menjadi dua: satu untuk 'esai', satu untuk sisanya.
+        [$esaiSoals, $nonEsaiSoals] = $allSoal->partition(function ($soal) {
+            return $soal->tipe_soal === 'esai';
+        });
+
+        // 2. Hitung ringkasan untuk soal NON-ESAI
+        $nonEsaiSummary = $nonEsaiSoals->groupBy('level_kesulitan')->map->count();
+
+        // 3. Hitung ringkasan untuk soal ESAI
+        $esaiSummary = $esaiSoals->groupBy('level_kesulitan')->map->count();
+
+        // 4. Gabungkan keduanya ke dalam format yang diharapkan frontend
+        $bankSoalSummary = collect([
+            'non_esai' => [
+                'mudah' => $nonEsaiSummary->get('mudah', 0),
+                'sedang' => $nonEsaiSummary->get('sedang', 0),
+                'sulit' => $nonEsaiSummary->get('sulit', 0),
+            ],
+            'esai' => [
+                'mudah' => $esaiSummary->get('mudah', 0),
+                'sedang' => $esaiSummary->get('sedang', 0),
+                'sulit' => $esaiSummary->get('sulit', 0),
+            ],
+        ]);
+
         $ujian->load('aturan');
 
         return inertia('Dosen/Ujian/Edit', [
@@ -153,11 +202,8 @@ class UjianController extends Controller
     }
 
     /**
-     * Update ujian (baik detail ujian maupun sinkronisasi soal).
+     * Update ujian (baik detail ujian maupun aturan soal). (Logika Diperbarui)
      */
-    /**
- * Update ujian (menyimpan aturan pemilihan soal).
- */
     public function update(Request $request, Ujian $ujian)
     {
         $this->getAuthProps();
@@ -165,28 +211,51 @@ class UjianController extends Controller
             abort(403);
         }
         
+        // SCENARIO 1: Menyimpan ATURAN SOAL dari modal "Atur Soal"
         if ($request->has('aturan_soal')) {
+            // Validasi untuk aturan soal yang bersarang
             $validated = $request->validate([
                 'aturan_soal' => 'required|array',
-                'aturan_soal.mudah' => 'required|integer|min:0',
-                'aturan_soal.sedang' => 'required|integer|min:0',
-                'aturan_soal.sulit' => 'required|integer|min:0',
+                'aturan_soal.non_esai' => 'required|array',
+                'aturan_soal.non_esai.*' => 'required|integer|min:0',
+                // Validasi untuk esai juga diperlukan di sini, untuk konsistensi
+                'aturan_soal.esai' => 'required|array',
+                'aturan_soal.esai.*' => 'required|integer|min:0',
             ]);
-
+            
             DB::transaction(function () use ($ujian, $validated) {
+                // Hapus semua aturan lama
                 $ujian->aturan()->delete();
-                foreach ($validated['aturan_soal'] as $level => $jumlah) {
+                
+                // Simpan aturan NON-ESAI yang baru
+                foreach ($validated['aturan_soal']['non_esai'] as $level => $jumlah) {
                     if ($jumlah > 0) {
                         $ujian->aturan()->create([
+                            'tipe_soal' => 'non_esai',
                             'level_kesulitan' => $level,
                             'jumlah_soal' => $jumlah,
                         ]);
                     }
                 }
+
+                // Simpan aturan ESAI yang baru (jika ujian memang menyertakan esai)
+                if ($ujian->sertakan_esai) {
+                    foreach ($validated['aturan_soal']['esai'] as $level => $jumlah) {
+                        if ($jumlah > 0) {
+                            $ujian->aturan()->create([
+                                'tipe_soal' => 'esai',
+                                'level_kesulitan' => $level,
+                                'jumlah_soal' => $jumlah,
+                            ]);
+                        }
+                    }
+                }
+                
+                // Reset daftar soal yang sudah dirakit sebelumnya, karena aturan berubah
                 $ujian->soal()->detach();
             });
 
-            return back()->with('success', 'Aturan soal berhasil disimpan.');
+            return back()->with('success', 'Aturan soal berhasil diperbarui.');
         }
 
         // SCENARIO 2: Menyimpan DETAIL UJIAN dari modal "Edit Detail Ujian"
@@ -199,21 +268,20 @@ class UjianController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'acak_soal' => 'required|boolean',
             'acak_opsi' => 'required|boolean',
-            // 'tampilkan_hasil' => 'required|boolean',
-            'status' => ['required', \Illuminate\Validation\Rule::in(['draft', 'published', 'archived'])], // Tambahkan 'archived' jika dosen bisa mengarsip manual
-            'visibilitas_hasil' => 'boolean',
-            // mata_kuliah_id tidak perlu divalidasi saat update, karena tidak boleh diubah
+            'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
+            'visibilitas_hasil' => 'required|boolean',
+            // Validasi untuk field baru saat update
+            'sertakan_esai' => 'boolean',
+            'persentase_esai' => 'required_if:sertakan_esai,true|nullable|integer|max:100',
         ]);
 
         $ujian->update($validated);
         
-        // Blok "else" ini bisa Anda gunakan jika ingin ada form update detail ujian terpisah
-        // atau gabungkan validasinya di atas.
         return back()->with('success', 'Detail ujian berhasil diperbarui.');
     }
 
     /**
-     * Hapus ujian.
+     * Hapus ujian. (Tidak berubah)
      */
     public function destroy(Ujian $ujian)
     {
@@ -229,3 +297,4 @@ class UjianController extends Controller
         return back()->with('success', 'Ujian berhasil dihapus.');
     }
 }
+

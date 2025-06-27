@@ -11,6 +11,8 @@ import { Textarea } from "@/Components/ui/textarea";
 import { Label } from '@/Components/ui/label';
 import { DateTimePicker } from '@/Components/ui/DateTimePicker';
 import { RadioGroup, RadioGroupItem } from "@/Components/ui/radio-group";
+import { Switch } from "@/Components/ui/switch";
+import { Slider } from "@/Components/ui/slider";
 
 // TAMBAHKAN FUNGSI HELPER INI
 const toLocalISOString = (date) => {
@@ -37,6 +39,8 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
             acak_opsi: ujian?.acak_opsi ?? true,
             status: ujian?.status || 'draft',
             visibilitas_hasil: ujian?.visibilitas_hasil ?? true,
+            sertakan_esai: ujian?.sertakan_esai ?? false,
+            persentase_esai: ujian?.persentase_esai || 0,
         }
     );
 
@@ -127,26 +131,25 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                 </div>
             </div>
 
-            {!isWizardMode && (
-                <div>
-                    <Label>Status Ujian</Label>
-                    <RadioGroup
-                        value={data.status}
-                        onValueChange={(value) => setData('status', value)}
-                        className="mt-2 flex space-x-4"
-                    >
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="draft" id="status-draft" />
-                            <Label htmlFor="status-draft">Simpan sebagai Draft</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="published" id="status-published" />
-                            <Label htmlFor="status-published">Publikasikan Ujian</Label>
-                        </div>
-                    </RadioGroup>
-                    {errors.status && <p className="text-sm text-red-600 mt-1">{errors.status}</p>}
-                </div>
-            )}
+            <div>
+                <Label>Status Ujian</Label>
+                <RadioGroup
+                    value={data.status}
+                    onValueChange={(value) => setData('status', value)}
+                    className="mt-2 flex space-x-4"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="draft" id="status-draft" />
+                        <Label htmlFor="status-draft">Simpan sebagai Draft</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="published" id="status-published" />
+                        <Label htmlFor="status-published">Publikasikan Ujian</Label>
+                    </div>
+                </RadioGroup>
+                {errors.status && <p className="text-sm text-red-600 mt-1">{errors.status}</p>}
+            </div>
+
 
             <div className="flex space-x-6 items-center">
                 <div className="flex items-center space-x-2">
@@ -162,6 +165,34 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                     <Checkbox id="visibilitas_hasil" checked={data.visibilitas_hasil} onCheckedChange={val => setData('visibilitas_hasil', val)} />
                     <Label htmlFor="visibilitas_hasil">Izinkan mahasiswa ulas hasil?</Label>
                 </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t">
+                <Label className="text-base font-semibold">Opsi Soal Esai</Label>
+                <div className="flex items-center space-x-2 mt-4">
+                    <Switch
+                        id="sertakan_esai"
+                        checked={data.sertakan_esai}
+                        onCheckedChange={(value) => setData('sertakan_esai', value)}
+                    />
+                    <Label htmlFor="sertakan_esai">Sertakan Soal Esai dalam Ujian Ini?</Label>
+                </div>
+
+                {data.sertakan_esai && (
+                    <div className="mt-4 pl-2">
+                        <Label htmlFor="persentase_esai">Persentase Soal Esai ({data.persentase_esai}%)</Label>
+                        <p className="text-sm text-muted-foreground">Tentukan berapa persen dari total soal yang harus berupa esai.</p>
+                        <Slider
+                            id="persentase_esai"
+                            defaultValue={[data.persentase_esai]}
+                            max={100}
+                            min={10}
+                            step={5}
+                            onValueChange={(value) => setData('persentase_esai', value[0])}
+                            className="mt-3"
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="flex justify-end pt-4">

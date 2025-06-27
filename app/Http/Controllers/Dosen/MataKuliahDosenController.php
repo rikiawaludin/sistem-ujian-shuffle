@@ -42,9 +42,34 @@ class MataKuliahDosenController extends Controller
             ->groupBy('status_terkini')
             ->map(fn ($group) => $group->count());
         
-        $bankSoalSummaryByDifficulty = $mata_kuliah->soal
-            ->groupBy('level_kesulitan')
-            ->map(fn ($group) => $group->count());
+        // Ambil semua soal terkait mata kuliah
+        $allSoal = $mata_kuliah->soal;
+
+        // 1. Kelompokkan semua soal menjadi dua kategori: 'esai' dan 'non_esai'
+        //    Semua tipe soal selain 'esai' akan masuk ke dalam kategori 'non_esai'.
+        $groupedByType = $allSoal->groupBy(function ($soal) {
+            return $soal->tipe_soal === 'esai' ? 'esai' : 'non_esai';
+        });
+
+        // 2. Sekarang, hitung jumlah soal per level kesulitan di dalam setiap kategori
+        $bankSoalSummary = $groupedByType->map(function ($soalsInGroup) {
+            $byDifficulty = $soalsInGroup->groupBy('level_kesulitan')->map->count();
+
+            // Kembalikan struktur yang konsisten
+            return [
+                'mudah' => $byDifficulty->get('mudah', 0),
+                'sedang' => $byDifficulty->get('sedang', 0),
+                'sulit' => $byDifficulty->get('sulit', 0),
+            ];
+        });
+        
+        // Pastikan kedua tipe soal ada sebagai key, bahkan jika jumlah soalnya 0
+        if (!$bankSoalSummary->has('non_esai')) {
+            $bankSoalSummary->put('non_esai', ['mudah' => 0, 'sedang' => 0, 'sulit' => 0]);
+        }
+        if (!$bankSoalSummary->has('esai')) {
+            $bankSoalSummary->put('esai', ['mudah' => 0, 'sedang' => 0, 'sulit' => 0]);
+        }
 
         // 1. Ambil data mentah dari API.
         $apiCourses = $this->getDosenCoursesFromApi($request);
@@ -75,7 +100,7 @@ class MataKuliahDosenController extends Controller
             'course' => $mata_kuliah,
             'soalSummary' => $soalSummary,  
             'ujianSummary' => $ujianSummary,
-            'bankSoalSummaryByDifficulty' => $bankSoalSummaryByDifficulty,  
+            'bankSoalSummary' => $bankSoalSummary,  
             'mataKuliahOptions' => $mataKuliahOptions,
         ]);
     }

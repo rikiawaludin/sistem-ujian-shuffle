@@ -15,6 +15,7 @@ class UjianAturan extends Model
         'ujian_id',
         'level_kesulitan',
         'jumlah_soal',
+        'tipe_soal',
     ];
 
     public function ujian()

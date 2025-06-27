@@ -27,6 +27,8 @@ class Ujian extends Model
         'tampilkan_hasil',
         'status',
         'visibilitas_hasil',
+        'sertakan_esai',     
+        'persentase_esai',    
     ];
 
     protected $casts = [
