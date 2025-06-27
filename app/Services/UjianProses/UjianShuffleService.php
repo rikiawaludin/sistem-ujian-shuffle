@@ -61,18 +61,30 @@ class UjianShuffleService
      */
     protected function performFullShuffle(array $soalList, array $config): array
     {
-        $listToShuffle = $soalList;
+        $soalCollection = collect($soalList);
 
-        // 1. Acak urutan soal
+        // 1. Selalu pisahkan soal menjadi dua grup: 'esai' dan 'non_esai'
+        [$esaiSoals, $nonEsaiSoals] = $soalCollection->partition(function ($soal) {
+            return isset($soal['tipe']) && $soal['tipe'] === 'esai';
+        });
+
+        $finalNonEsai = $nonEsaiSoals->all();
+        $finalEsai = $esaiSoals->all();
+
+        // 2. Jika pengacakan diaktifkan, acak masing-masing grup secara terpisah
         if ($config['acakUrutanSoal'] ?? false) {
-            $listToShuffle = $this->fisherYates($listToShuffle);
+            $finalNonEsai = $this->fisherYates($finalNonEsai);
+            $finalEsai = $this->fisherYates($finalEsai);
         }
+        
+        // 3. Gabungkan kembali, dengan soal esai selalu di akhir
+        $finalShuffledList = array_merge($finalNonEsai, $finalEsai);
 
-        // 2. Proses setiap soal (acak opsi, hapus kunci jawaban)
+        // 4. Proses setiap soal (acak opsi, hapus kunci jawaban)
         $processedList = array_map(function ($soal) use ($config) {
             $newSoal = $soal;
 
-            // Acak opsi jawaban jika diperlukan
+            // Acak opsi jawaban jika diperlukan (logika ini tetap sama)
             if (($config['acakUrutanOpsi'] ?? false) && isset($newSoal['pilihan']) && is_array($newSoal['pilihan'])) {
                 $newSoal['pilihan'] = $this->fisherYates($newSoal['pilihan']);
             }
@@ -82,10 +94,10 @@ class UjianShuffleService
                 $newSoal['pasangan'] = $this->fisherYates($newSoal['pasangan']);
             }
 
-            // Hapus kunci jawaban internal sebelum dikirim
+            // Hapus kunci jawaban internal sebelum dikirim ke frontend
             unset($newSoal['jawaban']);
             return $newSoal;
-        }, $listToShuffle);
+        }, $finalShuffledList);
 
         return $processedList;
     }

@@ -39,33 +39,24 @@ class ProsesHasilUjian implements ShouldQueue
      */
     public function handle(): void
     {
-        // Menggunakan pengerjaanId yang dikirim dari controller
-        $pengerjaan = PengerjaanUjian::with('ujian.soal')->find($this->pengerjaanId);
+        $pengerjaan = PengerjaanUjian::with('ujian.soal.pivot', 'ujian.soal.opsiJawaban')->find($this->pengerjaanId);
 
         if (!$pengerjaan) {
-            Log::error("[Job:ProsesHasilUjian] PengerjaanUjian tidak ditemukan dengan ID {$this->pengerjaanId}. Job dibatalkan.");
+            Log::error("[Job:ProsesHasilUjian] PengerjaanUjian tidak ditemukan dengan ID {$this->pengerjaanId}.");
             return;
         }
 
-        // Pengecekan penting: Jika statusnya bukan 'diproses', berarti ada proses lain yang sudah menangani. Hentikan.
         if ($pengerjaan->status_pengerjaan !== 'diproses') {
-            Log::warning("[Job:ProsesHasilUjian] Pengerjaan ID {$this->pengerjaanId} statusnya bukan 'diproses'. Job diabaikan untuk mencegah eksekusi ganda.");
+            Log::warning("[Job:ProsesHasilUjian] Pengerjaan ID {$this->pengerjaanId} statusnya bukan 'diproses'. Job diabaikan.");
             return;
         }
-        
+
         Log::info("[Job:ProsesHasilUjian] Memulai proses penilaian untuk Pengerjaan ID: {$this->pengerjaanId}.");
 
         DB::beginTransaction();
         try {
-            $totalSkor = 0;
             $adaSoalEsai = false;
-            $soalUjianRefs = $pengerjaan->ujian->soal()->withPivot('bobot_nilai_soal')->get()->keyBy('id');
-
-            // Ambil Kunci Jawaban dalam satu query yang bisa menangani semua tipe soal
-            $kunciJawabanMap = OpsiJawaban::whereIn('soal_id', $soalUjianRefs->pluck('id'))
-                                           ->where('is_kunci_jawaban', true)
-                                           ->get()
-                                           ->groupBy('soal_id'); 
+            $soalUjianRefs = $pengerjaan->ujian->soal->keyBy('id');
 
             foreach ($this->jawabanUserMap as $soalId => $jawabanDiterima) {
                 $soalRef = $soalUjianRefs->get((int)$soalId);
@@ -73,56 +64,71 @@ class ProsesHasilUjian implements ShouldQueue
 
                 $isBenar = null;
                 $skorPerSoal = 0;
+                $tipeSoal = $soalRef->tipe_soal;
 
-                if (isset($jawabanDiterima) && $jawabanDiterima !== '' && $jawabanDiterima !== []) {
-                    $tipeSoal = $soalRef->tipe_soal;
+                // --- Logika Penilaian Baru ---
 
-                    if (in_array($tipeSoal, ['pilihan_ganda', 'benar_salah'])) {
-                        $kunciJawabanCollection = $kunciJawabanMap->get((int)$soalId);
-                        $kunciJawabanId = $kunciJawabanCollection ? $kunciJawabanCollection->first()->id : null;
-                        $isBenar = ($kunciJawabanId !== null && (string)$jawabanDiterima === (string)$kunciJawabanId);
+                if (in_array($tipeSoal, ['pilihan_ganda', 'benar_salah'])) {
+                    $kunciJawaban = $soalRef->opsiJawaban->firstWhere('is_kunci_jawaban', true);
+                    if ($kunciJawaban && (string)$jawabanDiterima === (string)$kunciJawaban->id) {
+                        $isBenar = true;
+                        $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 1;
+                    } else {
+                        $isBenar = false;
+                    }
 
-                    } elseif ($tipeSoal === 'pilihan_jawaban_ganda') {
-                        $kunciJawabanIds = $kunciJawabanMap->get((int)$soalId, collect())
-                                                       ->pluck('id')
-                                                       ->map(fn($id) => (string)$id)
-                                                       ->sort()->values()->all();
-                        $kunciJawabanString = implode(',', $kunciJawabanIds);
-                        $isBenar = ($kunciJawabanString === $jawabanDiterima);
-                    
-                    } elseif ($tipeSoal === 'isian_singkat') {
-                        $kunciJawabanTeks = OpsiJawaban::where('soal_id', $soalId)->where('is_kunci_jawaban', true)->pluck('teks_opsi')->all();
-                        $isBenar = in_array(strtolower(trim($jawabanDiterima)), array_map('strtolower', $kunciJawabanTeks));
-                    
-                    } elseif ($tipeSoal === 'menjodohkan') {
-                        $jawabanUserPairs = explode(',', $jawabanDiterima);
-                        $kunciJawabanIds = OpsiJawaban::where('soal_id', $soalId)->pluck('id')->all();
-                        
-                        if (count($jawabanUserPairs) !== count($kunciJawabanIds)) {
-                            $isBenar = false;
-                        } else {
-                            $isBenar = true;
-                            foreach ($jawabanUserPairs as $pair) {
-                                $ids = explode(':', $pair);
-                                if (count($ids) !== 2 || (int)$ids[0] !== (int)$ids[1]) {
-                                    $isBenar = false;
-                                    break;
-                                }
-                            }
+                } elseif ($tipeSoal === 'pilihan_jawaban_ganda') {
+                    $kunciJawabanBenar = $soalRef->opsiJawaban->where('is_kunci_jawaban', true);
+                    $jumlahKunciBenar = $kunciJawabanBenar->count();
+                    if ($jumlahKunciBenar === 0) continue;
+
+                    $bobotPerOpsi = ($soalRef->pivot->bobot_nilai_soal ?? 1) / $jumlahKunciBenar;
+                    $jawabanUserArray = is_array($jawabanDiterima) ? $jawabanDiterima : (is_string($jawabanDiterima) ? explode(',', $jawabanDiterima) : []);
+
+                    $skorAkumulasi = 0;
+                    foreach ($kunciJawabanBenar as $kunci) {
+                        if (in_array((string)$kunci->id, $jawabanUserArray)) {
+                            $skorAkumulasi += $bobotPerOpsi;
                         }
+                    }
+                    $skorPerSoal = $skorAkumulasi;
+                    $isBenar = ($skorPerSoal >= ($soalRef->pivot->bobot_nilai_soal ?? 1));
 
-                    } elseif ($tipeSoal === 'esai') {
-                        $adaSoalEsai = true;
-                        $isBenar = null;
+                } elseif ($tipeSoal === 'isian_singkat') {
+                    $kunciJawabanTeks = $soalRef->opsiJawaban->where('is_kunci_jawaban', true)->pluck('teks_opsi')->all();
+                    if (in_array(strtolower(trim($jawabanDiterima)), array_map('strtolower', $kunciJawabanTeks))) {
+                        $isBenar = true;
+                        $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 1;
+                    } else {
+                        $isBenar = false;
                     }
 
-                    if ($isBenar === true) {
-                        $skorPerSoal = $soalRef->pivot->bobot_nilai_soal ?? 10;
+                } elseif ($tipeSoal === 'menjodohkan') {
+                    $opsiSoal = $soalRef->opsiJawaban;
+                    $jumlahPasanganBenar = $opsiSoal->count();
+                    if ($jumlahPasanganBenar === 0) continue;
+
+                    $bobotPerPasangan = ($soalRef->pivot->bobot_nilai_soal ?? 1) / $jumlahPasanganBenar;
+                    $jawabanUserPairs = is_string($jawabanDiterima) ? explode(',', $jawabanDiterima) : [];
+                    
+                    $skorAkumulasi = 0;
+                    // Iterasi setiap pasangan jawaban dari pengguna
+                    foreach ($jawabanUserPairs as $pair) {
+                        $ids = explode(':', $pair);
+                        // Pasangan dianggap benar jika id_kiri dan id_kanan sama
+                        if (count($ids) === 2 && (int)$ids[0] === (int)$ids[1]) {
+                            $skorAkumulasi += $bobotPerPasangan;
+                        }
                     }
+                    $skorPerSoal = $skorAkumulasi;
+                    $isBenar = ($skorPerSoal >= ($soalRef->pivot->bobot_nilai_soal ?? 1));
+
+                } elseif ($tipeSoal === 'esai') {
+                    $adaSoalEsai = true;
+                    $isBenar = null; // Menunggu penilaian manual
                 }
                 
-                $totalSkor += $skorPerSoal;
-
+                // Simpan detail jawaban
                 JawabanPesertaDetail::updateOrCreate(
                     ['pengerjaan_ujian_id' => $pengerjaan->id, 'soal_id' => (int)$soalId],
                     [
@@ -137,14 +143,16 @@ class ProsesHasilUjian implements ShouldQueue
             // Tentukan status akhir dan skor total
             if ($adaSoalEsai) {
                 $pengerjaan->status_pengerjaan = 'menunggu_penilaian';
+                $pengerjaan->skor_total = null;
             } else {
                 $pengerjaan->status_pengerjaan = 'selesai';
+                $calculator = new \App\Services\SkorAkhir();
+                $pengerjaan->skor_total = $calculator->calculate($pengerjaan);
             }
-            $pengerjaan->skor_total = $totalSkor;
 
             $pengerjaan->save();
             DB::commit();
-            Log::info("[Job:ProsesHasilUjian] Penilaian untuk Pengerjaan ID: {$this->pengerjaanId} berhasil.");
+            Log::info("[Job:ProsesHasilUjian] Penilaian untuk Pengerjaan ID: {$this->pengerjaanId} berhasil (model parsial).");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -152,7 +160,6 @@ class ProsesHasilUjian implements ShouldQueue
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Update status agar admin tahu ada job yang gagal dan perlu diperiksa
             if (isset($pengerjaan)) {
                 $pengerjaan->status_pengerjaan = 'gagal_diproses';
                 $pengerjaan->save();

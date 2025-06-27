@@ -161,12 +161,13 @@ class BankSoalController extends Controller
                     
                     case 'menjodohkan':
                         foreach ($validated['opsi_jawaban'] as $opsi) {
-                             if (!empty($opsi['teks']) || !empty($opsi['pasangan_teks'])) {
+                            // Pastikan kedua sisi pasangan tidak kosong sebelum menyimpan
+                            if (!empty($opsi['teks']) && !empty($opsi['pasangan_teks'])) {
                                 OpsiJawaban::create([
-                                    'soal_id' => $soal->id,
+                                    'soal_id' => $soal->id, // atau $bank_soal->id untuk method update
                                     'teks_opsi' => $opsi['teks'],
                                     'pasangan_teks' => $opsi['pasangan_teks'],
-                                    'is_kunci_jawaban' => false,
+                                    'is_kunci_jawaban' => true, // <-- PERBAIKAN: Setiap pasangan adalah kunci
                                 ]);
                             }
                         }
@@ -249,12 +250,13 @@ class BankSoalController extends Controller
                     
                     case 'menjodohkan':
                         foreach ($validated['opsi_jawaban'] as $opsi) {
-                             if (!empty($opsi['teks']) || !empty($opsi['pasangan_teks'])) {
+                            // Pastikan kedua sisi pasangan tidak kosong sebelum menyimpan
+                            if (!empty($opsi['teks']) && !empty($opsi['pasangan_teks'])) {
                                 OpsiJawaban::create([
-                                    'soal_id' => $bank_soal->id,
+                                    'soal_id' => $soal->id, // atau $bank_soal->id untuk method update
                                     'teks_opsi' => $opsi['teks'],
                                     'pasangan_teks' => $opsi['pasangan_teks'],
-                                    'is_kunci_jawaban' => false,
+                                    'is_kunci_jawaban' => true, // <-- PERBAIKAN: Setiap pasangan adalah kunci
                                 ]);
                             }
                         }

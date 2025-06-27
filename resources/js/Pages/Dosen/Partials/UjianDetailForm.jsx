@@ -186,7 +186,7 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
                             id="persentase_esai"
                             defaultValue={[data.persentase_esai]}
                             max={100}
-                            min={10}
+                            min={0}
                             step={5}
                             onValueChange={(value) => setData('persentase_esai', value[0])}
                             className="mt-3"

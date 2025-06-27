@@ -93,12 +93,29 @@ class UjianSoalController extends Controller
                 $rules = [];
                 foreach ($ujian->aturan as $aturan) {
                     if ($aturan->jumlah_soal > 0) {
-                        $level = $aturan->level_kesulitan;
-                        $kandidatSoal = Soal::where('mata_kuliah_id', $ujian->mata_kuliah_id)
-                            ->where('level_kesulitan', $level)->with('opsiJawaban')->get();
+                        // Buat query dasar untuk soal
+                        $kandidatSoalQuery = Soal::where('mata_kuliah_id', $ujian->mata_kuliah_id)
+                            ->where('level_kesulitan', $aturan->level_kesulitan);
+                                
+                        // **PERBAIKAN UTAMA: Tambahkan filter berdasarkan tipe soal dari aturan**
+                        if ($aturan->tipe_soal === 'esai') {
+                            $kandidatSoalQuery->where('tipe_soal', 'esai');
+                        } else {
+                            // Asumsi 'non_esai' berarti semua tipe selain 'esai'
+                            $kandidatSoalQuery->where('tipe_soal', '!=', 'esai');
+                        }
 
-                        $pools[$level] = $this->soalFormatter->formatForExpress($kandidatSoal);
-                        $rules[$level] = $aturan->jumlah_soal;
+                        // Ambil soal yang sudah difilter dengan benar
+                        $kandidatSoal = $kandidatSoalQuery->with('opsiJawaban')->get();
+
+                        // Gunakan kunci komposit untuk mencegah tumpang tindih (cth: mudah-esai vs mudah-non_esai)
+                        $poolKey = $aturan->tipe_soal . '_' . $aturan->level_kesulitan;
+                                
+                        // Hanya tambahkan ke pool jika ada kandidat soal
+                        if ($kandidatSoal->isNotEmpty()) {
+                            $pools[$poolKey] = $this->soalFormatter->formatForExpress($kandidatSoal);
+                            $rules[$poolKey] = $aturan->jumlah_soal;
+                        }
                     }
                 }
 
