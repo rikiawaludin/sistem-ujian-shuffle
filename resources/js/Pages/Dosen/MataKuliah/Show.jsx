@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import React, { useState } from 'react';
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/card";
 import { Button } from "@/Components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs";
@@ -23,7 +23,7 @@ import {
     AlertDialogTitle,
 } from "@/Components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download, Upload } from 'lucide-react';
 import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
@@ -43,6 +43,37 @@ export default function Show() {
     const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions, bankSoalSummary = {} } = usePage().props;
 
     const { toast } = useToast();
+
+    // State untuk dialog impor
+    const [isImportOpen, setIsImportOpen] = useState(false);
+
+    // Form hook untuk upload file
+    const { data, setData, post, processing, errors, reset } = useForm({
+        import_file: null,
+    });
+
+    const handleImportSubmit = (e) => {
+        e.preventDefault();
+        post(route('dosen.bank-soal.import'), {
+            onSuccess: () => {
+                setIsImportOpen(false);
+                reset();
+                toast({
+                    title: "Berhasil!",
+                    description: "Soal dari file Excel sedang diproses.",
+                    variant: "success",
+                });
+            },
+            onError: (errors) => {
+                console.error("Import Gagal:", errors);
+                toast({
+                    variant: "destructive",
+                    title: "Terjadi Kesalahan!",
+                    description: errors.import_file || "File tidak dapat diimpor. Periksa format dan isi file.",
+                });
+            }
+        });
+    };
 
     // State untuk mengontrol modal form soal
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -331,6 +362,12 @@ export default function Show() {
                                 <p className="text-sm text-muted-foreground">Kelola semua soal untuk mata kuliah ini.</p>
                             </div>
                             <div className="flex gap-2"> {/* Tambah wrapper untuk beberapa tombol */}
+
+                                <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Impor Soal
+                                </Button>
+
                                 {/* Tombol Ekspor Baru */}
                                 <a href={route('dosen.bank-soal.export')}>
                                     <Button variant="outline">
@@ -511,6 +548,62 @@ export default function Show() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
+                <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Impor Soal dari Excel</DialogTitle>
+                            <DialogDescription>
+                                Unggah file .xlsx atau .xls sesuai format yang ditentukan.
+                                Anda bisa mengunduh template dengan mengekspor soal yang sudah ada terlebih dahulu.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleImportSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Pilih File Excel
+                                </label>
+                                <div className="mt-1 flex items-center gap-4">
+                                    {/* Input file yang asli kita sembunyikan */}
+                                    <input
+                                        type="file"
+                                        id="import_file"
+                                        className="hidden"
+                                        onChange={(e) => setData('import_file', e.target.files[0])}
+                                        accept=".xlsx, .xls"
+                                    />
+
+                                    {/* Kita buat label yang tampak seperti tombol. Saat diklik, ini akan memicu input di atas */}
+                                    <label
+                                        htmlFor="import_file"
+                                        className="flex items-center cursor-pointer rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                    >
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Pilih File...
+                                    </label>
+
+                                    {/* Tambahkan area untuk menampilkan nama file yang dipilih */}
+                                    <span className="text-sm text-gray-600">
+                                        {data.import_file ? data.import_file.name : 'Tidak ada file terpilih.'}
+                                    </span>
+                                </div>
+
+                                {/* Tampilkan pesan error jika ada */}
+                                {errors.import_file && (
+                                    <p className="mt-2 text-sm text-red-600">{errors.import_file}</p>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button type="button" variant="ghost" onClick={() => setIsImportOpen(false)}>
+                                    Batal
+                                </Button>
+                                <Button type="submit" disabled={processing || !data.import_file} className="bg-blue-600 hover:bg-blue-700">
+                                    {processing ? 'Mengunggah...' : 'Mulai Impor'}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
 
             </div>
         </div>

@@ -76,6 +76,7 @@ Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
     Route::get('dosen/dashboard', [DosenDashboardController::class, 'index'])->name('dosen.dashboard');
     Route::get('dosen/matakuliah/{mata_kuliah}', [MataKuliahDosenController::class, 'show'])->name('dosen.matakuliah.show');
     Route::get('dosen/bank-soal/export', [BankSoalController::class, 'export'])->name('dosen.bank-soal.export');
+    Route::post('dosen/bank-soal/import', [BankSoalController::class, 'import'])->name('dosen.bank-soal.import');
 
     Route::resource('dosen/bank-soal', BankSoalController::class)
         ->names('dosen.bank-soal');

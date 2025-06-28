@@ -10,6 +10,8 @@ use App\Models\OpsiJawaban;
 use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth;
 use App\Exports\SoalExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\SoalImport;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -63,6 +65,31 @@ class BankSoalController extends Controller
         }
 
         return Excel::download(new SoalExport(Auth::id()), 'bank_soal_dosen_'.Auth::id().'.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $this->getAuthProps();
+        if (!Auth::check() || !Auth::user()->is_dosen) {
+            abort(403);
+        }
+
+        $request->validate([
+            'import_file' => 'required|file|mimes:xlsx,xls,csv'
+        ]);
+
+        try {
+            Excel::import(new SoalImport(Auth::id()), $request->file('import_file'));
+        } catch (ValidationException $e) {
+            // Tangkap error validasi dari file Excel dan kirim kembali ke frontend
+            return back()->withErrors($e->failures())->with('error', 'Gagal mengimpor data. Periksa kembali file Anda.');
+        } catch (\Exception $e) {
+            // Tangkap error umum lainnya
+            Log::error('Gagal Impor Soal: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan server saat mengimpor file.');
+        }
+
+        return redirect()->back()->with('success', 'Soal berhasil diimpor.');
     }
 
     public function create(Request $request)
