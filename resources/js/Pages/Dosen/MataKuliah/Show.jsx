@@ -23,7 +23,7 @@ import {
     AlertDialogTitle,
 } from "@/Components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download } from 'lucide-react';
 import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
@@ -330,10 +330,20 @@ export default function Show() {
                                 <h3 className="text-xl font-bold text-gray-800">Bank Soal Mata Kuliah</h3>
                                 <p className="text-sm text-muted-foreground">Kelola semua soal untuk mata kuliah ini.</p>
                             </div>
-                            <Button onClick={handleAddSoal} className="bg-blue-600 hover:bg-blue-700">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Tambah Soal
-                            </Button>
+                            <div className="flex gap-2"> {/* Tambah wrapper untuk beberapa tombol */}
+                                {/* Tombol Ekspor Baru */}
+                                <a href={route('dosen.bank-soal.export')}>
+                                    <Button variant="outline">
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Ekspor Semua Soal
+                                    </Button>
+                                </a>
+
+                                <Button onClick={handleAddSoal} className="bg-blue-600 hover:bg-blue-700">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Tambah Soal
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">

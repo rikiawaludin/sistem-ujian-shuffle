@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\MataKuliah;
 use App\Models\OpsiJawaban;
 use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth;
+use App\Exports\SoalExport;
+use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -51,6 +53,16 @@ class BankSoalController extends Controller
             'mataKuliahOptions' => $mataKuliahOptions, // <-- Kirim opsi MK
             'filters' => $request->only(['filter_mk']), // <-- Kirim filter yang sedang aktif
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $this->getAuthProps(); // Pastikan user terotentikasi
+        if (!Auth::check() || !Auth::user()->is_dosen) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        return Excel::download(new SoalExport(Auth::id()), 'bank_soal_dosen_'.Auth::id().'.xlsx');
     }
 
     public function create(Request $request)
