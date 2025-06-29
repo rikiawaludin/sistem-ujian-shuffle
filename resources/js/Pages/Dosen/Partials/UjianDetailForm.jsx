@@ -180,8 +180,8 @@ export default function UjianDetailForm({ ujian, defaultMataKuliahId, onSuccess,
 
                 {data.sertakan_esai && (
                     <div className="mt-4 pl-2">
-                        <Label htmlFor="persentase_esai">Persentase Soal Esai ({data.persentase_esai}%)</Label>
-                        <p className="text-sm text-muted-foreground">Tentukan berapa persen dari total soal yang harus berupa esai.</p>
+                        <Label htmlFor="persentase_esai">Persentase Nilai Soal Esai ({data.persentase_esai}%)</Label>
+                        <p className="text-sm text-muted-foreground">Tentukan berapa persen nilai / skor untuk esai.</p>
                         <Slider
                             id="persentase_esai"
                             defaultValue={[data.persentase_esai]}

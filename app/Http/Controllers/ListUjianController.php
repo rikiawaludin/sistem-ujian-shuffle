@@ -309,13 +309,25 @@ class ListUjianController extends Controller
                 'jawabanPengguna' => $jawabanPenggunaFinal, // Menggunakan jawaban yang sudah di-decode
                 'isBenar' => $jawabanDataAttempt->is_benar ?? null,
                 'penjelasan' => $soalMasterUjian->penjelasan,
+                'skorDiperoleh' => $jawabanDataAttempt->skor_per_soal ?? null,
+                'skorMaksimal' => $soalMasterUjian->pivot->bobot_nilai_soal ?? null,
             ];
         })->sortBy('nomorSoal')->values()->all();
 
-        $jumlahSoalDiUjian = count($detailSoalJawaban);
-        $jumlahBenar = $attempt->detailJawaban->where('is_benar', true)->count();
-        $jumlahSalah = $attempt->detailJawaban->filter(fn ($item) => $item->is_benar === false)->count();
-        $jumlahDijawab = $attempt->detailJawaban->filter(fn ($item) => $item->jawaban_user !== null)->count();
+        $soalUjianCollection = $attempt->ujian->soal;
+        $detailJawabanCollection = $attempt->detailJawaban;
+
+        $jumlahSoalDiUjian = $soalUjianCollection->count();
+        $jumlahDijawab = $detailJawabanCollection->whereNotNull('jawaban_user')->count();
+
+        // Hitungan ini sudah benar secara implisit karena mengabaikan esai (is_benar = null)
+        $jumlahBenar = $detailJawabanCollection->where('is_benar', true)->count();
+        $jumlahSalah = $detailJawabanCollection->where('is_benar', false)->count();
+        
+        // BARU: Hitung jumlah soal esai secara eksplisit
+        $jumlahEsai = $soalUjianCollection->where('tipe_soal', 'esai')->count();
+
+        // Hitung tidak dijawab berdasarkan soal total - soal yang dijawab
         $jumlahTidakDijawab = $jumlahSoalDiUjian - $jumlahDijawab;
 
         $hasilUjianData = [
@@ -331,6 +343,7 @@ class ListUjianController extends Controller
             'jumlahSoalBenar' => $jumlahBenar,
             'jumlahSoalSalah' => $jumlahSalah,
             'jumlahSoalTidakDijawab' => $jumlahTidakDijawab,
+            'jumlahEsai' => $jumlahEsai,
             'detailSoalJawaban' => $detailSoalJawaban,
         ];
 

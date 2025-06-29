@@ -10,7 +10,8 @@ use App\Http\Controllers\Admin\SyncController;
 use App\Http\Controllers\Dosen\BankSoalController;
 use App\Http\Controllers\Dosen\UjianController;
 use App\Http\Controllers\Dosen\DosenDashboardController;
-use App\Http\Controllers\Dosen\MataKuliahDosenController; 
+use App\Http\Controllers\Dosen\MataKuliahDosenController;
+use App\Http\Controllers\Dosen\HasilUjianController; 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -83,6 +84,11 @@ Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
     
     Route::resource('dosen/ujian', UjianController::class)
         ->names('dosen.ujian');
+    
+    Route::get('dosen/ujian/{ujian}/hasil', [HasilUjianController::class, 'index'])->name('dosen.ujian.hasil.index');
+    Route::get('dosen/pengerjaan/{pengerjaan}/koreksi', [HasilUjianController::class, 'showKoreksiForm'])->name('dosen.ujian.koreksi.show');
+    Route::post('dosen/jawaban-detail/{jawabanDetail}/skor', [HasilUjianController::class, 'simpanSkorEsai'])->name('dosen.ujian.koreksi.simpan');
+    Route::post('dosen/pengerjaan/{pengerjaan}/finalisasi', [HasilUjianController::class, 'finalisasiSkor'])->name('dosen.ujian.koreksi.finalisasi');
 });
 
 require __DIR__.'/auth.php';

@@ -132,9 +132,18 @@ class UjianSoalController extends Controller
 
                     // Simpan ID soal ke database (pivot table)
                     DB::transaction(function () use ($ujian, $soalTerpilihDanTeracak) {
-                        $selectedSoalIds = collect($soalTerpilihDanTeracak)->pluck('id')->all();
-                        if (!empty($selectedSoalIds)) {
-                            $ujian->soal()->sync($selectedSoalIds); // Gunakan sync untuk keamanan
+                        $syncData = [];
+                        foreach ($soalTerpilihDanTeracak as $index => $soal) {
+                            $opsiOrder = collect($soal['pilihan'] ?? [])->pluck('id')->all();
+
+                            $syncData[$soal['id']] = [
+                                'nomor_urut_di_ujian' => $index + 1,
+                                // 'opsi_jawaban_order'  => json_encode($opsiOrder),
+                                'bobot_nilai_soal'    => $soal['bobot'] ?? 0, // Pastikan baris ini ada
+                            ];
+                        }
+                        if (!empty($syncData)) {
+                            $ujian->soal()->sync($syncData);
                         }
                     });
 

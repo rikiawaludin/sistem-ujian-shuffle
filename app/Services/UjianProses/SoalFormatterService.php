@@ -45,6 +45,7 @@ class SoalFormatterService
                 'pilihan' => $pilihanUntukExpress,
                 'pasangan' => $pasanganUntukExpress,
                 'jawaban' => $kunciJawabanUntukExpress,
+                'bobot' => $itemSoal->bobot,
             ];
         })->values()->all();
     }

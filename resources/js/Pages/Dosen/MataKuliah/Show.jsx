@@ -466,11 +466,29 @@ export default function Show() {
                     <TabsContent value="results">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Hasil & Penilaian</CardTitle>
-                                <CardDescription>Hasil pengerjaan ujian oleh mahasiswa.</CardDescription>
+                                <CardTitle>Hasil & Penilaian Ujian</CardTitle>
+                                <CardDescription>
+                                    Pilih ujian untuk melihat hasil pengerjaan mahasiswa dan melakukan penilaian esai.
+                                </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <p className="text-center text-gray-500 py-8">Fitur untuk menampilkan hasil akan diimplementasikan pada tahap selanjutnya.</p>
+                            <CardContent className="space-y-4">
+                                {course.ujian.map((ujian) => (
+                                    <div key={ujian.id} className="p-4 border rounded-lg flex justify-between items-center">
+                                        <div>
+                                            <h4 className="font-semibold">{ujian.judul_ujian}</h4>
+                                            <p className="text-sm text-gray-500">
+                                                Status: <span className="capitalize">{ujian.status_terkini}</span>
+                                            </p>
+                                        </div>
+                                        {/* Tombol ini akan mengarah ke halaman daftar penilaian */}
+                                        <Link href={route('dosen.ujian.hasil.index', ujian.id)}>
+                                            <Button variant="outline">Lihat Hasil & Nilai</Button>
+                                        </Link>
+                                    </div>
+                                ))}
+                                {course.ujian.length === 0 && (
+                                    <p className="text-center text-gray-500 py-8">Belum ada ujian untuk mata kuliah ini.</p>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>

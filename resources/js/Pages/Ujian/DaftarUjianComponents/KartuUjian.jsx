@@ -107,12 +107,17 @@ export default function KartuUjian({ ujian }) {
                     {/* ^-- Diubah: `items-center` untuk menengahkan di mode mobile (flex-col) */}
                     {/* `sm:justify-between` untuk merentangkan di layar besar (flex-row) */}
 
-                    {ujian.status === "Selesai" && ujian.skor !== null ? (
+                    {(ujian.status === "Selesai" || ujian.status === "Selesai (Hasil Ditutup)") && ujian.skor !== null ? (
                         <div className="text-center sm:text-left">
-                            <Typography className="text-xs text-gray-500">Skor Anda</Typography>
-                            <Typography variant="h5" color={ujian.skor >= ujian.kkm ? "green" : "red"} className="font-bold">
-                                {ujian.skor}
-                            </Typography>
+                            <Typography className="text-xs text-gray-500">SKOR / KKM</Typography>
+                            <div className="flex items-baseline justify-center sm:justify-start space-x-1">
+                                <Typography variant="h5" color={ujian.skor >= ujian.kkm ? "green" : "red"} className="font-bold">
+                                    {ujian.skor}
+                                </Typography>
+                                <Typography color="blue-gray" className="font-bold text-lg">
+                                    / {ujian.kkm}
+                                </Typography>
+                            </div>
                         </div>
                     ) : (
                         // Tetap berikan div kosong agar `justify-between` berfungsi di layar besar

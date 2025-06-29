@@ -4,7 +4,7 @@ import { CheckIcon, XMarkIcon, InformationCircleIcon } from "@heroicons/react/24
 
 const getOptionLetter = (index) => String.fromCharCode(65 + index);
 
-export default function SoalReviewItem({ soal, nomorUrut }) {
+export default function SoalReviewItem({ soal, nomorUrut,  }) {
     const {
         pertanyaan,
         tipeSoal,
@@ -12,6 +12,8 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
         jawabanPengguna,
         isBenar,
         penjelasan,
+        skorDiperoleh, 
+        skorMaksimal,
     } = soal;
 
     // Ambil semua ID kunci jawaban untuk perbandingan
@@ -29,9 +31,32 @@ export default function SoalReviewItem({ soal, nomorUrut }) {
                     <Typography variant="h6" color="blue-gray" className="font-semibold">
                         Soal No. {nomorUrut}
                     </Typography>
-                    {isBenar === true && <Chip value="Benar" color="green" size="sm" icon={<CheckIcon />} />}
-                    {isBenar === false && <Chip value="Salah" color="red" size="sm" icon={<XMarkIcon />} />}
-                    {isBenar === null && <Chip value="Perlu Dinilai" color="amber" size="sm" icon={<InformationCircleIcon />} />}
+                    {tipeSoal === 'esai' ? (
+                        // Jika tipe soal adalah esai
+                        skorDiperoleh !== null ? (
+                            // Jika sudah dinilai (skor tidak null), tampilkan skornya
+                            <Chip
+                                value={`Skor: ${skorDiperoleh} / ${skorMaksimal}`}
+                                color="blue"
+                                size="sm"
+                                icon={<CheckIcon />}
+                            />
+                        ) : (
+                            // Jika belum dinilai, tampilkan "Perlu Dinilai"
+                            <Chip
+                                value="Perlu Dinilai"
+                                color="amber"
+                                size="sm"
+                                icon={<InformationCircleIcon />}
+                            />
+                        )
+                    ) : (
+                        // Jika bukan esai, gunakan logika lama (Benar/Salah)
+                        <>
+                            {isBenar === true && <Chip value="Benar" color="green" size="sm" icon={<CheckIcon />} />}
+                            {isBenar === false && <Chip value="Salah" color="red" size="sm" icon={<XMarkIcon />} />}
+                        </>
+                    )}
                 </div>
 
                 <div
