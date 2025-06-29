@@ -52,6 +52,7 @@ class DashboardController extends Controller
                     'is_dosen' => $userAccount['is_dosen'] ?? false, // Tambahkan untuk konsistensi
                     'is_admin' => $userAccount['is_admin'] ?? false, // Tambahkan untuk konsistensi
                     'nim' => $userProfile['nim'] ?? null,
+                    'nama_jurusan' => $userProfile['nama_jurusan'] ?? null,
                 ];
             } else {
                 Log::warning('DashboardController: Pengguna dengan external_id sesi ' . $externalId . ' tidak ditemukan di DB lokal.');

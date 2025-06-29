@@ -1,38 +1,42 @@
+// resources/js/Layouts/Dashboard.jsx
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Typography, Card, CardBody, Spinner } from "@material-tailwind/react";
+import { Typography, Card, Spinner, Input } from "@material-tailwind/react";
 import { usePage, Head } from '@inertiajs/react';
-import { ArchiveBoxIcon, PlayCircleIcon, CalendarDaysIcon } from '@heroicons/react/24/solid';
 import axios from 'axios';
-import 'swiper/css';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 
-import FloatingBackground from '@/Components/Homepage/FloatingBackground';
-import HomeFeatureCard from '@/Components/Homepage/HomeFeatureCard';
-import RingkasanMataKuliahCard from '@/Components/DashboardPanels/RingkasanMataKuliahCard';
-import Modal from '@/Components/Modal';
-import UjianListItem from '@/Components/UjianListItem';
+// Hapus import yang tidak lagi digunakan
+// import HomeFeatureCard from '@/Components/Homepage/HomeFeatureCard';
+// import RingkasanMataKuliahCard from '@/Components/DashboardPanels/RingkasanMataKuliahCard';
+
+// Import komponen baru
+import DashboardHeader from '@/Components/DashboardPanels/DashboardHeader';
+import MataKuliahCard from '@/Components/DashboardPanels/MataKuliahCard';
+
+// Modal & UjianListItem bisa tetap ada jika ada alur lain yang menggunakannya,
+// namun dalam konteks desain baru ini, mereka tidak dipanggil dari halaman utama.
+// import Modal from '@/Components/Modal';
+// import UjianListItem from '@/Components/UjianListItem';
 
 export default function Dashboard() {
     const {
         auth,
         daftarMataKuliahLokal,
-        historiUjian,
-        daftarUjian,
+        // historiUjian, // Tidak digunakan di layout baru
+        // daftarUjian, // Tidak digunakan di layout baru
         filters,
         apiBaseUrl,
         sessionToken
     } = usePage().props;
 
-    const [modalState, setModalState] = useState({
-        isOpen: false,
-        title: '',
-        data: [],
-    });
-
     const [kelasKuliahMahasiswaApi, setKelasKuliahMahasiswaApi] = useState([]);
     const [isLoadingKelasKuliah, setIsLoadingKelasKuliah] = useState(true);
     const [errorKelasKuliah, setErrorKelasKuliah] = useState(null);
-    const [selectedSemester, setSelectedSemester] = useState(String(filters?.semester || 'semua'));
+
+    // State baru untuk pencarian
+    const [searchTerm, setSearchTerm] = useState('');
 
     const fetchKelasKuliahMahasiswa = useCallback(async () => {
         if (!apiBaseUrl || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
@@ -67,7 +71,6 @@ export default function Dashboard() {
             .map(kelas => {
                 const matkulApi = kelas.matakuliah;
                 const dosenApi = kelas.dosen ?? {};
-                const dataKelasApi = kelas.data_kelas ?? {};
                 const mkLokal = daftarMataKuliahLokal?.[matkulApi.mk_id] || null;
                 let dosenNamaDisplay = "Dosen akan segera ditentukan";
                 if (dosenApi.nm_dosen && String(dosenApi.nm_dosen).trim() !== "") {
@@ -80,141 +83,83 @@ export default function Dashboard() {
                     nama: matkulApi.nm_mk,
                     dosen: { nama: dosenNamaDisplay },
                     semester: matkulApi.semester,
-                    id_matakuliah_lokal: mkLokal?.id_lokal || null
+                    id_matakuliah_lokal: mkLokal?.id_lokal || null,
+                    sks: matkulApi.sks || 0,
+                    kode_mk: matkulApi.kd_mk || 'N/A',
                 };
             })
-            .filter(mk => selectedSemester === 'semua' || String(mk.semester) === String(selectedSemester));
-    }, [kelasKuliahMahasiswaApi, selectedSemester, daftarMataKuliahLokal]);
+    }, [kelasKuliahMahasiswaApi, daftarMataKuliahLokal]);
 
-    const handleOpenModal = (status) => {
-        let title = '';
-        let data = [];
+    const totalSks = useMemo(() => {
+        return mataKuliahTampilList.reduce((sum, mk) => sum + mk.sks, 0);
+    }, [mataKuliahTampilList]);
 
-        if (status === 'Aktif') {
-            title = 'Ujian Aktif';
-            data = daftarUjian.filter(u => u.status === 'Aktif');
-        } else if (status === 'Selesai') {
-            title = 'Riwayat Ujian';
-            data = historiUjian;
-        } else if (status === 'Mendatang') {
-            title = 'Ujian Mendatang';
-            data = daftarUjian.filter(u => u.status === 'Mendatang');
-        }
-
-        setModalState({ isOpen: true, title, data });
-    };
-
-    const handleCloseModal = () => {
-        setModalState({ isOpen: false, title: '', data: [] });
-    };
-
-    const summaryData = useMemo(() => {
-        return [
-            {
-                icon: <PlayCircleIcon />,
-                title: "Ujian Aktif",
-                description: `Klik untuk melihat semua ujian yang sedang berlangsung atau dapat Anda kerjakan saat ini.`,
-                onClick: () => handleOpenModal('Aktif'),
-                variant: 'primary',
-            },
-            {
-                icon: <ArchiveBoxIcon />,
-                title: "Riwayat Ujian",
-                description: `Lihat kembali semua ujian yang telah Anda selesaikan, lengkap dengan skor dan detail lainnya.`,
-                onClick: () => handleOpenModal('Selesai'),
-                variant: 'secondary',
-            },
-            {
-                icon: <CalendarDaysIcon />,
-                title: "Ujian Mendatang",
-                description: `Pantau jadwal semua ujian yang akan datang agar Anda bisa mempersiapkan diri dengan lebih baik.`,
-                onClick: () => handleOpenModal('Mendatang'),
-                variant: 'tertiary',
-            },
-        ];
-    }, [daftarUjian, historiUjian]);
-
+    // Logika filter untuk pencarian
+    const filteredMataKuliah = useMemo(() => {
+        return mataKuliahTampilList.filter(mk =>
+            mk.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mk.dosen.nama.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [mataKuliahTampilList, searchTerm]);
 
     return (
-        <AuthenticatedLayout user={auth.user} title="Dashboard Ujian" useCustomPadding={true}>
-            <Head title="Home" />
-            <div className="relative min-h-screen w-full bg-gray-50">
-                <FloatingBackground />
-                <div className="relative z-10 flex flex-col min-h-[calc(100vh-150px)]">
-                    <header className="text-center py-12 px-4">
-                        <Typography variant="h1" className="text-4xl md:text-5xl font-bold text-gray-800 mb-4 drop-shadow-sm">
-                            Selamat Datang, {auth.user.name ? auth.user.name.split(' ')[0] : 'Mahasiswa'}!
-                        </Typography>
-                        <Typography className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                            Platform ujian digital modern dengan fitur lengkap untuk pengalaman belajar yang optimal.
-                        </Typography>
-                    </header>
-                    <div className="flex-1 flex items-center justify-center px-4 pb-20">
-                        <div className="max-w-7xl mx-auto w-full">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
-                                {/* DI SINI LETAK PERBAIKANNYA */}
-                                {summaryData.map((data) => (
-                                    <button key={data.title} onClick={data.onClick} className="text-left h-full">
-                                        <HomeFeatureCard
-                                            icon={data.icon}
-                                            title={data.title}
-                                            description={data.description}
-                                            variant={data.variant}
-                                        />
-                                    </button>
-                                ))}
+        <AuthenticatedLayout user={auth.user} title="Dashboard" useCustomPadding={true}>
+            <Head title="Dashboard" />
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
+                <div className="container mx-auto px-4 sm:px-6 py-8">
+                    <DashboardHeader
+                        auth={auth} 
+                        userName={auth.user.name ? auth.user.name : 'Mahasiswa'}
+                        totalMataKuliah={mataKuliahTampilList.length}
+                        totalSks={totalSks}
+                        namaJurusan={auth.user.nama_jurusan}
+                    />
+
+                    <div className="mb-8">
+                        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <Typography variant="h4" color="blue-gray" className="font-bold shrink-0">
+                                Mata Kuliah Anda
+                            </Typography>
+                            <div className="w-full md:max-w-sm">
+                                <Input
+                                    label="Cari mata kuliah atau dosen..."
+                                    icon={<MagnifyingGlassIcon className="w-5 h-5" />}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="bg-white/70 backdrop-blur-sm"
+                                />
                             </div>
                         </div>
                     </div>
-                </div>
-                <div id="mata-kuliah-section" className="bg-gray-50 px-4 pb-20 pt-4 relative z-10">
-                    <div className="container mx-auto">
-                        <div className="relative h-40 w-full overflow-hidden rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 bg-cover bg-center">
-                            <div className="absolute inset-0 h-full w-full bg-black/50" />
-                        </div>
-                        <Card className="mx-3 -mt-32 mb-6 lg:mx-4 border border-blue-gray-100">
-                            <CardBody className="p-4 sm:p-6">
-                                <div className="px-4 pb-4">
-                                    <Typography variant="h6" color="blue-gray" className="mb-2">
-                                        Mata Kuliah Anda
-                                    </Typography>
-                                    <Typography variant="small" className="font-normal text-blue-gray-500">
-                                        Pilih mata kuliah untuk memulai ujian atau melihat riwayat.
-                                    </Typography>
 
-                                    {isLoadingKelasKuliah ? (
-                                        <div className="flex justify-center py-12"><Spinner className="h-10 w-10" /></div>
-                                    ) : errorKelasKuliah ? (
-                                        <Card className="mt-6 p-8 text-center"><Typography color="red">{errorKelasKuliah}</Typography></Card>
-                                    ) : mataKuliahTampilList.length > 0 ? (
-                                        <div className="mt-6 grid grid-cols-1 gap-12 md:grid-cols-2 xl:grid-cols-4">
-                                            {mataKuliahTampilList.map((mk) => (
-                                                <RingkasanMataKuliahCard key={mk.id_matakuliah_lokal || mk.id} mataKuliah={mk} />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <Card className="mt-6 p-8 text-center">
-                                            <Typography>Tidak ada mata kuliah yang terdaftar untuk Anda.</Typography>
-                                        </Card>
-                                    )}
-                                </div>
-                            </CardBody>
-                        </Card>
+                    {isLoadingKelasKuliah ? (
+                        <div className="flex justify-center py-20"><Spinner className="h-12 w-12" /></div>
+                    ) : errorKelasKuliah ? (
+                        <Card className="p-8 text-center bg-red-50/50 border-red-200"><Typography color="red" className="font-semibold">{errorKelasKuliah}</Typography></Card>
+                    ) : filteredMataKuliah.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredMataKuliah.map((mk) => (
+                                <MataKuliahCard key={mk.id_matakuliah_lokal || mk.id} mataKuliah={mk} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20">
+                            <Typography variant="h6" color="blue-gray" className="font-medium">
+                                Tidak Ada Mata Kuliah Ditemukan
+                            </Typography>
+                            <Typography color="gray" className="mt-1">
+                                Coba ubah kata kunci pencarian Anda atau periksa kembali semester yang aktif.
+                            </Typography>
+                        </div>
+                    )}
+
+                    <div className="mt-12 text-center">
+                        <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-full px-5 py-2.5 text-sm text-gray-600 border border-gray-200/80">
+                            <span className={`w-2 h-2 rounded-full animate-pulse ${isLoadingKelasKuliah ? 'bg-yellow-500' : 'bg-green-500'}`}></span>
+                            Menampilkan {filteredMataKuliah.length} dari {mataKuliahTampilList.length} mata kuliah
+                        </div>
                     </div>
                 </div>
-                <Modal
-                    isOpen={modalState.isOpen}
-                    onClose={handleCloseModal}
-                    title={modalState.title}
-                >
-                    {modalState.data.length > 0 ? (
-                        modalState.data.map(ujian => (
-                            <UjianListItem key={ujian.id_ujian || ujian.id_pengerjaan} ujian={ujian} />
-                        ))
-                    ) : (
-                        <Typography color="gray" className="text-center">Tidak ada ujian untuk ditampilkan.</Typography>
-                    )}
-                </Modal>
             </div>
         </AuthenticatedLayout>
     );

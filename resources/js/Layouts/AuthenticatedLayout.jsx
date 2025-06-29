@@ -63,7 +63,7 @@ export default function AuthenticatedLayout({ children, title, useCustomPadding 
       ) : (
         // Tampilan Mahasiswa
         <>
-          <AppNavbar />
+          {/* <AppNavbar /> */}
           {/* DIUBAH: Logika kondisional ditambahkan di sini.
                       - Jika useCustomPadding={true}, maka {children} akan dirender langsung tanpa wrapper.
                       - Jika tidak (default), maka wrapper dengan padding standar akan digunakan.
