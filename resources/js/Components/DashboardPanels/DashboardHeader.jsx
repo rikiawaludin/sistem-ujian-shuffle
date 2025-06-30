@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Typography, Tooltip } from "@material-tailwind/react";
-import { AcademicCapIcon, BookOpenIcon, BuildingLibraryIcon,  ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'; // Ganti CalendarDaysIcon dengan BuildingLibraryIcon untuk Jurusan
+import { router } from '@inertiajs/react';
+import { AcademicCapIcon, BookOpenIcon, BuildingLibraryIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'; // Ganti CalendarDaysIcon dengan BuildingLibraryIcon untuk Jurusan
 
 const StatItem = ({ icon, value, label, colorClass }) => (
     <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
@@ -14,7 +15,7 @@ const StatItem = ({ icon, value, label, colorClass }) => (
 
 export default function DashboardHeader({ auth, userName, totalMataKuliah, totalSks, namaJurusan }) {
 
-    const handleLogout = () => router.get(route('logout'));
+    // const handleLogout = () => router.get(route('logout')); 
 
     // DITAMBAHKAN: Logika untuk memformat nama jurusan
     let displayJurusan = 'N/A';
@@ -54,17 +55,20 @@ export default function DashboardHeader({ auth, userName, totalMataKuliah, total
                         {/* Bagian Kanan: Menu Pengguna (Logout/Profil) */}
                         <div className="flex-shrink-0">
                             {auth.user ? (
-                                // DIUBAH: Komponen Menu diganti dengan Tooltip dan tombol ikon
                                 <Tooltip content="Log Out" placement="bottom">
-                                    <button
-                                        onClick={handleLogout}
-                                        className="p-2 rounded-full text-white/80 bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
+                                    {/* DIUBAH: <button> diganti dengan tag <a> biasa */}
+                                    <a
+                                        href={route('logout')} // Menggunakan href untuk navigasi langsung
+                                        className="p-2 block rounded-full text-white/80 bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
                                     >
                                         <ArrowLeftOnRectangleIcon className="h-6 w-6" />
-                                    </button>
+                                    </a>
                                 </Tooltip>
                             ) : (
-                                <Button onClick={() => router.get(route('login'))} color="white" variant="outlined">Log In</Button>
+                                // Tombol login ini juga bisa diubah menjadi tag <a> jika rutenya adalah halaman login standar
+                                <a href={route('login')}>
+                                    <Button color="white" variant="outlined">Log In</Button>
+                                </a>
                             )}
                         </div>
                     </div>
