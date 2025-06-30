@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Typography, Tooltip } from "@material-tailwind/react";
 import { router } from '@inertiajs/react';
+import { LogOut } from 'lucide-react';
 import { AcademicCapIcon, BookOpenIcon, BuildingLibraryIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'; // Ganti CalendarDaysIcon dengan BuildingLibraryIcon untuk Jurusan
 
 const StatItem = ({ icon, value, label, colorClass }) => (
@@ -61,7 +62,7 @@ export default function DashboardHeader({ auth, userName, totalMataKuliah, total
                                         href={route('logout')} // Menggunakan href untuk navigasi langsung
                                         className="p-2 block rounded-full text-white/80 bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
                                     >
-                                        <ArrowLeftOnRectangleIcon className="h-6 w-6" />
+                                        <LogOut className="h-6 w-6" />
                                     </a>
                                 </Tooltip>
                             ) : (

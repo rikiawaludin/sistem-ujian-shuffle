@@ -2,7 +2,8 @@ import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/Components/ui/card";
 import { Button } from "@/Components/ui/button";
-import { BookOpen, Users, FileText, BarChart3, Settings } from 'lucide-react';
+import { BookOpen, Users, FileText, BarChart3, LogOut, Settings } from 'lucide-react';
+import { Tooltip } from "@material-tailwind/react";
 
 const StatCard = ({ title, value, icon: Icon, iconColor }) => (
     <Card className="bg-white shadow-md hover:shadow-lg transition-shadow">
@@ -79,6 +80,17 @@ export default function Index() {
                                 <h1 className="text-2xl font-bold">Dashboard Dosen</h1>
                                 <p className="text-blue-100">{auth.user.name} {auth.user.gelar}</p>
                             </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                            <Tooltip content="Log Out" placement="bottom">
+                                {/* DIUBAH: <button> diganti dengan tag <a> biasa */}
+                                <a
+                                    href={route('logout')} // Menggunakan href untuk navigasi langsung
+                                    className="p-2 block rounded-full text-white/80 bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
+                                >
+                                    <LogOut className="h-6 w-6" />
+                                </a>
+                            </Tooltip>
                         </div>
                     </div>
                 </div>

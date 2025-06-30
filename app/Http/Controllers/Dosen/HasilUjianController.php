@@ -10,6 +10,7 @@ use App\Services\SkorAkhir;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class HasilUjianController extends Controller
 {
@@ -18,6 +19,10 @@ class HasilUjianController extends Controller
      */
     public function index(Ujian $ujian)
     {
+        if ($ujian->dosen_pembuat_id !== Auth::id()) {
+            abort(403, 'Anda tidak memiliki akses ke hasil ujian ini.');
+        }
+
         $ujian->load(['pengerjaanUjian.user:id,email']); // Load relasi
 
         $pengerjaanMenunggu = $ujian->pengerjaanUjian()
@@ -42,6 +47,15 @@ class HasilUjianController extends Controller
      */
     public function showKoreksiForm(PengerjaanUjian $pengerjaan)
     {
+
+        // DITAMBAHKAN: Eager load relasi ujian untuk otorisasi
+        $pengerjaan->load('ujian:id,judul_ujian,dosen_pembuat_id');
+
+        // DITAMBAHKAN: Otorisasi - Cek kepemilikan melalui relasi
+        if ($pengerjaan->ujian->dosen_pembuat_id !== Auth::id()) {
+            abort(403, 'Anda tidak memiliki akses untuk mengoreksi pengerjaan ini.');
+        }
+
         // Load data yang dibutuhkan: user, ujian, dan jawaban esai
         $pengerjaan->load([
             'user:id,email', 
@@ -63,9 +77,13 @@ class HasilUjianController extends Controller
      */
     public function simpanSkorEsai(Request $request, JawabanPesertaDetail $jawabanDetail)
     {
-        // Otorisasi: Pastikan dosen ini berhak menilai
-        // Anda bisa tambahkan pengecekan di sini
-        // Contoh: $this->authorize('update', $jawabanDetail);
+        // DITAMBAHKAN: Eager load relasi untuk otorisasi
+        $jawabanDetail->load('pengerjaanUjian.ujian:id,dosen_pembuat_id');
+
+        // DITAMBAHKAN: Otorisasi - Cek kepemilikan melalui relasi yang lebih dalam
+        if ($jawabanDetail->pengerjaanUjian->ujian->dosen_pembuat_id !== Auth::id()) {
+            abort(403, 'Anda tidak memiliki akses untuk menyimpan skor ini.');
+        }
 
         // Ambil bobot maksimal soal ini dari tabel pivot secara langsung dan efisien
         $pivotData = DB::table('ujian_soal')
@@ -109,7 +127,12 @@ class HasilUjianController extends Controller
      */
     public function finalisasiSkor(Request $request, PengerjaanUjian $pengerjaan, SkorAkhir $calculator)
     {
-        // Otorisasi...
+        $pengerjaan->load('ujian:id,dosen_pembuat_id');
+
+        // DITAMBAHKAN: Otorisasi - Cek kepemilikan sebelum finalisasi
+        if ($pengerjaan->ujian->dosen_pembuat_id !== Auth::id()) {
+            abort(403, 'Anda tidak memiliki akses untuk finalisasi skor ini.');
+        }
 
         // Hitung skor akhir menggunakan service yang sudah ada
         $skorTotal = $calculator->calculate($pengerjaan);
