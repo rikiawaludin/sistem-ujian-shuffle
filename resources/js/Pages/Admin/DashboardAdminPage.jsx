@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { router } from '@inertiajs/react';
+import { router, usePage, Head } from '@inertiajs/react';
 import {
     Button,
     Typography,
@@ -11,13 +11,17 @@ import {
     TabsBody,
     Tab,
     TabPanel,
-    // Spinner sudah dihandle oleh AdvancedTable
+    Tooltip,
 } from "@material-tailwind/react";
 import {
     PowerIcon,
-    InformationCircleIcon
+    InformationCircleIcon,
+    WrenchScrewdriverIcon,
+    ArrowLeftOnRectangleIcon,
 } from "@heroicons/react/24/solid";
 import AdvancedTable from "@/Components/Tables/AdvancedTable";
+// DITAMBAHKAN: Pastikan path ke PageHeader sudah benar
+import PageHeader from "@/Layouts/PageHeader";
 
 export default function DashboardAdminPage({
     mahasiswaData,
@@ -27,9 +31,11 @@ export default function DashboardAdminPage({
     mataKuliahData,
     migrationHistoryUsers,
     migrationHistoryMataKuliah,
-    apiBaseUrl,
     flash
 }) {
+    // DITAMBAHKAN: Ambil data auth dari usePage untuk digunakan di header
+    const { auth } = usePage().props;
+
     const [loading, setLoading] = useState({
         mahasiswa: false,
         dosen: false,
@@ -81,7 +87,6 @@ export default function DashboardAdminPage({
     }, [activeUserTab]);
 
     const handleSync = (type) => {
-        // 1. Set loading[type] true di awal
         setLoading(prev => ({ ...prev, [type]: true }));
         setLocalFlash(null);
         if (flashMessageTimeoutRef.current) {
@@ -114,7 +119,7 @@ export default function DashboardAdminPage({
                 dataPropsToReload = ['mataKuliahData', 'migrationHistoryMataKuliah'];
                 break;
             default:
-                setLoading(prev => ({ ...prev, [type]: false })); // Matikan loading jika tipe tidak dikenal
+                setLoading(prev => ({ ...prev, [type]: false }));
                 return;
         }
 
@@ -123,56 +128,34 @@ export default function DashboardAdminPage({
                 showFlashMessage(`Proses sinkronisasi data ${type} telah dimulai...`, 'info', 3000);
             },
             onFinish: () => {
-                // setLoading(prev => ({ ...prev, [type]: false })); // PASTIKAN INI SUDAH DIHAPUS/DIKOMENTARI DARI SINI
-
-                const refreshDelay = 2000; // Anda bisa coba kurangi refreshDelay ini jika job Anda cepat
+                const refreshDelay = 2000;
                 showFlashMessage(
-                    `Sinkronisasi ${type} berjalan di latar belakang. Data akan dimuat ulang setelah ${refreshDelay / 1000} detik...`,
-                    'info',
-                    refreshDelay - 500 < 0 ? 500 : refreshDelay - 500 // Pastikan durasi positif
+                    `Sinkronisasi ${type} berjalan di latar belakang. Data akan dimuat ulang setelah ${refreshDelay / 1000} detik...`, 'info', refreshDelay - 500 < 0 ? 500 : refreshDelay - 500
                 );
-
                 setTimeout(() => {
                     router.reload({
                         only: dataPropsToReload,
                         preserveScroll: true,
-                        // preserveState: true, // Ini adalah default untuk router.reload(), bisa dihapus atau eksplisit true
                         onSuccess: (page) => {
-                            setLoading(prev => ({ ...prev, [type]: false })); // Matikan loading SETELAH data baru diterima
-                            const dataActuallyRefreshed = dataPropsToReload.every(propName => page.props[propName] !== undefined);
-                            if (dataActuallyRefreshed) {
-                                showFlashMessage(`Data ${type} telah berhasil dimuat ulang.`, 'success', 2000);
-                            } else {
-                                showFlashMessage(`Data ${type} selesai dimuat ulang, namun hasilnya mungkin tidak sesuai harapan.`, 'warning', 5000);
-                            }
+                            setLoading(prev => ({ ...prev, [type]: false }));
+                            showFlashMessage(`Data ${type} telah berhasil dimuat ulang.`, 'success', 2000);
                         },
                         onError: (errors) => {
-                            setLoading(prev => ({ ...prev, [type]: false })); // Matikan loading jika reload gagal
+                            setLoading(prev => ({ ...prev, [type]: false }));
                             showFlashMessage(`Gagal memuat ulang data ${type} setelah sinkronisasi.`, 'error', 7000);
-                            console.error("Error saat reload data:", errors);
                         }
                     });
                 }, refreshDelay);
             },
             onError: (errors) => {
-                // 2. Set loading[type] false jika dispatch job awal gagal
                 setLoading(prev => ({ ...prev, [type]: false }));
                 const errorMessage = errors.message || Object.values(errors).join(', ');
                 showFlashMessage(`Gagal memulai sinkronisasi ${type}: ${errorMessage}`, 'error', 7000);
-                console.error(`Error dispatching job ${type}:`, errors);
             },
             preserveState: (page) => Object.keys(page.props.errors || {}).length > 0,
             preserveScroll: true,
         });
     };
-
-    // ... (userColumns, mataKuliahColumns, migrationHistoryColumns, getFilteredHistory, userTabContent, dan return JSX tetap sama) ...
-    // Pastikan userTabContent dan bagian lain yang menggunakan AdvancedTable meneruskan loading[type.toLowerCase()] dengan benar.
-    // Contoh di userTabContent: isLoading={loading[userType.toLowerCase()]} sudah benar.
-
-    // ... (Sisa kode JSX dari komponen DashboardAdminPage Anda)
-    // Definisi kolom dan userTabContent tetap sama seperti sebelumnya.
-    // Bagian return (...) utama juga tetap sama.
 
     const userColumns = useMemo(() => [
         { header: 'ID Internal', accessorKey: 'id' },
@@ -224,7 +207,7 @@ export default function DashboardAdminPage({
             <Button
                 color="blue"
                 onClick={() => handleSync(userType.toLowerCase())}
-                loading={loading[userType.toLowerCase()]} // Tombol juga akan menampilkan loading state
+                loading={loading[userType.toLowerCase()]}
                 className="flex items-center gap-2"
             >
                 {!loading[userType.toLowerCase()] && <PowerIcon className="h-5 w-5" />}
@@ -234,23 +217,47 @@ export default function DashboardAdminPage({
             <AdvancedTable
                 columns={columnsToUse}
                 data={data || []}
-                isLoading={loading[userType.toLowerCase()]} // AdvancedTable akan menampilkan Spinner
+                isLoading={loading[userType.toLowerCase()]}
             />
             <Typography variant="h6" color="blue-gray" className="mt-6">Histori Sinkronisasi {userType}</Typography>
             <AdvancedTable
                 columns={migrationHistoryColumns}
                 data={historyData || []}
-            // isLoading={loading[userType.toLowerCase()]} // Mungkin tidak perlu loading untuk histori, atau gunakan state terpisah
             />
         </div>
     );
+    
+    // DITAMBAHKAN: Buat elemen tombol logout untuk dikirim sebagai prop ke PageHeader
+    const logoutButton = (
+        <Tooltip content="Log Out" placement="bottom">
+            <a
+                href={route('logout')}
+                className="p-2 block rounded-full text-white/80 bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
+                aria-label="Log Out"
+            >
+                <ArrowLeftOnRectangleIcon className="h-6 w-6" />
+            </a>
+        </Tooltip>
+    );
 
     return (
-        <div className="flex justify-center w-full min-h-screen bg-gray-100 p-4">
-            <div className="max-w-screen-2xl w-full">
-                <Card className="m-0">
+        <div className="min-h-screen bg-gray-100 p-4 md:p-6">
+            <Head title="Dashboard Admin" />
+            <div className="max-w-screen-2xl w-full mx-auto">
+
+                {/* DITAMBAHKAN: Komponen PageHeader diterapkan di sini */}
+                <PageHeader
+                    title="Dashboard Admin"
+                    subtitle={`Login sebagai ${auth.user.name}`}
+                    icon={<WrenchScrewdriverIcon />}
+                >
+                    {logoutButton}
+                </PageHeader>
+
+                <Card className="m-0 shadow-lg border border-gray-200">
                     <CardBody className="p-4 md:p-6">
-                        <Typography variant="h5" color="blue-gray" className="mb-6">
+                        
+                        <Typography variant="h6" color="blue-gray" className="mb-4">
                             Manajemen Integrasi Data Eksternal
                         </Typography>
 
@@ -286,10 +293,10 @@ export default function DashboardAdminPage({
                                             <Tab value="admin" onClick={() => setActiveUserTab("admin")}>Admin</Tab>
                                         </TabsHeader>
                                         <TabsBody>
-                                            <TabPanel value="mahasiswa" className="p-0 pt-4">{userTabContent("Mahasiswa", mahasiswaData, getFilteredHistory('mahasiswa'), userColumns)}</TabPanel>
-                                            <TabPanel value="dosen" className="p-0 pt-4">{userTabContent("Dosen", dosenData, getFilteredHistory('dosen'), userColumns)}</TabPanel>
-                                            <TabPanel value="prodi" className="p-0 pt-4">{userTabContent("Prodi", prodiData, getFilteredHistory('prodi'), userColumns)}</TabPanel>
-                                            <TabPanel value="admin" className="p-0 pt-4">{userTabContent("Admin", adminData, getFilteredHistory('admin'), userColumns)}</TabPanel>
+                                            <TabPanel value="mahasiswa" className="p-0">{userTabContent("Mahasiswa", mahasiswaData, getFilteredHistory('mahasiswa'), userColumns)}</TabPanel>
+                                            <TabPanel value="dosen" className="p-0">{userTabContent("Dosen", dosenData, getFilteredHistory('dosen'), userColumns)}</TabPanel>
+                                            <TabPanel value="prodi" className="p-0">{userTabContent("Prodi", prodiData, getFilteredHistory('prodi'), userColumns)}</TabPanel>
+                                            <TabPanel value="admin" className="p-0">{userTabContent("Admin", adminData, getFilteredHistory('admin'), userColumns)}</TabPanel>
                                         </TabsBody>
                                     </Tabs>
                                 </TabPanel>

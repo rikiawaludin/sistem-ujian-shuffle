@@ -18,6 +18,8 @@ trait ManagesDosenAuth
     private function getAuthProps(): array
     {
         $userAccount = Session::get('account');
+        $activeRoleArray = Session::get('role');
+
         if (!$userAccount || !isset($userAccount['id'])) {
             return ['user' => null];
         }
@@ -34,7 +36,9 @@ trait ManagesDosenAuth
                 'gelar' => Session::get('profile')['gelar'] ?? null,
                 'email' => $userAccount['email'] ?? null,
                 'image' => $userAccount['image'] ?? null,
-                'is_dosen' => $userAccount['is_dosen'] ?? false,
+                'is_dosen' => $activeRoleArray['is_dosen'] ?? false,
+                'is_mahasiswa' => $activeRoleArray['is_mahasiswa'] ?? false,
+                'is_admin' => $activeRoleArray['is_admin'] ?? false,
             ],
         ];
     }

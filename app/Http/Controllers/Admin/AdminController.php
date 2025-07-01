@@ -6,12 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\User; // Jika Anda punya model User
 use App\Models\MataKuliah; // Jika Anda punya model MataKuliah
 use App\Models\MigrationHistory; // Jika Anda punya model MigrationHistory
+use App\Http\Controllers\Dosen\Concerns\ManagesDosenAuth;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+
 class AdminController extends Controller
 {
+
+    use ManagesDosenAuth;
+
     public function dashboard(Request $request) {
+
+    $authProps = $this->getAuthProps();
+
+    // Pastikan hanya admin yang bisa mengakses
+    if (!($authProps['user'] && $authProps['user']['is_admin'])) {
+        abort(403, 'Akses ditolak.');
+    }
+    
     // Ambil data untuk ditampilkan di tabel
     $mahasiswaData = User::where('is_mahasiswa', true)->orderBy('created_at', 'desc')->get();
     $dosenData = User::where('is_dosen', true)->orderBy('created_at', 'desc')->get();
@@ -34,6 +47,7 @@ class AdminController extends Controller
                                 ->get();
 
     return Inertia::render('Admin/DashboardAdminPage', [
+        'auth' => $authProps,
         'mahasiswaData' => $mahasiswaData,
         'dosenData' => $dosenData,
         'prodiData' => $prodiData,
