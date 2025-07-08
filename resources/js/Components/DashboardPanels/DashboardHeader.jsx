@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Typography, Tooltip } from "@material-tailwind/react";
 import { router } from '@inertiajs/react';
 import { LogOut } from 'lucide-react';
-import { AcademicCapIcon, BookOpenIcon, BuildingLibraryIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'; // Ganti CalendarDaysIcon dengan BuildingLibraryIcon untuk Jurusan
+import { AcademicCapIcon, BookOpenIcon, CheckCircleIcon, ChartBarIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/solid'; // Ganti CalendarDaysIcon dengan BuildingLibraryIcon untuk Jurusan
 
 const StatItem = ({ icon, value, label, colorClass }) => (
     <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
@@ -14,22 +14,24 @@ const StatItem = ({ icon, value, label, colorClass }) => (
     </Card>
 );
 
-export default function DashboardHeader({ auth, userName, totalMataKuliah, totalSks, namaJurusan }) {
+export default function DashboardHeader({ auth, userName, totalMataKuliah, totalSks, persentaseAbsensi, statusKeuangan }) {
 
     // const handleLogout = () => router.get(route('logout')); 
 
     // DITAMBAHKAN: Logika untuk memformat nama jurusan
-    let displayJurusan = 'N/A';
-    if (namaJurusan && namaJurusan.includes(' - ')) {
-        // Ambil bagian setelah " - ", ubah ke title case (misal: "Teknik Informatika")
-        displayJurusan = namaJurusan.split(' - ')[1]
-            .toLowerCase()
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-    } else if (namaJurusan) {
-        displayJurusan = namaJurusan;
-    }
+    // let displayJurusan = 'N/A';
+    // if (namaJurusan && namaJurusan.includes(' - ')) {
+    //     // Ambil bagian setelah " - ", ubah ke title case (misal: "Teknik Informatika")
+    //     displayJurusan = namaJurusan.split(' - ')[1]
+    //         .toLowerCase()
+    //         .split(' ')
+    //         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    //         .join(' ');
+    // } else if (namaJurusan) {
+    //     displayJurusan = namaJurusan;
+    // }
+    // Logika untuk status keuangan
+    const isKeuanganOk = statusKeuangan === 'memenuhi';
 
     return (
         <div className="mb-8">
@@ -74,7 +76,7 @@ export default function DashboardHeader({ auth, userName, totalMataKuliah, total
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                         <StatItem
                             icon={<BookOpenIcon />}
                             value={totalMataKuliah}
@@ -85,15 +87,22 @@ export default function DashboardHeader({ auth, userName, totalMataKuliah, total
                             icon={<AcademicCapIcon />}
                             value={totalSks}
                             label="Total SKS"
-                            colorClass="text-blue-200"
+                            colorClass="text-sky-200"
                         />
+                        {/* --- KOTAK BARU: Absensi --- */}
                         <StatItem
-                            // Ikon diganti agar lebih relevan dengan "Jurusan"
-                            icon={<BuildingLibraryIcon />}
-                            // DIUBAH: Gunakan variabel yang sudah diformat
-                            value={displayJurusan}
-                            label="Jurusan"
-                            colorClass="text-green-200"
+                            icon={<ChartBarIcon />}
+                            value="70%"
+                            label="Absensi"
+                            colorClass="text-teal-200"
+                        />
+                        {/* --- KOTAK BARU: Status Keuangan --- */}
+                        <StatItem
+                            icon={<CheckCircleIcon />}
+                            value="Memenuhi"
+                            label="Keuangan"
+                            colorClass={isKeuanganOk ? "text-green-300" : "text-amber-300"}
+                            statusMode={true}
                         />
                     </div>
                 </div>
