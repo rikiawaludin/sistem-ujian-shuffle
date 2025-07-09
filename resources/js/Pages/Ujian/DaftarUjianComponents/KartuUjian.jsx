@@ -88,7 +88,11 @@ export default function KartuUjian({ ujian }) {
                     dangerouslySetInnerHTML={{ __html: ujian.deskripsi }}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-700 mb-5 border-t pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700 mb-5 border-t pt-4">
+                    <div className="flex items-center space-x-2">
+                        <CalendarDaysIcon className="w-4 h-4 text-gray-500" />
+                        <span>Mulai Ujian: {ujian.waktuMulai}</span>
+                    </div>
                     <div className="flex items-center space-x-2">
                         <CalendarDaysIcon className="w-4 h-4 text-gray-500" />
                         <span>Batas Waktu: {ujian.batasWaktuPengerjaan}</span>

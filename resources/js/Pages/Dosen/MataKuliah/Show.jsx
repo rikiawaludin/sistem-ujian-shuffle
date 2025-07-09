@@ -23,7 +23,7 @@ import {
     AlertDialogTitle,
 } from "@/Components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download, Upload } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download, Upload, Image } from 'lucide-react';
 import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
@@ -329,32 +329,41 @@ export default function Show() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-3xl font-bold text-purple-600 mb-2">
-                                        {course.students_count}
+                                        {/* {course.students_count} */} 1
                                     </div>
                                     <p className="text-sm text-gray-600">Terdaftar</p>
                                     <div className="mt-4">
                                         <div className="flex justify-between text-sm mb-2">
-                                            <span>Kehadiran Rata-rata</span>
-                                            <span className="font-medium">N/A</span>
+                                            {/* <span>Kehadiran Rata-rata</span>
+                                            <span className="font-medium">N/A</span> */}
                                         </div>
                                         {/* Placeholder untuk progress bar */}
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                        {/* <div className="w-full bg-gray-200 rounded-full h-2">
                                             <div className="bg-purple-600 h-2 rounded-full" style={{ width: '0%' }}></div>
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Kartu Deskripsi Mata Kuliah */}
-                        {/* <Card className="bg-white shadow-md">
-                                <CardHeader>
-                                    <CardTitle>Deskripsi Mata Kuliah</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-gray-700">Mata kuliah ini membahas konsep-konsep utama dalam bidang terkait...</p>
-                                </CardContent>
-                            </Card> */}
+                        <Card className="bg-white shadow-md">
+                            <CardHeader>
+                                <CardTitle>Foto Sampul Mata Kuliah</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-col items-center justify-center text-center p-6 space-y-4">
+                                {/* Placeholder untuk gambar */}
+                                <div className="w-full h-48 flex items-center justify-center bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg">
+                                    <Image className="h-16 w-16 text-gray-400" />
+                                </div>
+                                <Button variant="outline">
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Unggah Foto
+                                </Button>
+                                <p className="text-xs text-muted-foreground">
+                                    Rekomendasi: Ukuran 800x400px, format JPG atau PNG.
+                                </p>
+                            </CardContent>
+                        </Card>
                     </TabsContent>
 
                     <TabsContent value="questions" className="space-y-6">
@@ -364,6 +373,13 @@ export default function Show() {
                                 <p className="text-sm text-muted-foreground">Kelola semua soal untuk mata kuliah ini.</p>
                             </div>
                             <div className="flex gap-2"> {/* Tambah wrapper untuk beberapa tombol */}
+
+                                <a href="#" onClick={(e) => e.preventDefault()}> {/* Placeholder link */}
+                                    <Button variant="outline">
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Format Impor
+                                    </Button>
+                                </a>
 
                                 <Button variant="outline" onClick={() => setIsImportOpen(true)}>
                                     <Upload className="h-4 w-4 mr-2" />
@@ -431,10 +447,16 @@ export default function Show() {
                                 <h3 className="text-xl font-bold text-gray-800">Manajemen Ujian</h3>
                                 <p className="text-sm text-muted-foreground">Kelola semua ujian untuk mata kuliah ini.</p>
                             </div>
-                            <Button onClick={handleAddUjian} className="bg-green-600 hover:bg-green-700">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Buat Ujian Baru
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" className="text-red-600 border-red-500 hover:bg-red-50 hover:text-red-700 focus:ring-red-500">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Hapus Semua Ujian
+                                </Button>
+                                <Button onClick={handleAddUjian} className="bg-green-600 hover:bg-green-700">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Buat Ujian Baru
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">

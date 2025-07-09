@@ -61,7 +61,7 @@ class AuthController extends Controller {
                 case 'is_dosen':
                     return redirect()->route('dosen.dashboard');
                 case 'is_mhs':
-                    // Pastikan Anda menggunakan 'is_mahasiswa' secara konsisten
+                    // Home mahasiswa
                     return redirect()->route('home');
                 default:
                     // Fallback jika role tidak dikenali, arahkan ke halaman ganti role atau logout

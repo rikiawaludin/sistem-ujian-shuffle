@@ -135,6 +135,7 @@ class ListUjianController extends Controller
                 'durasi' => $ujian->durasi . " Menit",
                 'jumlahSoal' => $ujian->aturan_sum_jumlah_soal ?? 0,
                 'kkm' => $ujian->kkm,
+                'waktuMulai' => !empty($ujian->tanggal_mulai) ? Carbon::parse($ujian->tanggal_mulai)->format('d F Y, H:i') : 'Tidak diatur',
                 'batasWaktuPengerjaan' => $ujian->tanggal_selesai ? Carbon::parse($ujian->tanggal_selesai)->format('d F Y, H:i') : 'Fleksibel',
                 'status' => $statusUjian,
                 'skor' => $pengerjaanTerakhir->skor_total ?? null,
