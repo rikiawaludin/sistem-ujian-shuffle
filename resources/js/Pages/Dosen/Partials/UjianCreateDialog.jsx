@@ -91,7 +91,7 @@ export default function UjianCreateDialog({ open, onOpenChange, mataKuliahId, ba
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <div className="flex justify-between items-center">
                         <DialogTitle className="text-xl">

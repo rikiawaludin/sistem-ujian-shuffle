@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { Button, Card, Select, Option, Typography, Input } from '@material-tailwind/react';
+import { Button, Card, Select, Option, Typography, Input, Tabs, TabsHeader, TabsBody, Tab, TabPanel } from '@material-tailwind/react';
+import { PhotoIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { Editor } from '@tinymce/tinymce-react';
 import PilihanGandaForm from '@/Pages/Dosen/Partials/PilihanGandaForm';
 import MenjodohkanForm from '@/Pages/Dosen/Partials/MenjodohkanForm';
@@ -12,6 +13,11 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
     const isEditMode = !!soal;
 
     const { toast } = useToast();
+
+    //state untuk UI input gambar
+    const [pertanyaanTab, setPertanyaanTab] = useState('text'); // 'text' atau 'image'
+    const [imagePreview, setImagePreview] = useState(null);
+    const fileInputRef = useRef(null);
 
     const generateEmptyOptions = (count) => {
         return Array.from({ length: count }, (_, i) => ({
@@ -221,7 +227,78 @@ export default function Form({ soal, mataKuliahOptions, onSuccess, defaultMataKu
 
                     <div className="mb-6">
                         <Typography variant="h6" color="blue-gray" className="mb-2">Pertanyaan</Typography>
-                        <Editor apiKey='oatu6jzb2f3zggwf9ja9c5njnil27bsbiyvc3ow0j5ersbt4' value={data.pertanyaan} onEditorChange={(content) => setData('pertanyaan', content)} init={{ height: 300, menubar: false, plugins: 'lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount', toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help' }} />
+
+                        <Tabs value={pertanyaanTab}>
+                            <TabsHeader >
+                                <Tab value="text" onClick={() => setPertanyaanTab('text')}>Tulis Pertanyaan</Tab>
+                                <Tab value="image" onClick={() => setPertanyaanTab('image')}>Unggah Gambar</Tab>
+                            </TabsHeader>
+                            <TabsBody>
+                                {/* Panel untuk Editor Teks */}
+                                <TabPanel value="text" className="p-0 pt-4">
+                                    <Editor
+                                        apiKey='oatu6jzb2f3zggwf9ja9c5njnil27bsbiyvc3ow0j5ersbt4'
+                                        value={data.pertanyaan}
+                                        onEditorChange={(content) => setData('pertanyaan', content)}
+                                        init={{
+                                            height: 300,
+                                            menubar: false,
+                                            plugins: 'lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
+                                            toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help'
+                                        }}
+                                    />
+                                </TabPanel>
+
+                                {/* Panel untuk Unggah Gambar */}
+                                <TabPanel value="image" className="p-0 pt-4">
+                                    <div className="w-full h-[300px] border-2 border-dashed border-blue-gray-200 rounded-lg flex justify-center items-center">
+                                        {imagePreview ? (
+                                            <div className="relative h-full w-full p-2">
+                                                <img src={imagePreview} alt="Pratinjau Soal" className="h-full w-full object-contain" />
+                                                <Button
+                                                    size="sm"
+                                                    color="red"
+                                                    variant="filled"
+                                                    className="!absolute top-2 right-2 rounded-full p-2"
+                                                    onClick={() => {
+                                                        setImagePreview(null);
+                                                        if (fileInputRef.current) fileInputRef.current.value = null;
+                                                    }}
+                                                >
+                                                    <XCircleIcon className="h-5 w-5" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center">
+                                                <PhotoIcon className="mx-auto h-12 w-12 text-blue-gray-400" />
+                                                <Typography color="blue-gray" className="mt-2">Belum ada gambar yang dipilih</Typography>
+                                                <Button
+                                                    variant="text"
+                                                    className="mt-2"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    Pilih Gambar
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                setImagePreview(URL.createObjectURL(file));
+                                            }
+                                        }}
+                                    />
+                                </TabPanel>
+                            </TabsBody>
+                        </Tabs>
+
+                        {/* Tampilkan pesan error di bawah tabs */}
                         {errors.pertanyaan && <Typography color="red" className="mt-1 text-sm">{errors.pertanyaan}</Typography>}
                     </div>
 

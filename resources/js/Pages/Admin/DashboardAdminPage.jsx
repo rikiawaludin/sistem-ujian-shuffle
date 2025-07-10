@@ -158,15 +158,15 @@ export default function DashboardAdminPage({
     };
 
     const userColumns = useMemo(() => [
-        { header: 'ID Internal', accessorKey: 'id' },
-        { header: 'ID Eksternal', accessorKey: 'external_id' },
+        { header: 'ID', accessorKey: 'id' },
+        { header: 'Email', accessorKey: 'email' },
         { header: 'Ditambahkan', accessorKey: 'created_at', cell: info => info.getValue() ? new Date(info.getValue()).toLocaleString() : '-' },
         { header: 'Diperbarui', accessorKey: 'updated_at', cell: info => info.getValue() ? new Date(info.getValue()).toLocaleString() : '-' },
     ], []);
 
     const mataKuliahColumns = useMemo(() => [
-        { header: 'ID Internal', accessorKey: 'id' },
-        { header: 'ID Eksternal', accessorKey: 'external_id' },
+        { header: 'ID', accessorKey: 'id' },
+        // { header: 'ID Eksternal', accessorKey: 'external_id' },
         { header: 'Nama Mata Kuliah', accessorKey: 'nama' },
         { header: 'Kode', accessorKey: 'kode' },
         { header: 'Ditambahkan', accessorKey: 'created_at', cell: info => info.getValue() ? new Date(info.getValue()).toLocaleString() : '-' },
