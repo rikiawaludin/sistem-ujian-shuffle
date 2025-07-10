@@ -48,33 +48,24 @@ class HasilUjianController extends Controller
     public function showKoreksiForm(PengerjaanUjian $pengerjaan)
     {
 
+        // DITAMBAHKAN: Eager load relasi ujian untuk otorisasi
+        $pengerjaan->load('ujian:id,judul_ujian,dosen_pembuat_id');
+
+        // DITAMBAHKAN: Otorisasi - Cek kepemilikan melalui relasi
+        if ($pengerjaan->ujian->dosen_pembuat_id !== Auth::id()) {
+            abort(403, 'Anda tidak memiliki akses untuk mengoreksi pengerjaan ini.');
+        }
+
+        // Load data yang dibutuhkan: user, ujian, dan jawaban esai
         $pengerjaan->load([
-            'user:id,name,email',
-            'ujian' => function ($query) {
-                // Ambil judul ujian dan soal dari ujian beserta pivotnya untuk mendapatkan bobot
-                $query->select('id', 'judul_ujian')->with(['soal' => function ($q) {
-                    $q->select('soal.id')->withPivot('bobot_nilai_soal');
-                }]);
+            'user:id,email', 
+            'ujian:id,judul_ujian',
+            // Ambil detail jawaban HANYA untuk soal esai
+            'detailJawaban' => function($query) {
+                $query->whereHas('soal', fn($q) => $q->where('tipe_soal', 'esai'));
             },
-            'detailJawaban' => function ($query) {
-                // Filter hanya untuk soal esai
-                $query->whereHas('soal', function ($q) {
-                    $q->where('tipe_soal', 'esai');
-                })
-                // Load soal yang terkait dengan jawaban
-                ->with('soal:id,pertanyaan');
-            }
+            'detailJawaban.soal:id,pertanyaan' // Load pertanyaan soal
         ]);
-
-        // Buat map dari soal_id ke bobot_nilai_soal untuk kemudahan akses
-        $bobotSoalMap = $pengerjaan->ujian->soal->pluck('pivot.bobot_nilai_soal', 'id');
-
-        // Tambahkan bobot ke setiap objek detail jawaban
-        // Ini akan memodifikasi koleksi yang ada di dalam objek $pengerjaan
-        $pengerjaan->detail_jawaban->each(function ($jawaban) use ($bobotSoalMap) {
-            // Kita tambahkan properti baru 'bobot_maksimal' ke objek 'soal' yang sudah ada
-            $jawaban->soal->bobot_maksimal = $bobotSoalMap[$jawaban->soal_id] ?? 0;
-        });
 
         return Inertia::render('Dosen/Hasil/Koreksi', [ // Halaman frontend untuk koreksi
             'pengerjaan' => $pengerjaan

@@ -29,7 +29,7 @@ export default function Koreksi({ auth, pengerjaan }) {
 
     const forms = pengerjaan.detail_jawaban.map(jawaban => {
         const { post, setData, data, errors, processing } = useForm({
-            skor_per_soal: jawaban.skor_per_soal ?? '',
+            skor_per_soal: jawaban.skor_per_soal || 0,
         });
 
         function handleSubmit(e) {
@@ -125,11 +125,8 @@ export default function Koreksi({ auth, pengerjaan }) {
                             <Card key={jawaban.id} className="overflow-hidden shadow-md">
                                 <CardHeader className="bg-gray-50 border-b">
                                     <CardTitle className="flex justify-between items-center text-lg">
-                                        <div className="flex items-center gap-3">
-                                            <span>Soal Esai #{index + 1}</span>
-                                            <Badge variant="outline">0 - {bobotMaksimal} Poin</Badge>
-                                        </div>
-                                        <Badge variant="secondary">Bobot: {bobotMaksimal}</Badge>
+                                        <span>Soal Esai #{index + 1}</span>
+                                        {isGraded && <Badge variant="success"><CheckCircle className="h-4 w-4 mr-1" />Sudah Dinilai</Badge>}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-6 space-y-4">
