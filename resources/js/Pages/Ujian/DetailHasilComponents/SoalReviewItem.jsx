@@ -187,7 +187,7 @@ export default function SoalReviewItem({ soal, nomorUrut,  }) {
                 {/* Jawaban untuk Esai */}
                 {tipeSoal === "esai" && (
                     <div className="mb-3">
-                        <Typography variant="small" className="font-semibold text-blue-gray-700 mb-1">Jawaban Mahasiswa:</Typography>
+                        <Typography variant="small" className="font-semibold text-blue-gray-700 mb-1">Jawaban Kamu:</Typography>
                         <Card shadow={false} className="p-3 bg-blue-gray-50/70 border border-blue-gray-200 rounded-lg">
                             <Typography variant="paragraph" className="text-sm text-blue-gray-800 whitespace-pre-line">
                                 {jawabanPengguna || "- Tidak Dijawab -"}

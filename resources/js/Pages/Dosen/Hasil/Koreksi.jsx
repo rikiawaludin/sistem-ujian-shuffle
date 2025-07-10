@@ -125,8 +125,13 @@ export default function Koreksi({ auth, pengerjaan }) {
                             <Card key={jawaban.id} className="overflow-hidden shadow-md">
                                 <CardHeader className="bg-gray-50 border-b">
                                     <CardTitle className="flex justify-between items-center text-lg">
+                                        {/* Judul soal kini berdiri sendiri di kiri */}
                                         <span>Soal Esai #{index + 1}</span>
-                                        {isGraded && <Badge variant="success"><CheckCircle className="h-4 w-4 mr-1" />Sudah Dinilai</Badge>}
+
+                                        {/* Badge di kanan HANYA untuk informasi bobot maksimal */}
+                                        <Badge variant="secondary" className="font-semibold">
+                                            Bobot Soal: {jawaban.soal.bobot_soal}
+                                        </Badge>
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-6 space-y-4">
@@ -137,20 +142,28 @@ export default function Koreksi({ auth, pengerjaan }) {
                                         <h3 className="font-semibold mb-2">Jawaban Mahasiswa:</h3>
                                         <p className="whitespace-pre-wrap font-mono text-sm">{jawaban.jawaban_user || <span className="italic text-gray-500">Tidak dijawab.</span>}</p>
                                     </div>
-                                    <form onSubmit={form.handleSubmit} className="flex items-center gap-4 pt-4 border-t">
-                                        <label className="font-medium">Beri Nilai:</label>
-                                        <Input
-                                            type="number"
-                                            value={form.data.skor_per_soal}
-                                            onChange={(e) => form.setData('skor_per_soal', e.target.value)}
-                                            className="w-24"
-                                            placeholder="0"
-                                        />
-                                        <Button type="submit" disabled={form.processing}>
-                                            <Save className="h-4 w-4 mr-2" />
-                                            {form.processing ? 'Menyimpan...' : 'Simpan Skor'}
-                                        </Button>
-                                        {form.errors.skor_per_soal && <p className="text-red-500 text-sm mt-1">{form.errors.skor_per_soal}</p>}
+                                    <form onSubmit={form.handleSubmit} className="space-y-2 pt-4 border-t">
+                                        <div>
+                                            <label className="font-medium text-gray-800">
+                                                Beri Nilai (Rentang: 0 - {jawaban.soal.bobot_soal})
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <Input
+                                                type="number"
+                                                value={form.data.skor_per_soal}
+                                                onChange={(e) => form.setData('skor_per_soal', e.target.value)}
+                                                className="w-28"
+                                                placeholder={`0 - ${jawaban.soal.bobot_soal}`}
+                                                min="0"
+                                                max={jawaban.soal.bobot_soal} // Validasi sisi klien
+                                            />
+                                            <Button type="submit" disabled={form.processing}>
+                                                <Save className="h-4 w-4 mr-2" />
+                                                {form.processing ? 'Menyimpan...' : 'Simpan Skor'}
+                                            </Button>
+                                        </div>
+                                        {form.errors.skor_per_soal && <p className="text-red-500 text-sm">{form.errors.skor_per_soal}</p>}
                                     </form>
                                 </CardContent>
                             </Card>

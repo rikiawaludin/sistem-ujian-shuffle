@@ -67,6 +67,27 @@ class HasilUjianController extends Controller
             'detailJawaban.soal:id,pertanyaan' // Load pertanyaan soal
         ]);
 
+        $soalIds = $pengerjaan->detailJawaban->pluck('soal_id');
+
+        // Ambil data pivot (termasuk bobot) untuk semua soal tersebut dalam satu query
+        $pivotData = DB::table('ujian_soal')
+            ->where('ujian_id', $pengerjaan->ujian_id)
+            ->whereIn('soal_id', $soalIds)
+            ->get()
+            ->keyBy('soal_id'); // Jadikan soal_id sebagai key untuk akses mudah
+
+        // Loop melalui setiap jawaban dan tambahkan bobot ke objek soalnya
+        foreach ($pengerjaan->detailJawaban as $jawaban) {
+            $soalId = $jawaban->soal_id;
+            if (isset($pivotData[$soalId])) {
+                // Tambahkan properti baru 'bobot_soal' ke objek soal yang sudah ada
+                $jawaban->soal->bobot_soal = $pivotData[$soalId]->bobot_nilai_soal;
+            } else {
+                // Fallback jika karena suatu hal data pivot tidak ditemukan
+                $jawaban->soal->bobot_soal = 0;
+            }
+        }
+
         return Inertia::render('Dosen/Hasil/Koreksi', [ // Halaman frontend untuk koreksi
             'pengerjaan' => $pengerjaan
         ]);
