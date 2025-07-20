@@ -44,6 +44,31 @@ export default function Show() {
 
     const { toast } = useToast();
 
+    const [isDeleteAllUjianConfirmOpen, setIsDeleteAllUjianConfirmOpen] = useState(false);
+    const confirmDeleteAllUjian = () => {
+        router.delete(route('dosen.ujian.destroyAll', course.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast({
+                    title: "Berhasil!",
+                    description: `Semua ujian untuk mata kuliah ${course.nama} telah dihapus.`,
+                    variant: "success",
+                });
+            },
+            onError: (errors) => {
+                console.error("Gagal hapus semua ujian:", errors);
+                toast({
+                    variant: "destructive",
+                    title: "Gagal!",
+                    description: "Terjadi kesalahan saat menghapus semua ujian. Silakan coba lagi.",
+                });
+            },
+            onFinish: () => {
+                setIsDeleteAllUjianConfirmOpen(false);
+            }
+        });
+    };
+
     // State untuk dialog impor
     const [isImportOpen, setIsImportOpen] = useState(false);
 
@@ -448,7 +473,12 @@ export default function Show() {
                                 <p className="text-sm text-muted-foreground">Kelola semua ujian untuk mata kuliah ini.</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" className="text-red-600 border-red-500 hover:bg-red-50 hover:text-red-700 focus:ring-red-500">
+                                <Button
+                                    variant="outline"
+                                    className="text-red-600 border-red-500 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
+                                    onClick={() => setIsDeleteAllUjianConfirmOpen(true)} // <-- UBAH DI SINI
+                                    disabled={course.ujian.length === 0} // Nonaktifkan jika tidak ada ujian
+                                >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Hapus Semua Ujian
                                 </Button>
@@ -659,6 +689,27 @@ export default function Show() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={isDeleteAllUjianConfirmOpen} onOpenChange={setIsDeleteAllUjianConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Apakah Anda Yakin Ingin Menghapus Semua Ujian?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tindakan ini akan menghapus <strong>SEMUA</strong> ujian yang terkait dengan mata kuliah
+                            <strong className="mx-1 text-gray-900">{course.nama}</strong>
+                            secara permanen. Data hasil pengerjaan mahasiswa yang terkait juga akan hilang.
+                            <br /><br />
+                            <span className="font-bold text-red-600">Tindakan ini tidak dapat dipulihkan.</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteAllUjian} className="bg-red-600 hover:bg-red-700">
+                            Ya, Hapus Semua
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
 
         </div>

@@ -84,6 +84,7 @@ Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
     
     Route::resource('dosen/ujian', UjianController::class)
         ->names('dosen.ujian');
+    Route::delete('/dosen/matakuliah/{mataKuliah}/ujian', [UjianController::class, 'destroyAll'])->name('dosen.ujian.destroyAll');
     
     Route::get('dosen/ujian/{ujian}/hasil', [HasilUjianController::class, 'index'])->name('dosen.ujian.hasil.index');
     Route::get('dosen/pengerjaan/{pengerjaan}/koreksi', [HasilUjianController::class, 'showKoreksiForm'])->name('dosen.ujian.koreksi.show');

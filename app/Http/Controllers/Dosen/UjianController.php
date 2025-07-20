@@ -280,6 +280,38 @@ class UjianController extends Controller
         return back()->with('success', 'Detail ujian berhasil diperbarui.');
     }
 
+    public function destroyAll(\App\Models\MataKuliah $mataKuliah)
+    {
+        // 1. Otorisasi: Pastikan dosen yang login adalah pemilik ujian di mata kuliah ini
+        $this->getAuthProps();
+        $dosenId = Auth::id();
+
+        // 2. Ambil semua ujian yang dibuat oleh dosen ini untuk mata kuliah yang spesifik
+        $ujians = Ujian::where('mata_kuliah_id', $mataKuliah->id)
+                       ->where('dosen_pembuat_id', $dosenId)
+                       ->get();
+
+        // Jika tidak ada ujian untuk dihapus, kembalikan dengan pesan info
+        if ($ujians->isEmpty()) {
+            return back()->with('info', 'Tidak ada ujian yang bisa dihapus untuk mata kuliah ini.');
+        }
+
+        // 3. Gunakan transaksi untuk memastikan semua operasi berhasil
+        DB::transaction(function () use ($ujians) {
+            foreach ($ujians as $ujian) {
+                // Hapus relasi dari pivot table 'ujian_soal'
+                $ujian->soal()->detach();
+                // Hapus aturan ujian yang terkait
+                $ujian->aturan()->delete();
+            }
+            // Hapus semua record ujian sekaligus setelah relasi dibersihkan
+            Ujian::whereIn('id', $ujians->pluck('id'))->delete();
+        });
+        
+        // 4. Redirect kembali dengan pesan sukses
+        return back()->with('success', 'Semua ujian untuk mata kuliah ' . $mataKuliah->nama . ' berhasil dihapus.');
+    }
+
     /**
      * Hapus ujian. (Tidak berubah)
      */
