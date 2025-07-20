@@ -108,25 +108,63 @@ trait ManagesDosenAuth
             $mataKuliahFromApi = $response->json('data.kelas_kuliah', []);
             
             $courses = collect($mataKuliahFromApi)->map(function ($kelas) {
-                // Pastikan struktur data dari API sesuai dengan yang diharapkan
-                if (!isset($kelas['matakuliah'])) {
+                // Pastikan kedua sub-array yang dibutuhkan ada
+                if (!isset($kelas['data_kelas']) || !isset($kelas['matakuliah'])) {
                     return null;
                 }
-                
+
+                // Ambil data dari struktur yang benar sesuai hasil dd()
                 return [
-                    'external_id' => $kelas['matakuliah']['mk_id'] ?? null,
-                    'nama' => $kelas['matakuliah']['nm_mk'] ?? 'Nama MK Tidak Ditemukan',
-                    'kode' => $kelas['matakuliah']['kd_mk'] ?? 'KODE-MK',
-                    'semester' => $kelas['matakuliah']['semester'] ?? 'N/A',
+                    // Mengambil dari dalam 'data_kelas'
+                    'id_kelas_kuliah' => $kelas['data_kelas']['kelas_kuliah_id'] ?? null,
+
+                    // Mengambil dari dalam 'matakuliah'
+                    'external_id'     => $kelas['matakuliah']['mk_id'] ?? null,
+                    'nama'            => $kelas['matakuliah']['nm_mk'] ?? 'Nama MK Tidak Ditemukan',
+                    'kode'            => $kelas['matakuliah']['kd_mk'] ?? 'KODE-MK',
+                    'semester'        => $kelas['matakuliah']['semester'] ?? 'N/A',
                 ];
-            })->filter(); // Hapus item yang null
+            })->filter();
 
             // Karena satu mata kuliah bisa diajar di beberapa kelas, kita ambil yang unik berdasarkan ID eksternal.
-            return $courses->unique('external_id')->values();
+            // return $courses->unique('external_id')->values();
+            return $courses;
 
         } catch (\Exception $e) {
             Log::error('[Trait ManagesDosenAuth] Exception saat mengambil data MK dari API: ' . $e->getMessage());
             return collect();
+        }
+    }
+
+    public function getStudentCountForClassApi(Request $request, $kelasKuliahId): int
+    {
+        $token = $request->session()->get('token');
+        // Path API baru sesuai permintaan
+        $pathApi = 'ujian/mata-kuliah/dosen/count-mahasiswa/kelas-kuliah-id/' . $kelasKuliahId;
+        $apiUrl = config('myconfig.api.base_url', env('API_BASE_URL')) . $pathApi;
+
+        if (!$token || !$kelasKuliahId) {
+            Log::warning('[Trait ManagesDosenAuth] Token atau ID Kelas Kuliah tidak tersedia untuk API hitung mahasiswa.', ['class_id' => $kelasKuliahId]);
+            return 0;
+        }
+
+        try {
+            $response = Http::withToken($token)->timeout(10)->get($apiUrl);
+
+            if ($response->failed()) {
+                Log::error('[Trait ManagesDosenAuth] Gagal mengambil jumlah mahasiswa.', [
+                    'status' => $response->status(),
+                    'url' => $apiUrl
+                ]);
+                return 0;
+            }
+
+            // Mengambil nilai dari key "data" dan default ke 0 jika tidak ada atau null
+            return $response->json('data', 0);
+
+        } catch (\Exception $e) {
+            Log::error('[Trait ManagesDosenAuth] Exception saat mengambil jumlah mahasiswa: ' . $e->getMessage());
+            return 0;
         }
     }
 

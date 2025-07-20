@@ -354,7 +354,7 @@ export default function Show() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-3xl font-bold text-purple-600 mb-2">
-                                        {/* {course.students_count} */} 1
+                                        {course.students_count}
                                     </div>
                                     <p className="text-sm text-gray-600">Terdaftar</p>
                                     <div className="mt-4">

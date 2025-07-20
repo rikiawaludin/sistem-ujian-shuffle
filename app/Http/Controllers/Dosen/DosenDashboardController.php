@@ -85,61 +85,68 @@ class DosenDashboardController extends Controller
             abort(403);
         }
         
-        // 1. Ambil data mata kuliah dari API sebagai sumber utama (termasuk semester, nama, kode).
-        $apiCourses = $this->getDosenCoursesFromApi($request);
-        if ($apiCourses->isEmpty()) {
-            // Jika tidak ada MK dari API, langsung render halaman dengan data kosong.
+        // 1. Ambil SEMUA KELAS yang diajar dosen dari API.
+        //    Hasilnya berisi duplikat mata kuliah jika diajar di kelas berbeda.
+        $apiClasses = $this->getDosenCoursesFromApi($request);
+
+        if ($apiClasses->isEmpty()) {
             return Inertia::render('Dosen/Dashboard/Index', [
                 'auth' => $authProps,
                 'dashboardData' => [],
-                'stats' => ['total_courses' => 0, 'total_students' => 0, 'active_exams' => 0, 'total_questions' => 0],
+                'stats' => ['total_courses' => 0, 'total_students' => 0, 'total_exams' => 0, 'total_questions' => 0],
             ]);
         }
 
-        // 2. Ambil ID eksternal untuk query data lokal yang relevan.
-        $mataKuliahExternalIds = $apiCourses->pluck('external_id')->all();
+        // 2. Kelompokkan kelas berdasarkan external_id (ID mata kuliah).
+        $coursesGroupedByExternalId = $apiClasses->groupBy('external_id');
+
+        // 3. Ambil semua external_id untuk query data lokal yang relevan dalam satu kali jalan.
+        $mataKuliahExternalIds = $coursesGroupedByExternalId->keys()->all();
         
-        // 3. Ambil data agregat dari database lokal.
-        // `keyBy('external_id')` sangat penting untuk penggabungan yang efisien.
+        // 4. Ambil data agregat (soal, ujian) dari database lokal.
         $localCourseData = MataKuliah::whereIn('external_id', $mataKuliahExternalIds)
-            ->withCount([
-                'soal',
-                // Hapus kondisi 'where' untuk menghitung semua ujian.
-                // Eloquent akan secara otomatis membuat properti 'ujian_count'
-                'ujian', 
-                'pengerjaanUjian as students_count' => function ($query) {
-                    $query->select(DB::raw('count(distinct user_id)'));
-                }
-            ])
-            ->get(['id', 'external_id', 'soal_count', 'ujian_count']) // Ambil juga 'ujian_count'
+            ->withCount(['soal', 'ujian'])
+            ->get(['id', 'external_id', 'soal_count', 'ujian_count'])
             ->keyBy('external_id');
-        
-        // 4. Gabungkan data API (sumber utama) dengan data lokal (data tambahan).
-        $dashboardData = $apiCourses->map(function ($apiCourse) use ($localCourseData) {
-            $localData = $localCourseData->get($apiCourse['external_id']);
             
-            // Menggabungkan data. Data dari API adalah basisnya.
-            $apiCourse['id'] = $localData->id ?? null; // ID lokal penting untuk link
-            $apiCourse['ujian_count'] = $localData->ujian_count ?? 0;
-            $apiCourse['students_count'] = $localData->students_count ?? 0;
-            $apiCourse['soal_count'] = $localData->soal_count ?? 0;
+        // 5. Proses setiap kelompok mata kuliah untuk mengagregasi data.
+        $dashboardData = $coursesGroupedByExternalId->map(function ($classesInCourse, $externalId) use ($localCourseData, $request) {
             
-            return $apiCourse;
-        });
+            // Gunakan data dari kelas pertama sebagai representasi (nama, kode, dll).
+            $representativeCourse = $classesInCourse->first();
+            $localData = $localCourseData->get($externalId);
 
-        // 5. Siapkan data untuk kartu statistik di bagian atas.
-        // Logika diubah untuk menghitung total langsung dari database.
+            // Hitung total mahasiswa dengan memanggil API untuk setiap kelas dalam kelompok ini.
+            $totalStudents = $classesInCourse->reduce(function ($carry, $class) use ($request) {
+                $studentCount = 0;
+                if (!empty($class['id_kelas_kuliah'])) {
+                    // Panggil method baru yang kita buat di trait.
+                    $studentCount = $this->getStudentCountForClassApi($request, $class['id_kelas_kuliah']);
+                }
+                return $carry + $studentCount;
+            }, 0); // Inisialisasi jumlah dengan 0.
+
+            // Gabungkan semua data menjadi satu objek untuk card di frontend.
+            return [
+                'id' => $localData->id ?? null,
+                'external_id' => $externalId,
+                'nama' => $representativeCourse['nama'],
+                'kode' => $representativeCourse['kode'],
+                'semester' => $representativeCourse['semester'],
+                'ujian_count' => $localData->ujian_count ?? 0,
+                'soal_count' => $localData->soal_count ?? 0,
+                'students_count' => $totalStudents, // Gunakan hasil kalkulasi baru.
+            ];
+        })->values(); // Reset index array agar menjadi [0, 1, 2, ...]
+
+        // 6. Siapkan data untuk kartu statistik di bagian atas.
         $dosenId = Auth::id();
-
-        // Hitung total bank soal yang dibuat oleh dosen ini
         $totalBankSoal = Soal::where('dosen_pembuat_id', $dosenId)->count();
-
         $totalUjianKeseluruhan = Ujian::where('dosen_pembuat_id', $dosenId)->count();
 
         $stats = [
             'total_courses' => $dashboardData->count(),
-            'total_students' => $dashboardData->sum('students_count'),
-            // Gunakan nama key dan value yang baru
+            'total_students' => $dashboardData->sum('students_count'), // Jumlahkan dari data yang sudah diproses
             'total_exams' => $totalUjianKeseluruhan,
             'total_questions' => $totalBankSoal,
         ];

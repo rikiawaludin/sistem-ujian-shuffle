@@ -32,6 +32,24 @@ class MataKuliahDosenController extends Controller
             'ujian.aturan'
         ]);
 
+        // 1. Ambil semua kelas yang diajar dosen dari API.
+        $allApiClasses = $this->getDosenCoursesFromApi($request);
+
+        // 2. Filter untuk mendapatkan kelas yang relevan dengan mata kuliah yang sedang dibuka.
+        $relevantClasses = $allApiClasses->where('external_id', $mata_kuliah->external_id);
+
+        // 3. Hitung total mahasiswa dengan memanggil API untuk setiap kelas yang relevan.
+        $totalStudents = $relevantClasses->reduce(function ($carry, $class) use ($request) {
+            $studentCount = 0;
+            if (!empty($class['id_kelas_kuliah'])) {
+                $studentCount = $this->getStudentCountForClassApi($request, $class['id_kelas_kuliah']);
+            }
+            return $carry + $studentCount;
+        }, 0);
+
+        // 4. Tambahkan properti 'students_count' secara dinamis ke objek mata kuliah.
+        $mata_kuliah->students_count = $totalStudents;
+
         // 1. Ringkasan Bank Soal per Tipe
         $soalSummary = $mata_kuliah->soal
             ->groupBy('tipe_soal')
