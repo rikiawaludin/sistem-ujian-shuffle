@@ -81,6 +81,8 @@ Route::middleware(['auth.token', 'auth.dosen'])->group(function () {
 
     Route::resource('dosen/bank-soal', BankSoalController::class)
         ->names('dosen.bank-soal');
+    Route::delete('/dosen/bank-soal/destroy-all/{mata_kuliah}', [BankSoalController::class, 'destroyAll'])
+        ->name('dosen.bank-soal.destroyAll');
     
     Route::resource('dosen/ujian', UjianController::class)
         ->names('dosen.ujian');

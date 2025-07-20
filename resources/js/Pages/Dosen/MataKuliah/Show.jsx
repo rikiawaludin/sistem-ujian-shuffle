@@ -44,6 +44,31 @@ export default function Show() {
 
     const { toast } = useToast();
 
+    const [isDeleteAllSoalConfirmOpen, setIsDeleteAllSoalConfirmOpen] = useState(false);
+    const confirmDeleteAllSoal = () => {
+        router.delete(route('dosen.bank-soal.destroyAll', course.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast({
+                    title: "Berhasil!",
+                    description: `Semua soal untuk mata kuliah ${course.nama} telah dihapus.`,
+                    variant: "success",
+                });
+            },
+            onError: (errors) => {
+                console.error("Gagal hapus semua soal:", errors);
+                toast({
+                    variant: "destructive",
+                    title: "Gagal!",
+                    description: "Terjadi kesalahan saat menghapus semua soal. Silakan coba lagi.",
+                });
+            },
+            onFinish: () => {
+                setIsDeleteAllSoalConfirmOpen(false);
+            }
+        });
+    };
+
     const [isDeleteAllUjianConfirmOpen, setIsDeleteAllUjianConfirmOpen] = useState(false);
     const confirmDeleteAllUjian = () => {
         router.delete(route('dosen.ujian.destroyAll', course.id), {
@@ -418,7 +443,15 @@ export default function Show() {
                                         Ekspor Semua Soal
                                     </Button>
                                 </a>
-
+                                <Button
+                                    variant="outline"
+                                    className="text-red-600 border-red-500 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
+                                    onClick={() => setIsDeleteAllSoalConfirmOpen(true)}
+                                    disabled={course.soal.length === 0}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Hapus Semua Soal
+                                </Button>
                                 <Button onClick={handleAddSoal} className="bg-blue-600 hover:bg-blue-700">
                                     <Plus className="h-4 w-4 mr-2" />
                                     Tambah Soal
@@ -710,8 +743,26 @@ export default function Show() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-
+            <AlertDialog open={isDeleteAllSoalConfirmOpen} onOpenChange={setIsDeleteAllSoalConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Apakah Anda Yakin Ingin Menghapus Semua Soal?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tindakan ini akan menghapus <strong>SEMUA</strong> soal yang terkait dengan mata kuliah
+                            <strong className="mx-1 text-gray-900">{course.nama}</strong>
+                            secara permanen dan tidak dapat dipulihkan.
+                            <br /><br />
+                            <span className="font-bold text-red-600">Tindakan ini tidak dapat dipulihkan.</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteAllSoal} className="bg-red-600 hover:bg-red-700">
+                            Ya, Hapus Semua
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

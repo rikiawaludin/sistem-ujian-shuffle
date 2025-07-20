@@ -313,6 +313,28 @@ class BankSoalController extends Controller
         return back()->with('success', 'Soal berhasil diperbarui.');
     }
 
+    public function destroyAll(MataKuliah $mata_kuliah)
+    {
+        $this->getAuthProps();
+        $dosenId = Auth::id();
+
+        // Otorisasi sederhana untuk memastikan dosen punya soal di MK ini
+        $hasSoal = Soal::where('dosen_pembuat_id', $dosenId)
+                        ->where('mata_kuliah_id', $mata_kuliah->id)
+                        ->exists();
+
+        if (!$hasSoal) {
+            abort(403, 'Anda tidak memiliki soal untuk dihapus di mata kuliah ini.');
+        }
+
+        // Hapus semua soal milik dosen ini di mata kuliah yang dipilih
+        Soal::where('dosen_pembuat_id', $dosenId)
+            ->where('mata_kuliah_id', $mata_kuliah->id)
+            ->delete();
+
+        return back()->with('success', 'Semua soal untuk mata kuliah ' . $mata_kuliah->nama . ' telah berhasil dihapus.');
+    }
+
     public function destroy(Soal $bank_soal)
     {
         $this->getAuthProps();
