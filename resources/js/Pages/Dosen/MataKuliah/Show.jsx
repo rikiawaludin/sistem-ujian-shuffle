@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/card";
 import { Button } from "@/Components/ui/button";
@@ -23,12 +23,19 @@ import {
     AlertDialogTitle,
 } from "@/Components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download, Upload, Image } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, BarChart3, Users, Plus, Edit, Trash2, Download, Upload, Image, MoreVertical } from 'lucide-react';
 import { Badge } from "@/Components/ui/badge";
 import { Cog6ToothIcon } from '@heroicons/react/24/solid';
 import UjianDetailFormDialog from '@/Pages/Dosen/Partials/UjianDetailFormDialog';
 import UjianAturanDialog from '@/Pages/Dosen/Partials/UjianAturanDialog';
 import UjianCreateDialog from '@/Pages/Dosen/Partials/UjianCreateDialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/Components/ui/dropdown-menu";
 
 // Komponen Form Soal yang akan kita buat
 import BankSoalForm from '@/Pages/Dosen/Partials/BankSoalForm';
@@ -43,6 +50,15 @@ export default function Show() {
     const { course, soalSummary = {}, ujianSummary = {}, mataKuliahOptions, bankSoalSummary = {} } = usePage().props;
 
     const { toast } = useToast();
+
+    const [activeTab, setActiveTab] = useState(
+        () => localStorage.getItem(`activeCourseTab_${course.id}`) || 'overview'
+    );
+
+    // Effect to save the active tab to localStorage whenever it changes.
+    useEffect(() => {
+        localStorage.setItem(`activeCourseTab_${course.id}`, activeTab);
+    }, [activeTab, course.id]);
 
     const [isDeleteAllSoalConfirmOpen, setIsDeleteAllSoalConfirmOpen] = useState(false);
     const confirmDeleteAllSoal = () => {
@@ -244,7 +260,9 @@ export default function Show() {
 
             <div className="max-w-7xl mx-auto p-6">
                 {/* Konten Utama dengan Tabs */}
-                <Tabs defaultValue="overview" className="w-full">
+                <Tabs value={activeTab}
+                    onValueChange={setActiveTab}
+                    className="w-full">
                     {/* ========================================================== */}
                     {/* PERUBAHAN STYLE UTAMA DI SINI */}
                     {/* ========================================================== */}
@@ -417,26 +435,22 @@ export default function Show() {
                     </TabsContent>
 
                     <TabsContent value="questions" className="space-y-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">Bank Soal Mata Kuliah</h3>
                                 <p className="text-sm text-muted-foreground">Kelola semua soal untuk mata kuliah ini.</p>
                             </div>
-                            <div className="flex gap-2"> {/* Tambah wrapper untuk beberapa tombol */}
-
-                                <a href="#" onClick={(e) => e.preventDefault()}> {/* Placeholder link */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <a href="#" onClick={(e) => e.preventDefault()}>
                                     <Button variant="outline">
                                         <Download className="h-4 w-4 mr-2" />
                                         Format Impor
                                     </Button>
                                 </a>
-
                                 <Button variant="outline" onClick={() => setIsImportOpen(true)}>
                                     <Upload className="h-4 w-4 mr-2" />
                                     Impor Soal
                                 </Button>
-
-                                {/* Tombol Ekspor Baru */}
                                 <a href={route('dosen.bank-soal.export')}>
                                     <Button variant="outline">
                                         <Download className="h-4 w-4 mr-2" />
@@ -444,8 +458,7 @@ export default function Show() {
                                     </Button>
                                 </a>
                                 <Button
-                                    variant="outline"
-                                    className="text-red-600 border-red-500 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
+                                    variant="destructive"
                                     onClick={() => setIsDeleteAllSoalConfirmOpen(true)}
                                     disabled={course.soal.length === 0}
                                 >
@@ -500,17 +513,16 @@ export default function Show() {
                     </TabsContent>
 
                     <TabsContent value="exams" className="space-y-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                             <div>
                                 <h3 className="text-xl font-bold text-gray-800">Manajemen Ujian</h3>
                                 <p className="text-sm text-muted-foreground">Kelola semua ujian untuk mata kuliah ini.</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button
-                                    variant="outline"
-                                    className="text-red-600 border-red-500 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
-                                    onClick={() => setIsDeleteAllUjianConfirmOpen(true)} // <-- UBAH DI SINI
-                                    disabled={course.ujian.length === 0} // Nonaktifkan jika tidak ada ujian
+                                    variant="destructive"
+                                    onClick={() => setIsDeleteAllUjianConfirmOpen(true)}
+                                    disabled={course.ujian.length === 0}
                                 >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Hapus Semua Ujian

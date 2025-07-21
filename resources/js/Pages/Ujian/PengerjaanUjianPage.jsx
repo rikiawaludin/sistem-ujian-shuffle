@@ -1,5 +1,5 @@
 // resources/js/Pages/Ujian/PengerjaanUjianPage.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Typography, Button as MaterialButton, Spinner,
 } from "@material-tailwind/react";
@@ -45,6 +45,24 @@ export default function PengerjaanUjianPage() {
     return `ujian_${idUjianDariProps}_user_${authUser.id}_attempt_${pengerjaanId}_${type}`;
   }, [idUjianDariProps, authUser, pengerjaanId]);
 
+  //useMemo
+  const semuaSoalTerjawab = useMemo(() => {
+    // Jika data ujian atau list soal belum siap, anggap belum selesai.
+    if (!detailUjian || !detailUjian.soalList) {
+      return false;
+    }
+    // Jika tidak ada soal, maka dianggap selesai.
+    if (detailUjian.soalList.length === 0) {
+      return true;
+    }
+    // `every` akan berhenti dan mengembalikan `false` segera setelah menemukan soal pertama yang belum dijawab.
+    return detailUjian.soalList.every(soal => {
+      const jawaban = jawabanUser[soal.id];
+      // Dianggap sudah terjawab jika jawaban tidak null, tidak undefined, dan tidak string kosong.
+      return jawaban !== null && jawaban !== undefined && jawaban !== "";
+    });
+  }, [jawabanUser, detailUjian]);
+
   // useEffect untuk mengambil data ujian
   useEffect(() => {
     if (idUjianDariProps && authUser) {
@@ -87,6 +105,19 @@ export default function PengerjaanUjianPage() {
               const currentPengerjaanId = dataUjianApi.pengerjaanId;
               const jawabanKey = currentPengerjaanId ? `ujian_${idUjianDariProps}_user_${authUser.id}_attempt_${currentPengerjaanId}_jawaban` : null;
               const raguKey = currentPengerjaanId ? `ujian_${idUjianDariProps}_user_${authUser.id}_attempt_${currentPengerjaanId}_ragu` : null;
+
+              // Logika untuk memulihkan indeks soal terakhir yang dilihat
+              const indexKey = currentPengerjaanId ? `ujian_${idUjianDariProps}_user_${authUser.id}_attempt_${currentPengerjaanId}_currentIndex` : null;
+              if (indexKey) {
+                const savedIndex = localStorage.getItem(indexKey);
+                if (savedIndex) {
+                  const restoredIndex = parseInt(savedIndex, 10);
+                  // Pastikan indeks yang dipulihkan valid (bukan angka aneh dan masih dalam jangkauan soal)
+                  if (!isNaN(restoredIndex) && restoredIndex >= 0 && restoredIndex < dataUjianApi.soalList.length) {
+                    setSoalSekarangIndex(restoredIndex);
+                  }
+                }
+              }
 
               let restoredJawaban = initialAnswers;
               let restoredRagu = initialRagu;
@@ -142,6 +173,28 @@ export default function PengerjaanUjianPage() {
       } catch (e) { console.error("Gagal simpan ke localStorage:", e); }
     }
   }, [jawabanUser, statusRaguRagu, isLoadingSoal, detailUjian, pengerjaanId, getLocalStorageKey]);
+
+  // useEffect untuk menyimpan jawaban ke localStorage
+  useEffect(() => {
+    const jawabanKey = getLocalStorageKey('jawaban');
+    const raguKey = getLocalStorageKey('ragu');
+    if (!isLoadingSoal && detailUjian && pengerjaanId && jawabanKey && raguKey) {
+      try {
+        localStorage.setItem(jawabanKey, JSON.stringify(jawabanUser));
+        localStorage.setItem(raguKey, JSON.stringify(statusRaguRagu));
+      } catch (e) { console.error("Gagal simpan ke localStorage:", e); }
+    }
+  }, [jawabanUser, statusRaguRagu, isLoadingSoal, detailUjian, pengerjaanId, getLocalStorageKey]);
+
+  // TAMBAHKAN BLOK useEffect DI BAWAH INI
+  // useEffect untuk menyimpan indeks soal terakhir yang dilihat
+  useEffect(() => {
+    const indexKey = getLocalStorageKey('currentIndex');
+    // Pastikan data tidak sedang loading dan key bisa dibuat
+    if (indexKey && !isLoadingSoal) {
+      localStorage.setItem(indexKey, soalSekarangIndex);
+    }
+  }, [soalSekarangIndex, getLocalStorageKey, isLoadingSoal]);
 
   // Callback untuk submit ujian
   const handleSelesaiUjianCallback = useCallback(() => {
@@ -310,6 +363,7 @@ export default function PengerjaanUjianPage() {
             onTandaiRagu={handleTandaiRaguRagu}
             onSelesaiUjian={() => setOpenDialogSelesai(true)}
             isSubmitting={isSubmitting}
+            semuaSoalTerjawab={semuaSoalTerjawab}
           />
         </main>
         <NavigasiSoalSidebar
